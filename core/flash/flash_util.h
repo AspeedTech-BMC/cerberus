@@ -16,7 +16,7 @@
 /**
  * The maximum block size read from the flash for verification operations.
  */
-#define	FLASH_VERIFICATION_BLOCK	256
+#define	FLASH_VERIFICATION_BLOCK	4096
 
 /**
  * The maximum block size supported for flash copy operations.
