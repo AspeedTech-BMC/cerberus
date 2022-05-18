@@ -9,7 +9,7 @@
 
 #include <logging/logging_flash.h>
 
-extern int logging_flash_wrapper_init (struct logging_flash *logging);
+extern int logging_flash_wrapper_init(struct logging_flash *logging);
 extern int debug_log_test(void);
 
 #endif /* LOGGING_WRAPPER_H_ */

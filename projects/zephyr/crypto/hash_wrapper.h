@@ -5,4 +5,4 @@
  */
 
 #include <crypto/hash.h>
-int hash_wrapper_init (struct hash_engine *engine);
+int hash_wrapper_init(struct hash_engine *engine);

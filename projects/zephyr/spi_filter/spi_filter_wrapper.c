@@ -7,47 +7,48 @@
 #include <spi_filter/spi_filter_wrapper.h>
 
 static char *spim_devs[4] = {
-		"spi_m1",
-		"spi_m2",
-		"spi_m3",
-		"spi_m4"
-	};
+	"spi_m1",
+	"spi_m2",
+	"spi_m3",
+	"spi_m4"
+};
 
-int Wrapper_spi_filter_enable (struct spi_filter_interface *spi_filter, bool enable)
+int Wrapper_spi_filter_enable(struct spi_filter_interface *spi_filter, bool enable)
 {
-    int ret = 0;    
-    
-    for (uint32_t i = 0; i < 4; i++) {
-        SPI_Monitor_Enable(spim_devs[i],enable);        
+	int ret = 0;
+
+	for (uint32_t i = 0; i < 4; i++) {
+		SPI_Monitor_Enable(spim_devs[i], enable);
 	}
-    
-    return ret;
+
+	return ret;
 }
 
-int Wrapper_spi_filter_rw_region (struct spi_filter_interface *spi_filter, uint8_t region, uint32_t start_addr, uint32_t end_addr)
+int Wrapper_spi_filter_rw_region(struct spi_filter_interface *spi_filter, uint8_t region, uint32_t start_addr, uint32_t end_addr)
 {
-    int ret = 0;    
-	struct spi_filter_engine_wrapper *spi_filter_wrapper = (struct spi_filter_engine_wrapper*) spi_filter;
-		
-	uint32_t length = end_addr - start_addr;		
-	ret = Set_SPI_Filter_RW_Region(spim_devs[spi_filter_wrapper->dev_id],SPI_FILTER_WRITE_PRIV,SPI_FILTER_PRIV_ENABLE, start_addr,length);
-	
-    
-    
-    return ret;
+	int ret = 0;
+	struct spi_filter_engine_wrapper *spi_filter_wrapper = (struct spi_filter_engine_wrapper *) spi_filter;
+
+	uint32_t length = end_addr - start_addr;
+
+	ret = Set_SPI_Filter_RW_Region(spim_devs[spi_filter_wrapper->dev_id], SPI_FILTER_WRITE_PRIV, SPI_FILTER_PRIV_ENABLE, start_addr, length);
+
+
+
+	return ret;
 }
 
 
-int  spi_filter_wrapper_init (struct spi_filter_engine_wrapper *spi_filter)
+int  spi_filter_wrapper_init(struct spi_filter_engine_wrapper *spi_filter)
 {
 	if (spi_filter == NULL) {
 		return SPI_FILTER_INVALID_ARGUMENT;
 	}
 
-	memset (spi_filter, 0, sizeof (struct spi_filter_engine_wrapper));
+	memset(spi_filter, 0, sizeof(struct spi_filter_engine_wrapper));
 
-	spi_filter->base.enable_filter = (int (*)(struct spi_filter_interface, bool)) Wrapper_spi_filter_enable;
-	spi_filter->base.set_filter_rw_region = (int (*)(struct spi_filter_interface, uint8_t, uint32_t, uint32_t)) Wrapper_spi_filter_rw_region;
+	spi_filter->base.enable_filter = (int (*)(struct spi_filter_interface, bool))Wrapper_spi_filter_enable;
+	spi_filter->base.set_filter_rw_region = (int (*)(struct spi_filter_interface, uint8_t, uint32_t, uint32_t))Wrapper_spi_filter_rw_region;
 
 	return 0;
 }

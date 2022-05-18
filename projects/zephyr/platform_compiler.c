@@ -17,14 +17,14 @@
  *
  * @return The newly allocated copy of the string or null.
  */
-char* strdup (const char *s)
+char *strdup(const char *s)
 {
 	char *str = NULL;
 
 	if (s != NULL) {
-		str = platform_malloc (strlen (s) + 1);
+		str = platform_malloc(strlen(s) + 1);
 		if (str != NULL) {
-			strcpy (str, s);
+			strcpy(str, s);
 		}
 	}
 

@@ -27,18 +27,18 @@
  *
  * @return 0 if the device size was successfully read or an error code.
  */
-int Wrapper_spi_flash_get_device_size (struct spi_flash *flash, uint32_t *bytes)
+int Wrapper_spi_flash_get_device_size(struct spi_flash *flash, uint32_t *bytes)
 {
-	struct flash_xfer  xfer;
+	struct flash_xfer xfer;
 
 	if ((flash == NULL) || (bytes == NULL)) {
 		return SPI_FLASH_INVALID_ARGUMENT;
 	}
-	
+
 	xfer.cmd = SPI_APP_CMD_GET_FLASH_SIZE;
 
 
-	*bytes = SPI_Command_Xfer(flash,&xfer);
+	*bytes = SPI_Command_Xfer(flash, &xfer);
 
 }
 
@@ -52,36 +52,36 @@ int Wrapper_spi_flash_get_device_size (struct spi_flash *flash, uint32_t *bytes)
  *
  * @return 0 if the bytes were read from flash or an error code.
  */
-int Wrapper_spi_flash_read (struct spi_flash *flash, uint32_t address, uint8_t *data, size_t length)
+int Wrapper_spi_flash_read(struct spi_flash *flash, uint32_t address, uint8_t *data, size_t length)
 {
 
 	struct flash_xfer xfer;
 	int status;
 	uint32_t bytes;
-	int read_dummy=0,read_mode=0;
-	int read_flags=0,addr_mode=0;
-	
+	int read_dummy = 0, read_mode = 0;
+	int read_flags = 0, addr_mode = 0;
+
 	// if ((flash == NULL) || (data == NULL)) {
-	// 	if(flash == NULL){
-	// 		printk("flash is NULL\n");
-	// 	}
-	// 	if(data == NULL){
-	// 		printk("data is NULL\n");
-	// 	}
-	// 	return SPI_FLASH_INVALID_ARGUMENT;
+	//      if(flash == NULL){
+	//              printk("flash is NULL\n");
+	//      }
+	//      if(data == NULL){
+	//              printk("data is NULL\n");
+	//      }
+	//      return SPI_FLASH_INVALID_ARGUMENT;
 	// }
-	if((flash == NULL)){
+	if ((flash == NULL)) {
 		return SPI_FLASH_INVALID_ARGUMENT;
 	}
-	Wrapper_spi_flash_get_device_size(flash,&bytes);
+	Wrapper_spi_flash_get_device_size(flash, &bytes);
 
-	SPI_FLASH_BOUNDS_CHECK (bytes, address, length);
+	SPI_FLASH_BOUNDS_CHECK(bytes, address, length);
 
-	FLASH_XFER_INIT_READ (xfer, FLASH_CMD_READ, address, read_dummy, read_mode, data, length, read_flags | addr_mode);
+	FLASH_XFER_INIT_READ(xfer, FLASH_CMD_READ, address, read_dummy, read_mode, data, length, read_flags | addr_mode);
 
-	
-	
-	status = SPI_Command_Xfer(flash,&xfer);
+
+
+	status = SPI_Command_Xfer(flash, &xfer);
 
 	return status;
 }
@@ -94,7 +94,7 @@ int Wrapper_spi_flash_read (struct spi_flash *flash, uint32_t address, uint8_t *
  *
  * @return 0 if the page size was successfully read or an error code.
  */
-int Wrapper_spi_flash_get_page_size (struct spi_flash *flash, uint32_t *bytes)
+int Wrapper_spi_flash_get_page_size(struct spi_flash *flash, uint32_t *bytes)
 {
 	if ((flash == NULL) || (bytes == NULL)) {
 		return SPI_FLASH_INVALID_ARGUMENT;
@@ -117,7 +117,7 @@ int Wrapper_spi_flash_get_page_size (struct spi_flash *flash, uint32_t *bytes)
  *
  * @return 0 if the minimum write size was successfully read or an error code.
  */
-int Wrapper_spi_flash_minimum_write_per_page (struct spi_flash *flash, uint32_t *bytes)
+int Wrapper_spi_flash_minimum_write_per_page(struct spi_flash *flash, uint32_t *bytes)
 {
 	if ((flash == NULL) || (bytes == NULL)) {
 		return SPI_FLASH_INVALID_ARGUMENT;
@@ -139,46 +139,41 @@ int Wrapper_spi_flash_minimum_write_per_page (struct spi_flash *flash, uint32_t 
  * @return The number of bytes written to the flash or an error code.  Use ROT_IS_ERROR to check the
  * return value.
  */
-int Wrapper_spi_flash_write (struct spi_flash *flash, uint32_t address, const uint8_t *data, size_t length)
+int Wrapper_spi_flash_write(struct spi_flash *flash, uint32_t address, const uint8_t *data, size_t length)
 {
 	struct flash_xfer xfer;
-	uint32_t page = FLASH_PAGE_BASE (address);
+	uint32_t page = FLASH_PAGE_BASE(address);
 	uint32_t next = page + FLASH_PAGE_SIZE;
 	size_t remaining = length;
 	int status = 0;
-	int write_flags=0,addr_mode=0;
+	int write_flags = 0, addr_mode = 0;
 
 	if ((flash == NULL)) {
 		return SPI_FLASH_INVALID_ARGUMENT;
 	}
-	//Wrapper_spi_flash_get_device_size(flash, &bytes);
-	//SPI_FLASH_BOUNDS_CHECK (flash->device_size, address, length);
-	
-	while ((status == 0) && remaining)
-	{
+	// Wrapper_spi_flash_get_device_size(flash, &bytes);
+	// SPI_FLASH_BOUNDS_CHECK (flash->device_size, address, length);
+
+	while ((status == 0) && remaining) {
 		uint32_t end = address + remaining;
 		size_t write_len;
 
-		if (page != FLASH_PAGE_BASE (end))
-		{
+		if (page != FLASH_PAGE_BASE(end)) {
 			write_len = next - address;
-		}
-		else
-		{
+		} else   {
 			write_len = remaining;
 		}
 
 
-		FLASH_XFER_INIT_WRITE (xfer, FLASH_CMD_PP, address, 0, (uint8_t*) data, write_len,
-			write_flags | addr_mode);
-		
+		FLASH_XFER_INIT_WRITE(xfer, FLASH_CMD_PP, address, 0, (uint8_t *) data, write_len,
+				      write_flags | addr_mode);
 
-		status = SPI_Command_Xfer(flash,&xfer);
 
-		//if (status == 0) {
-			//status = spi_flash_wait_for_write_completion (flash, -1, 1);
-		if (status == 0)
-		{
+		status = SPI_Command_Xfer(flash, &xfer);
+
+		// if (status == 0) {
+		// status = spi_flash_wait_for_write_completion (flash, -1, 1);
+		if (status == 0) {
 			remaining -= write_len;
 			data += write_len;
 			page = next;
@@ -186,21 +181,17 @@ int Wrapper_spi_flash_write (struct spi_flash *flash, uint32_t address, const ui
 			next += FLASH_PAGE_SIZE;
 		}
 	}
-	
+
 	length = length - remaining;
-	
-	if (length)
-	{
-		if (status != 0)
-		{
+
+	if (length) {
+		if (status != 0) {
 			printk("debug_log_create_entry\n");
-			//debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_FLASH,
-				//FLASH_LOGGING_INCOMPLETE_WRITE, address, status);
+			// debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_FLASH,
+			// FLASH_LOGGING_INCOMPLETE_WRITE, address, status);
 		}
 		return length;
-	}
-	else
-	{
+	} else   {
 		return status;
 	}
 
@@ -214,10 +205,10 @@ int Wrapper_spi_flash_write (struct spi_flash *flash, uint32_t address, const ui
  *
  * @return 0 if the sector size was successfully read or an error code.
  */
-int Wrapper_spi_flash_get_sector_size (struct spi_flash *flash, uint32_t *bytes)
+int Wrapper_spi_flash_get_sector_size(struct spi_flash *flash, uint32_t *bytes)
 {
 	struct flash_master spi;
-	struct flash_xfer  xfer;
+	struct flash_xfer xfer;
 
 	if ((flash == NULL) || (bytes == NULL)) {
 		return SPI_FLASH_INVALID_ARGUMENT;
@@ -226,9 +217,9 @@ int Wrapper_spi_flash_get_sector_size (struct spi_flash *flash, uint32_t *bytes)
 	xfer.cmd = SPI_APP_CMD_GET_FLASH_SECTOR_SIZE;
 
 
-	*bytes = SPI_Command_Xfer(flash,&xfer);
+	*bytes = SPI_Command_Xfer(flash, &xfer);
 
-	
+
 	return 0;
 }
 
@@ -240,9 +231,9 @@ int Wrapper_spi_flash_get_sector_size (struct spi_flash *flash, uint32_t *bytes)
  *
  * @return 0 if the sector was erased or an error code.
  */
-int Wrapper_spi_flash_sector_erase (struct spi_flash *flash, uint32_t sector_addr)
+int Wrapper_spi_flash_sector_erase(struct spi_flash *flash, uint32_t sector_addr)
 {
-	struct flash_xfer  xfer;
+	struct flash_xfer xfer;
 	int status = 0;
 
 	if (flash == NULL) {
@@ -250,7 +241,7 @@ int Wrapper_spi_flash_sector_erase (struct spi_flash *flash, uint32_t sector_add
 	}
 	xfer.cmd = MIDLEY_FLASH_CMD_4K_ERASE;
 
-    status = SPI_Command_Xfer(flash,&xfer);
+	status = SPI_Command_Xfer(flash, &xfer);
 
 	return status;
 }
@@ -263,18 +254,18 @@ int Wrapper_spi_flash_sector_erase (struct spi_flash *flash, uint32_t sector_add
  *
  * @return 0 if the block size was successfully read or an error code.
  */
-int Wrapper_spi_flash_get_block_size (struct spi_flash *flash, uint32_t *bytes)
+int Wrapper_spi_flash_get_block_size(struct spi_flash *flash, uint32_t *bytes)
 {
 	struct flash_master spi;
-	struct flash_xfer  xfer;
+	struct flash_xfer xfer;
 
 	if ((flash == NULL) || (bytes == NULL)) {
 		return SPI_FLASH_INVALID_ARGUMENT;
 	}
 
 	xfer.cmd = SPI_APP_CMD_GET_FLASH_BLOCK_SIZE;
-	
-    *bytes = SPI_Command_Xfer(flash,&xfer);
+
+	*bytes = SPI_Command_Xfer(flash, &xfer);
 
 	return 0;
 
@@ -289,9 +280,9 @@ int Wrapper_spi_flash_get_block_size (struct spi_flash *flash, uint32_t *bytes)
  *
  * @return 0 if the block was erased or an error code.
  */
-int Wrapper_spi_flash_block_erase (struct spi_flash *flash, uint32_t block_addr)
+int Wrapper_spi_flash_block_erase(struct spi_flash *flash, uint32_t block_addr)
 {
-	struct flash_xfer  xfer;
+	struct flash_xfer xfer;
 	int status = 0;
 
 	if (flash == NULL) {
@@ -299,8 +290,8 @@ int Wrapper_spi_flash_block_erase (struct spi_flash *flash, uint32_t block_addr)
 	}
 	xfer.cmd = MIDLEY_FLASH_CMD_64K_ERASE;
 
-	status = SPI_Command_Xfer(flash,&xfer);
-	
+	status = SPI_Command_Xfer(flash, &xfer);
+
 	return status;
 
 }
@@ -312,20 +303,20 @@ int Wrapper_spi_flash_block_erase (struct spi_flash *flash, uint32_t block_addr)
  *
  * @return 0 if the flash chip was erased or an error code.
  */
-int Wrapper_spi_flash_chip_erase (struct spi_flash *flash)
+int Wrapper_spi_flash_chip_erase(struct spi_flash *flash)
 {
-	struct flash_xfer  xfer;
+	struct flash_xfer xfer;
 	int status = 0;
 
 	xfer.cmd = MIDLEY_FLASH_CMD_READ;
 
-    status = SPI_Command_Xfer(flash,&xfer);
+	status = SPI_Command_Xfer(flash, &xfer);
 
 	return status;
-	
+
 }
 
-int  flash_wrapper_init (struct spi_engine_wrapper *flash, struct flash_master_wrapper *spi)
+int  flash_wrapper_init(struct spi_engine_wrapper *flash, struct flash_master_wrapper *spi)
 {
 	int status;
 	uint32_t bytes;
@@ -334,11 +325,12 @@ int  flash_wrapper_init (struct spi_engine_wrapper *flash, struct flash_master_w
 		return SPI_FLASH_INVALID_ARGUMENT;
 	}
 
-	memset (flash, 0, sizeof (struct spi_engine_wrapper));
+	memset(flash, 0, sizeof(struct spi_engine_wrapper));
 
-	status = platform_mutex_init (&flash->spi.lock);
-	if (status != 0)
+	status = platform_mutex_init(&flash->spi.lock);
+	if (status != 0) {
 		return status;
+	}
 
 
 	flash->spi.command.read = FLASH_CMD_READ;
@@ -347,25 +339,23 @@ int  flash_wrapper_init (struct spi_engine_wrapper *flash, struct flash_master_w
 	flash->spi.command.erase_block = FLASH_CMD_64K_ERASE;
 	flash->spi.command.enter_pwrdown = FLASH_CMD_DP;
 	flash->spi.command.release_pwrdown = FLASH_CMD_RDP;
-	
+
 	flash->spi.spi->xfer =  spi->base.xfer;
 	flash->spi.spi->capabilities = spi->base.capabilities;
 	flash->spi.device_id[0] = 0xff;
 	flash->spi.capabilities = (FLASH_CAP_3BYTE_ADDR | FLASH_CAP_4BYTE_ADDR);
-	
-	flash->spi.base.get_device_size = (int (*) (struct flash*, uint32_t*)) Wrapper_spi_flash_get_device_size;
-	flash->spi.base.read = (int (*) (struct flash*, uint32_t, uint8_t*, size_t)) Wrapper_spi_flash_read;
-	flash->spi.base.get_page_size = (int (*) (struct flash*, uint32_t*)) Wrapper_spi_flash_get_page_size;
+
+	flash->spi.base.get_device_size = (int (*)(struct flash *, uint32_t *))Wrapper_spi_flash_get_device_size;
+	flash->spi.base.read = (int (*)(struct flash *, uint32_t, uint8_t *, size_t))Wrapper_spi_flash_read;
+	flash->spi.base.get_page_size = (int (*)(struct flash *, uint32_t *))Wrapper_spi_flash_get_page_size;
 	flash->spi.base.minimum_write_per_page =
-		(int (*) (struct flash*, uint32_t*)) Wrapper_spi_flash_minimum_write_per_page;
-	flash->spi.base.write = (int (*) (struct flash*, uint32_t, const uint8_t*, size_t)) Wrapper_spi_flash_write;
-	flash->spi.base.get_sector_size = (int (*) (struct flash*, uint32_t*)) Wrapper_spi_flash_get_sector_size;
-	flash->spi.base.sector_erase = (int (*) (struct flash*, uint32_t)) Wrapper_spi_flash_sector_erase;
-	flash->spi.base.get_block_size = (int (*) (struct flash*, uint32_t*)) Wrapper_spi_flash_get_block_size;
-	flash->spi.base.block_erase = (int (*) (struct flash*, uint32_t)) Wrapper_spi_flash_block_erase;
-	flash->spi.base.chip_erase = (int (*) (struct flash*)) Wrapper_spi_flash_chip_erase;
+		(int (*)(struct flash *, uint32_t *))Wrapper_spi_flash_minimum_write_per_page;
+	flash->spi.base.write = (int (*)(struct flash *, uint32_t, const uint8_t *, size_t))Wrapper_spi_flash_write;
+	flash->spi.base.get_sector_size = (int (*)(struct flash *, uint32_t *))Wrapper_spi_flash_get_sector_size;
+	flash->spi.base.sector_erase = (int (*)(struct flash *, uint32_t))Wrapper_spi_flash_sector_erase;
+	flash->spi.base.get_block_size = (int (*)(struct flash *, uint32_t *))Wrapper_spi_flash_get_block_size;
+	flash->spi.base.block_erase = (int (*)(struct flash *, uint32_t))Wrapper_spi_flash_block_erase;
+	flash->spi.base.chip_erase = (int (*)(struct flash *))Wrapper_spi_flash_chip_erase;
 
 	return 0;
 }
-
-

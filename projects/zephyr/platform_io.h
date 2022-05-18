@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 
-#define	platform_printf		printf
-#define	NEWLINE				"\n"
+#define platform_printf         printf
+#define NEWLINE                         "\n"
 
 #endif /* PLATFORM_IO_H_ */

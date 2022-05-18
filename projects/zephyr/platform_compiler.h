@@ -11,6 +11,6 @@
 
 
 /* GCC string operations. */
-char* strdup (const char *s);
+char *strdup(const char *s);
 
 #endif /* PLATFORM_COMPILER_H_ */
