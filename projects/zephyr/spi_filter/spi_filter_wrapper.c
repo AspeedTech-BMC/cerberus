@@ -6,22 +6,29 @@
 
 #include <spi_filter/spi_filter_wrapper.h>
 
-static char *spim_devs[4] = {
+#if defined(CONFIG_ASPEED_DC_SCM)
+#define SPIM_NUM  3
+#else
+#define SPIM_NUM  4
+#endif
+
+static char *spim_devs[SPIM_NUM] = {
 	"spi_m1",
+#if !defined(CONFIG_ASPEED_DC_SCM)
 	"spi_m2",
+#endif
 	"spi_m3",
 	"spi_m4"
 };
 
 int Wrapper_spi_filter_enable(struct spi_filter_interface *spi_filter, bool enable)
 {
-	int ret = 0;
+	struct spi_filter_engine_wrapper *spi_filter_wrapper =
+		(struct spi_filter_engine_wrapper*) spi_filter;
 
-	for (uint32_t i = 0; i < 4; i++) {
-		SPI_Monitor_Enable(spim_devs[i], enable);
-	}
+	SPI_Monitor_Enable(spim_devs[spi_filter_wrapper->dev_id], enable);
 
-	return ret;
+	return 0;
 }
 
 int Wrapper_spi_filter_rw_region(struct spi_filter_interface *spi_filter, uint8_t region, uint32_t start_addr, uint32_t end_addr)
