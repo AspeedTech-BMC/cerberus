@@ -288,7 +288,7 @@ int Wrapper_spi_flash_block_erase(struct spi_flash *flash, uint32_t block_addr)
 	if (flash == NULL) {
 		return SPI_FLASH_INVALID_ARGUMENT;
 	}
-	xfer.cmd = MIDLEY_FLASH_CMD_64K_ERASE;
+	xfer.cmd = MIDLEY_FLASH_CMD_BLOCK_ERASE;
 
 	status = SPI_Command_Xfer(flash, &xfer);
 
