@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#pragma once
+
 #include "spi_filter/spi_filter_interface.h"
 #include "spi_filter/spi_filter_aspeed.h"
 

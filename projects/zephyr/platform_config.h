@@ -4,8 +4,5 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef PLATFORM_CONFIG_H_
-#define PLATFORM_CONFIG_H_
+#pragma once
 
-
-#endif /* PLATFORM_CONFIG_H_ */

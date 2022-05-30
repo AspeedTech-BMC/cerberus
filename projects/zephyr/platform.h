@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef ZEPHYR_PLATFORM_H_
-#define ZEPHYR_PLATFORM_H_
+#pragma once
 
 #include <stdint.h>
 #include <crypto/rsa.h>
@@ -79,4 +78,3 @@ int platform_timer_create(platform_timer *timer, timer_callback callback, void *
 int platform_timer_arm_one_shot(platform_timer *timer, uint32_t ms_timeout);
 int platform_timer_disarm(platform_timer *timer);
 void platform_timer_delete(platform_timer *timer);
-#endif /* ZEPHYR_PLATFORM_H_ */

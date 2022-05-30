@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#pragma once
+
 #include <i2c/i2c_slave_common.h>
 
 struct I2CSlave_engine_wrapper {

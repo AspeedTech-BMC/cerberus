@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef SIGNATURE_VERIFICATION_RSA_H_
-#define SIGNATURE_VERIFICATION_RSA_H_
+#pragma once
 
 #include "common/signature_verification.h"
 #include "crypto/rsa.h"
@@ -25,5 +24,3 @@ int signature_verification_rsa_wrapper_init(struct signature_verification_rsa_wr
 					    struct rsa_engine *rsa, const struct rsa_public_key *key);
 void signature_verification_rsa_wrapper_release(struct signature_verification_rsa_wrapper *verification);
 
-
-#endif /* SIGNATURE_VERIFICATION_RSA_H_ */

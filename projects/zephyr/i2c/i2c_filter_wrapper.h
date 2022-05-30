@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#pragma once
+
 #include <i2c/i2c_filter.h>
 #include <i2c/i2c_filter_aspeed.h>
 

@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef PLATFORM_COMPILER_H_
-#define PLATFORM_COMPILER_H_
+#pragma once
 
 #include <stddef.h>
 
@@ -13,4 +12,3 @@
 /* GCC string operations. */
 char *strdup(const char *s);
 
-#endif /* PLATFORM_COMPILER_H_ */

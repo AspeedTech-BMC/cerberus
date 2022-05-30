@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#pragma once
+
 #include "flash/flash_master.h"
 #include "flash/spi_flash.h"
 #include "flash/flash_aspeed.h"
