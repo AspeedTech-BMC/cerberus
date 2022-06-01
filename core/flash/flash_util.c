@@ -6,6 +6,9 @@
 #include "flash_common.h"
 
 
+// Enlarge the hash buffer to 12k to speed up the hash operation.
+#define FLASH_VERIFICATION_BLOCK_12K 12288
+uint8_t hash_buffer[FLASH_VERIFICATION_BLOCK_12K];
 /**
  * Validate the contents of a contiguous block of data stored in a flash device against an RSA
  * encrypted signature.
@@ -421,7 +424,7 @@ int flash_hash_update_noncontiguous_contents (struct flash *flash,
 int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uint32_t offset,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash)
 {
-	uint8_t data[FLASH_VERIFICATION_BLOCK];
+	//uint8_t data[FLASH_VERIFICATION_BLOCK];
 	size_t next_read;
 	uint32_t current_addr;
 	size_t remaining;
@@ -437,15 +440,15 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 		remaining = regions[i].length;
 
 		while (remaining > 0) {
-			next_read = (remaining < FLASH_VERIFICATION_BLOCK) ?
-				remaining : FLASH_VERIFICATION_BLOCK;
+			next_read = (remaining < FLASH_VERIFICATION_BLOCK_12K) ?
+				remaining : FLASH_VERIFICATION_BLOCK_12K;
 
-			status = flash->read (flash, current_addr, data, next_read);
+			status = flash->read (flash, current_addr, hash_buffer, next_read);
 			if (status != 0) {
 				return status;
 			}
 
-			status = hash->update (hash, data, next_read);
+			status = hash->update (hash, hash_buffer, next_read);
 			if (status != 0) {
 				return status;
 			}
