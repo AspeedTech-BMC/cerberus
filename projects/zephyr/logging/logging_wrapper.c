@@ -8,6 +8,7 @@
 #include <logging/logging.h>
 #include <logging/debug_log.h>
 #include <logging/logging_flash.h>
+#include <logging/logging_memory.h>
 
 #define LOGGING_FLASH_DEVICE_SIZE       0x1000000       // logging flash device size supported
 #define LOGGING_FLASH_BASE_ADDRESS      0               // flash base address for logging
@@ -16,6 +17,10 @@
 #define DBG_LOG_TST_RD_SIZE 4096
 
 #define DBG_LOG_TST_SPI_SIZE 8192
+
+#define LOG_TO_MEMORY        1
+#define LOG_ENTRY_COUNT      128
+#define LOG_ENTRY_SIZE       21
 
 static struct spi_engine_wrapper logFlash;      // logging flash implementations info
 struct flash_master_wrapper spi;                // interface to the SPI master connected to a flash device.
@@ -70,6 +75,11 @@ int logging_flash_wrapper_init(struct logging_flash *logging)
 }
 
 
+int logging_memory_wrapper_init(struct logging_memory *logging)
+{
+	return (logging_memory_init(logging, LOG_ENTRY_COUNT, LOG_ENTRY_SIZE));
+}
+
 /**
  * Print out content in buffer.
  *
@@ -117,20 +127,33 @@ static void debug_msg_clear(void *buf, size_t length)
 // State Machine log saving>
 int debug_log_init(void)
 {
-	debug_log = malloc(sizeof(struct logging_flash));
+
+#ifdef LOG_TO_MEMORY
+	debug_log = malloc(sizeof(struct logging_memory));
 
 	if (debug_log == NULL) {
 		return __LINE__;
 	}
 
+	if (logging_memory_wrapper_init(debug_log)) {
+		return __LINE__;
+	}
+#else
+	debug_log = malloc(sizeof(struct logging_flash));
+
+	if (debug_log == NULL) {
+		return __LINE__;
+	}
 	if (logging_flash_wrapper_init(debug_log)) {
 		return __LINE__;
 	}
-
+#endif
 	if (debug_log_clear()) {
 		return __LINE__;
 	}
 }
+
+#ifndef LOG_TO_MEMORY
 // State Machine log saving<
 
 /**
@@ -258,3 +281,4 @@ int debug_log_test(void)
 
 	return 0;
 }
+#endif
