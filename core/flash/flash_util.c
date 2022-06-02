@@ -2,13 +2,12 @@
 // Licensed under the MIT license.
 
 #include <stdbool.h>
+#include <kernel.h>
 #include "flash_util.h"
 #include "flash_common.h"
 
+#define ASYNC_HASH_OPERATION 1
 
-// Enlarge the hash buffer to 12k to speed up the hash operation.
-#define FLASH_VERIFICATION_BLOCK_12K 12288
-uint8_t hash_buffer[FLASH_VERIFICATION_BLOCK_12K];
 /**
  * Validate the contents of a contiguous block of data stored in a flash device against an RSA
  * encrypted signature.
@@ -406,6 +405,127 @@ int flash_hash_update_noncontiguous_contents (struct flash *flash,
 	return flash_hash_update_noncontiguous_contents_at_offset (flash, 0, regions, count, hash);
 }
 
+#ifdef ASYNC_HASH_OPERATION
+
+#define FLASH_VERIFICATION_SIZE 8192
+#define HASH_FIFO_SIZE          1024
+#define HASH_BUFFER_COUNT       3
+
+static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE];
+static bool hash_update_completed;
+
+// thread
+static bool thread_created;
+static struct k_thread hash_thread;
+K_THREAD_STACK_DEFINE(hash_stack_area, HASH_FIFO_SIZE);
+
+// message queue
+struct hash_msgq_data_type {
+	uint8_t buf_id;
+	size_t next_read;
+	bool last_req;
+};
+
+K_MSGQ_DEFINE(hash_msgq, sizeof(struct hash_msgq_data_type), 2, 4);
+
+static void hash_update_thread(void *arg1, void *unused1, void *unused2)
+{
+	struct hash_msgq_data_type msgq_data;
+	struct hash_engine *hash = (struct hash_engine *)arg1;
+
+	while(1) {
+		k_msgq_get(&hash_msgq, &msgq_data, K_FOREVER);
+		hash->update(hash, &hash_buffer[msgq_data.buf_id], msgq_data.next_read);
+		if (msgq_data.last_req) {
+			hash_update_completed = true;
+		}
+	}
+}
+
+/**
+ * Update a hash for a group of noncontiguous blocks of data stored in a flash device.  All regions
+ * will be hashed starting at a fixed offset in flash.
+ *
+ * The hash context must already be started prior to this call.  The hashing context will not be
+ * canceled on failure.
+ *
+ * @param flash The flash device that contains the data to hash.
+ * @param offset An offset to apply to each region address.
+ * @param regions The group of regions that should be hashed as a single region.
+ * @param count The number of regions defined in the group.
+ * @param hash The hashing engine to use to generate the hash.
+ *
+ * @return 0 if the hash was updated successfully or an error code.
+ */
+int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uint32_t offset,
+	const struct flash_region *regions, size_t count, struct hash_engine *hash)
+{
+	size_t next_read;
+	uint32_t current_addr;
+	size_t remaining;
+	size_t i;
+	int status;
+	k_tid_t hash_pid;
+	uint8_t buf_id = 0;
+	struct hash_msgq_data_type msgq_data;
+
+	hash_update_completed = false;
+	if (!thread_created) {
+		hash_pid = k_thread_create(&hash_thread,
+				hash_stack_area,
+				K_THREAD_STACK_SIZEOF(hash_stack_area),
+				(k_thread_entry_t) hash_update_thread,
+				hash, NULL, NULL,
+				-1,
+				0, K_NO_WAIT);
+		thread_created = true;
+	}
+
+	if ((flash == NULL) || (regions == NULL) || (count == 0) || (hash == NULL)) {
+		return FLASH_UTIL_INVALID_ARGUMENT;
+	}
+
+	for (i = 0; i < count; i++) {
+		current_addr = regions[i].start_addr + offset;
+		remaining = regions[i].length;
+
+		while (remaining > 0) {
+			next_read = (remaining < FLASH_VERIFICATION_SIZE) ?
+				remaining : FLASH_VERIFICATION_SIZE;
+
+			status = flash->read (flash, current_addr, &hash_buffer[buf_id], next_read);
+			if (status != 0) {
+				return status;
+			}
+			msgq_data.buf_id = buf_id;
+			msgq_data.next_read = next_read;
+			if ((i == count - 1) && ((remaining - next_read) == 0))
+				msgq_data.last_req = true;
+			else
+				msgq_data.last_req = false;
+
+			k_msgq_put(&hash_msgq, &msgq_data, K_FOREVER);
+			if (buf_id < (HASH_BUFFER_COUNT - 1))
+				buf_id++;
+			else
+				buf_id = 0;
+
+			remaining -= next_read;
+			current_addr += next_read;
+		}
+	}
+
+	while(!hash_update_completed) {
+		k_sleep(K_MSEC(1));
+	}
+
+	return 0;
+}
+#else
+// Enlarge the hash buffer to 12k to speed up the hash operation.
+#define FLASH_VERIFICATION_SIZE 12288
+uint8_t hash_buffer[FLASH_VERIFICATION_SIZE];
+
 /**
  * Update a hash for a group of noncontiguous blocks of data stored in a flash device.  All regions
  * will be hashed starting at a fixed offset in flash.
@@ -440,8 +560,8 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 		remaining = regions[i].length;
 
 		while (remaining > 0) {
-			next_read = (remaining < FLASH_VERIFICATION_BLOCK_12K) ?
-				remaining : FLASH_VERIFICATION_BLOCK_12K;
+			next_read = (remaining < FLASH_VERIFICATION_SIZE) ?
+				remaining : FLASH_VERIFICATION_SIZE;
 
 			status = flash->read (flash, current_addr, hash_buffer, next_read);
 			if (status != 0) {
@@ -460,6 +580,7 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 
 	return 0;
 }
+#endif
 
 /**
  * Erase a region of flash.
