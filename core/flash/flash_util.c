@@ -409,7 +409,7 @@ int flash_hash_update_noncontiguous_contents (struct flash *flash,
 
 #define FLASH_VERIFICATION_SIZE 8192
 #define HASH_FIFO_SIZE          1024
-#define HASH_BUFFER_COUNT       3
+#define HASH_BUFFER_COUNT       2
 
 static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE];
 static bool hash_update_completed;
@@ -426,7 +426,7 @@ struct hash_msgq_data_type {
 	bool last_req;
 };
 
-K_MSGQ_DEFINE(hash_msgq, sizeof(struct hash_msgq_data_type), 2, 4);
+K_MSGQ_DEFINE(hash_msgq, sizeof(struct hash_msgq_data_type), HASH_BUFFER_COUNT - 1, 4);
 
 static void hash_update_thread(void *arg1, void *unused1, void *unused2)
 {
