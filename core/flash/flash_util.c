@@ -408,11 +408,10 @@ int flash_hash_update_noncontiguous_contents (struct flash *flash,
 #ifdef ASYNC_HASH_OPERATION
 
 #define FLASH_VERIFICATION_SIZE 8192
-#define HASH_FIFO_SIZE          1024
+#define HASH_FIFO_SIZE          2048
 #define HASH_BUFFER_COUNT       2
 
 static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE];
-static bool hash_update_completed;
 
 // thread
 static bool thread_created;
@@ -426,19 +425,35 @@ struct hash_msgq_data_type {
 	bool last_req;
 };
 
-K_MSGQ_DEFINE(hash_msgq, sizeof(struct hash_msgq_data_type), HASH_BUFFER_COUNT - 1, 4);
+struct flash_msgq_data_type {
+	uint8_t buf_id;
+};
+
+K_MSGQ_DEFINE(hash_msgq, sizeof(struct hash_msgq_data_type), HASH_BUFFER_COUNT, 4);
+K_MSGQ_DEFINE(flash_msgq, sizeof(struct flash_msgq_data_type), HASH_BUFFER_COUNT, 4);
+K_SEM_DEFINE(hash_done_sem, 0, 1);
 
 static void hash_update_thread(void *arg1, void *unused1, void *unused2)
 {
-	struct hash_msgq_data_type msgq_data;
+	struct hash_msgq_data_type hash_msgq_data;
+	struct flash_msgq_data_type flash_msgq_data;
 	struct hash_engine *hash = (struct hash_engine *)arg1;
+	int i, status;
 
 	while(1) {
-		k_msgq_get(&hash_msgq, &msgq_data, K_FOREVER);
-		hash->update(hash, &hash_buffer[msgq_data.buf_id], msgq_data.next_read);
-		if (msgq_data.last_req) {
-			hash_update_completed = true;
+		status = k_msgq_get(&hash_msgq, &hash_msgq_data, K_FOREVER);
+		if (status == -ENOMSG) {
+			// Message queue is purged.
+			continue;
 		}
+
+		hash->update(hash, &hash_buffer[hash_msgq_data.buf_id], hash_msgq_data.next_read);
+		if (hash_msgq_data.last_req) {
+			k_sem_give(&hash_done_sem);
+		}
+
+		flash_msgq_data.buf_id = hash_msgq_data.buf_id;
+		k_msgq_put(&flash_msgq, &flash_msgq_data, K_FOREVER);
 	}
 }
 
@@ -467,16 +482,21 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 	int status;
 	k_tid_t hash_pid;
 	uint8_t buf_id = 0;
-	struct hash_msgq_data_type msgq_data;
+	struct hash_msgq_data_type hash_msgq_data;
+	struct flash_msgq_data_type flash_msgq_data;
 
-	hash_update_completed = false;
 	if (!thread_created) {
+		for (i = 0; i < HASH_BUFFER_COUNT; i++) {
+			flash_msgq_data.buf_id = i;
+			k_msgq_put(&flash_msgq, &flash_msgq_data, K_NO_WAIT);
+		}
+
 		hash_pid = k_thread_create(&hash_thread,
 				hash_stack_area,
 				K_THREAD_STACK_SIZEOF(hash_stack_area),
 				(k_thread_entry_t) hash_update_thread,
 				hash, NULL, NULL,
-				-1,
+				0,
 				0, K_NO_WAIT);
 		thread_created = true;
 	}
@@ -484,6 +504,7 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 	if ((flash == NULL) || (regions == NULL) || (count == 0) || (hash == NULL)) {
 		return FLASH_UTIL_INVALID_ARGUMENT;
 	}
+
 
 	for (i = 0; i < count; i++) {
 		current_addr = regions[i].start_addr + offset;
@@ -493,31 +514,28 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 			next_read = (remaining < FLASH_VERIFICATION_SIZE) ?
 				remaining : FLASH_VERIFICATION_SIZE;
 
+			k_msgq_get(&flash_msgq, &flash_msgq_data, K_FOREVER);
+			buf_id = flash_msgq_data.buf_id;
 			status = flash->read (flash, current_addr, &hash_buffer[buf_id], next_read);
 			if (status != 0) {
 				return status;
 			}
-			msgq_data.buf_id = buf_id;
-			msgq_data.next_read = next_read;
+			hash_msgq_data.buf_id = buf_id;
+			hash_msgq_data.next_read = next_read;
 			if ((i == count - 1) && ((remaining - next_read) == 0))
-				msgq_data.last_req = true;
+				hash_msgq_data.last_req = true;
 			else
-				msgq_data.last_req = false;
+				hash_msgq_data.last_req = false;
 
-			k_msgq_put(&hash_msgq, &msgq_data, K_FOREVER);
-			if (buf_id < (HASH_BUFFER_COUNT - 1))
-				buf_id++;
-			else
-				buf_id = 0;
+			k_msgq_put(&hash_msgq, &hash_msgq_data, K_FOREVER);
+			k_yield();
 
 			remaining -= next_read;
 			current_addr += next_read;
 		}
 	}
 
-	while(!hash_update_completed) {
-		k_sleep(K_MSEC(1));
-	}
+	k_sem_take(&hash_done_sem, K_FOREVER);
 
 	return 0;
 }
