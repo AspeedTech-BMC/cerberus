@@ -407,7 +407,7 @@ int flash_hash_update_noncontiguous_contents (struct flash *flash,
 
 #ifdef ASYNC_HASH_OPERATION
 
-#define FLASH_VERIFICATION_SIZE 8192
+#define FLASH_VERIFICATION_SIZE 12288
 #define HASH_FIFO_SIZE          2048
 #define HASH_BUFFER_COUNT       2
 
