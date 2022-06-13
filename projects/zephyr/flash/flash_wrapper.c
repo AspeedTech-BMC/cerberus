@@ -73,9 +73,9 @@ int Wrapper_spi_flash_read(struct spi_flash *flash, uint32_t address, uint8_t *d
 	if ((flash == NULL)) {
 		return SPI_FLASH_INVALID_ARGUMENT;
 	}
-	Wrapper_spi_flash_get_device_size(flash, &bytes);
+	//Wrapper_spi_flash_get_device_size(flash, &bytes);
 
-	SPI_FLASH_BOUNDS_CHECK(bytes, address, length);
+	//SPI_FLASH_BOUNDS_CHECK(bytes, address, length);
 
 	FLASH_XFER_INIT_READ(xfer, FLASH_CMD_READ, address, read_dummy, read_mode, data, length, read_flags | addr_mode);
 

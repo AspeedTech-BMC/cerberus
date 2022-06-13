@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <kernel.h>
+#include <soc.h>
 #include "flash_util.h"
 #include "flash_common.h"
 
@@ -407,11 +408,11 @@ int flash_hash_update_noncontiguous_contents (struct flash *flash,
 
 #ifdef ASYNC_HASH_OPERATION
 
-#define FLASH_VERIFICATION_SIZE 12288
-#define HASH_FIFO_SIZE          2048
+#define FLASH_VERIFICATION_SIZE 16384
+#define HASH_FIFO_SIZE          1024
 #define HASH_BUFFER_COUNT       2
 
-static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE];
+static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE] NON_CACHED_BSS_ALIGN16;
 
 // thread
 static bool thread_created;
