@@ -412,7 +412,7 @@ int flash_hash_update_noncontiguous_contents (struct flash *flash,
 #define HASH_FIFO_SIZE          1024
 #define HASH_BUFFER_COUNT       2
 
-static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE] NON_CACHED_BSS_ALIGN16;
+static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE] __aligned(16);
 
 // thread
 static bool thread_created;
