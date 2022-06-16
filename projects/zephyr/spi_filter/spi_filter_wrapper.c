@@ -6,17 +6,11 @@
 
 #include <spi_filter/spi_filter_wrapper.h>
 
-#if defined(CONFIG_ASPEED_DC_SCM)
-#define SPIM_NUM  3
-#else
 #define SPIM_NUM  4
-#endif
 
 static char *spim_devs[SPIM_NUM] = {
 	"spi_m1",
-#if !defined(CONFIG_ASPEED_DC_SCM)
 	"spi_m2",
-#endif
 	"spi_m3",
 	"spi_m4"
 };
