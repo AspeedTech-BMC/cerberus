@@ -406,13 +406,17 @@ int flash_hash_update_noncontiguous_contents (struct flash *flash,
 	return flash_hash_update_noncontiguous_contents_at_offset (flash, 0, regions, count, hash);
 }
 
-#ifdef ASYNC_HASH_OPERATION
-
 #define FLASH_VERIFICATION_SIZE 16384
+
+#ifdef ASYNC_HASH_OPERATION
 #define HASH_FIFO_SIZE          1024
 #define HASH_BUFFER_COUNT       2
 
+#if defined(CONFIG_SPI_DMA_SUPPORT_ASPEED)
+static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE] NON_CACHED_BSS_ALIGN16;
+#else
 static uint8_t hash_buffer[HASH_BUFFER_COUNT][FLASH_VERIFICATION_SIZE] __aligned(16);
+#endif
 
 // thread
 static bool thread_created;
@@ -541,8 +545,6 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 	return 0;
 }
 #else
-// Enlarge the hash buffer to 12k to speed up the hash operation.
-#define FLASH_VERIFICATION_SIZE 12288
 uint8_t hash_buffer[FLASH_VERIFICATION_SIZE];
 
 /**
