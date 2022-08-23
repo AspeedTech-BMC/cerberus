@@ -10,7 +10,14 @@ import binascii
 import traceback
 import xml.etree.ElementTree as et
 import manifest_types
-
+import hashlib
+import os
+from Crypto.PublicKey import RSA
+from Crypto.PublicKey import ECC
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.Hash import SHA256
+from Crypto.Hash import SHA384
+from Crypto.Hash import SHA512
 
 XML_ID_ATTRIB = "id"
 XML_VERSION_ATTRIB = "version"
@@ -164,7 +171,7 @@ def xml_extract_single_value (root, requests):
 
     return result
 
-def process_pfm (root):
+def process_pfm (root, hash_token, image_path):
     """
     Process PFM XML and generate list of element and attribute values.
 
@@ -276,13 +283,21 @@ def process_pfm (root):
         image["regions"] = []
 
         if "fw_type" in xml:
+            image_prikey = img.findall("PrivateKey")
+            if (image_prikey):
+                if not image_prikey or len(image_prikey) > 1:
+                    print("Invalid number of Image private key tags in SignedImage, Firmware {0} - {1}".format(
+                        xml["version_id"], xml["fw_type"]))
+                    return None, None, False
+                image["prikey"] = image_prikey[0].text.strip()
+                image["hash"] = b""
             img_hash = img.findall (XML_IMAGE_HASH_TAG)
-
-            if not img_hash or len (img_hash) > 1:
-                print ("Invalid number of Image Hash tags in SignedImage, Firmware {0} - {1}".format (xml["version_id"], xml["fw_type"]))
-                return None, None, False
-
-            image["hash"] = binascii.a2b_hex(re.sub("\s", "", img_hash[0].text.strip()))
+            if(img_hash):
+                if not img_hash or len (img_hash) > 1:
+                    print ("Invalid number of Image Hash tags in SignedImage, Firmware {0} - {1}".format (xml["version_id"], xml["fw_type"]))
+                    return None, None, False
+                image["hash"] = binascii.a2b_hex(re.sub("\s", "", img_hash[0].text.strip()))
+                image["prikey"] = ""
 
             hash_type = img.findall (XML_IMAGE_HASH_TYPE_TAG)
 
@@ -298,22 +313,25 @@ def process_pfm (root):
                 image["hash_type"] = "0x0"
 
         else:
-            pbkey = img.findall (XML_PB_KEY_TAG)
-
-            if not pbkey or len (pbkey) > 1:
-                print ("Invalid number of PublicKey tags in SignedImage, Firmware {0}".format (xml["version_id"]))
+            image_prikey = img.findall("PrivateKey")
+            if not image_prikey or len (image_prikey) > 1:
+                print ("Invalid number of Image private key tags in SignedImage, Firmware {0} - {1}".format (xml["version_id"], xml["fw_type"]))
+                return None, None, False
+            image["prikey"] = image_prikey[0].text.strip()
+            sig = b""
+            image["signature"] = sig
+            hash_type = img.findall(XML_IMAGE_HASH_TYPE_TAG)
+            if len(hash_type) > 1:
+                print("Invalid number of Image Hash Type tags in SignedImage, Firmware {0} - {1}".format(
+                    xml["version_id"], xml["fw_type"]))
                 return None, None, False
 
-            image["pbkey"] = pbkey[0].text.strip()
-
-            sig = img.findall (XML_SIG_TAG)
-
-            if not sig or len (sig) > 1:
-               print ("Invalid number of Signature tags in SignedImage, Firmware {0}".format (xml["version_id"]))
-               return None, None, False
-
-            image["signature"] = binascii.a2b_hex(re.sub("\s", "", sig[0].text.strip()))
-
+            if hash_type and hash_type[0].text.strip() == "SHA512":
+                image["hash_type"] = "0x2"
+            elif hash_type and hash_type[0].text.strip() == "SHA384":
+                image["hash_type"] = "0x1"
+            else:
+                image["hash_type"] = "0x0"
         for region in img.findall (XML_REGION_TAG):
             processed_region = process_region (region, xml["version_id"])
 
@@ -336,6 +354,92 @@ def process_pfm (root):
 
         xml["signed_imgs"].append (image)
 
+    if(hash_token == 1):
+        if(os.path.exists(image_path)):
+            with open(image_path,"rb") as f:
+                image_data = f.read()
+        else:
+            print("Provide image {0} not found ".format(image_path))
+            return None,None,False
+        for image in xml["signed_imgs"]:
+            startaddress,endaddress, data = [], [], b""
+            if(image["prikey"]):
+                key = RSA.importKey (open (image['prikey']).read())
+            for regions in image["regions"]:
+                startaddress.append(regions["start"])
+                endaddress.append(regions["end"])
+            hashtag = image['hash_type']
+            for start, end in zip(startaddress, endaddress):
+                data = data + image_data[int(start,16):int(end,16) + 1]
+            if(int(hashtag,16) == 0):
+                if(image["prikey"]):
+                    hash1 = SHA256.new(data)
+                    signer = PKCS1_v1_5.new(key)
+                    image["hash"] = signer.sign(hash1)
+                    #pubkey = key.publickey().export_key('PEM')
+                    mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
+                    modulus = binascii.a2b_hex(mod_fmt % key.n)
+                    exponent = hex(key.e)[2:]
+                    while(len(exponent) % 2 != 0):
+                        exponent = '0' + exponent
+                    exponent = bytearray.fromhex(exponent)
+                    m_length = hex(len(modulus))[2:]
+                    while(len(m_length) != 4):
+                        m_length = "0" + m_length
+                    e_length = hex(len(exponent))[2:]
+                    while (len(e_length) != 2):
+                        e_length = "0" + e_length
+                    pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
+                              + bytearray.fromhex(e_length) + exponent)
+                    image["hash"] = image["hash"] + pubkey
+                else:
+                    image["hash"] = hashlib.sha256(data).digest()
+            elif(int(hashtag, 16) == 1):
+                if (image["prikey"]):
+                    hash1 = SHA384.new(data)
+                    signer = PKCS1_v1_5.new(key)
+                    image["hash"] = signer.sign(hash1)
+                    #pubkey = key.publickey().export_key('PEM')
+                    mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
+                    modulus = binascii.a2b_hex(mod_fmt % key.n)
+                    exponent = hex(key.e)[2:]
+                    while(len(exponent) % 2 != 0):
+                        exponent = '0' + exponent
+                    exponent=bytearray.fromhex(exponent)
+                    m_length = hex(len(modulus))[2:]
+                    while(len(m_length) != 4):
+                        Mlength = "0" + m_length
+                    e_length = hex(len(exponent))[2:]
+                    while (len(e_length) != 2):
+                        e_length = "0" + e_length
+                    pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
+                              + bytearray.fromhex(e_length) + exponent)
+                    image["hash"] = image["hash"] + pubkey
+                else:
+                    image["hash"] = hashlib.sha384(data).digest()
+            else:
+                if(image["prikey"]):
+                    hash1 = SHA512.new(data)
+                    signer = PKCS1_v1_5.new(key)
+                    image["hash"] = signer.sign(hash1)
+                    #pubkey = key.publickey().export_key('PEM')
+                    mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
+                    modulus = binascii.a2b_hex(mod_fmt % key.n)
+                    exponent = hex(key.e)[2:]
+                    while(len(exponent) % 2 != 0):
+                        exponent = '0' + exponent
+                    exponent = bytearray.fromhex(exponent)
+                    m_length = hex(len(modulus))[2:]
+                    while(len(m_length) != 4):
+                        m_length = "0" + m_length
+                    e_length = hex(len(exponent))[2:]
+                    while (len(e_length) != 2):
+                        e_length = "0" + e_length
+                    pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
+                              + bytearray.fromhex(e_length) + exponent)
+                    image["hash"] = image["hash"] + pubkey
+                else:
+                    image["hash"] = hashlib.sha512(data).digest()
     if not xml["signed_imgs"]:
         print ("No signed images found for Firmware: {0}".format (xml["version_id"]))
         return None, None, False
@@ -735,7 +839,7 @@ def process_pcd (root):
 
     return xml, manifest_types.VERSION_2, False
 
-def load_and_process_xml (xml_file, xml_type):
+def load_and_process_xml (xml_file, xml_type, hash_token, image_path):
     """
     Process XML and generate list of element and attribute values.
 
@@ -748,7 +852,7 @@ def load_and_process_xml (xml_file, xml_type):
     root = et.parse (xml_file).getroot ()
 
     if xml_type is manifest_types.PFM:
-        return process_pfm (root)
+        return process_pfm (root, hash_token, image_path)
     elif xml_type is manifest_types.CFM:
         return process_cfm (root)
     elif xml_type is manifest_types.PCD:

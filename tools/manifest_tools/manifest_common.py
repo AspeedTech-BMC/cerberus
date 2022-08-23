@@ -5,9 +5,11 @@ Licensed under the MIT license.
 
 from __future__ import print_function
 from __future__ import unicode_literals
+import binascii
 import ctypes
 import sys
 import os
+import base64
 import traceback
 from Crypto.PublicKey import RSA
 from Crypto.PublicKey import ECC
@@ -101,7 +103,8 @@ def load_config (config_file):
     config["key_size"] = ""
     config["hash_type"] = ""
     config["key_type"] = ""
-
+    config["gen_hash"]=""
+    config["image_input"]=""
     with open (config_file, 'r') as fh:
         data = fh.readlines ()
 
@@ -124,6 +127,10 @@ def load_config (config_file):
             config["hash_type"] = string.split ("=")[-1].strip ()
         elif string.startswith ("Key"):
             config["prv_key_path"] = string.split ("=")[-1].strip ()
+        elif string.startswith("GenHash"):
+            config["gen_hash"] = string.split("=")[-1].strip()
+        elif string.startswith("ImageInput"):
+            config["image_input"] = string.split("=")[-1].strip()
         else:
             config["xml_list"].append (string)
 
@@ -231,6 +238,17 @@ def load_xmls (config_filename, max_num_xmls, xml_type):
     if "key_type" in config and config["key_type"]:
         if config["key_type"] == "ECC":
             key_type = 1
+    if "gen_hash" in config and config["gen_hash"]:
+        if(config["gen_hash"] == "1"):
+            hash_token = 1
+            if "image_input" in config and config["image_input"]:
+                image_path = config["image_input"]
+        elif(config["gen_hash"] == "0"):
+            hash_token = 0
+            image_path = ""
+        else:
+            raise RuntimeError(
+                "Invalid 'GenHash' value : {} provided in config file ".format(config["gen_hash"]))
 
     if "hash_type" in config and config["hash_type"]:
         if config["hash_type"] == "SHA512":
@@ -239,7 +257,7 @@ def load_xmls (config_filename, max_num_xmls, xml_type):
             hash_type = 1
         else:
             hash_type = 0
-    
+
     if "key_size" in config and config["key_size"]:
         key_size = int (config["key_size"])
 
@@ -255,7 +273,7 @@ def load_xmls (config_filename, max_num_xmls, xml_type):
     xml_version = None
 
     for xml in config["xml_list"]:
-        parsed_xml, curr_xml_version, empty = manifest_parser.load_and_process_xml (xml, xml_type)
+        parsed_xml, curr_xml_version, empty = manifest_parser.load_and_process_xml (xml, xml_type, hash_token, image_path)
 
         if parsed_xml is None:
             raise RuntimeError ("Failed to parse XML: {0}".format (xml))
@@ -334,9 +352,30 @@ def write_manifest (xml_version, sign, manifest, key, key_size, key_type, output
     if not os.path.exists (out_dir):
         os.makedirs (out_dir)
 
+    if key_type == 0:
+        mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
+        modulus = binascii.a2b_hex(mod_fmt % key.n)
+        exponent = hex(key.e)[2:]
+        while(len(exponent) % 2 != 0):
+            exponent = '0' + exponent
+        exponent = bytearray.fromhex(exponent)
+        m_length = hex(len(modulus))[2:]
+        while(len(m_length) != 4):
+            m_length = "0" + m_length
+        e_length = hex(len(exponent))[2:]
+        while (len(e_length) != 2):
+            e_length = "0" + e_length
+        pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
+                  + bytearray.fromhex(e_length) + exponent)
+    else:
+        pubkey = b""
+
+    #manifest.manifest_header.length = manifest.manifest_header.length + len(pubkey)
+
     with open (output_filename, 'wb') as fh:
         ctypes.memmove (ctypes.byref (manifest_buf), ctypes.addressof (manifest), manifest_length)
         fh.write (manifest_buf)
+        #fh.write(pubkey)
 
 def generate_manifest_toc_header (fw_id_list, hash_type, empty):
     """
