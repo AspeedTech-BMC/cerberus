@@ -234,6 +234,8 @@ def load_xmls (config_filename, max_num_xmls, xml_type):
     hash_type = None
     sign = False
     empty = False
+    hash_token = None
+    image_path = None
 
     if "key_type" in config and config["key_type"]:
         if config["key_type"] == "ECC":

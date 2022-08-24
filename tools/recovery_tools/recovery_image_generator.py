@@ -7,6 +7,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import os
 import sys
+import base64
 import traceback
 import xml.etree.ElementTree as et
 import binascii
@@ -21,28 +22,33 @@ RECOVERY_IMAGE_CONFIG_FILENAME = "recovery_image_generator.config"
 
 XML_VERSION_ATTRIB = "version"
 XML_PLATFORM_ATTRIB = "platform"
+XML_TYPE_ATTRIB = "type"
 
 XML_RECOVERY_SECTION_TAG = "RecoverySection"
+XML_REGION_TAG = "Region"
 XML_WRITE_ADDRESS_TAG = "WriteAddress"
 XML_ENCODED_IMAGE_TAG = "EncodedImage"
+XML_START_ADDR_TAG = "StartAddr"
+XML_END_ADDR_TAG = "EndAddr"
 
 RECOVERY_IMAGE_MAGIC_NUM = int("0x8a147c29", 16)
 RECOVERY_IMAGE_SECTION_MAGIC_NUM = int("0x4b172f31", 16)
-RECOVERY_IMAGE_FORMAT_NUM = 0
+# RECOVERY_IMAGE_FORMAT_NUM = 0
 RECOVERY_IMAGE_SECTION_FORMAT_NUM = 0
 RECOVERY_IMAGE_SECTION_HEADER_LENGTH = 16
-RECOVERY_IMAGE_MAX_SIZE = 524288
+RECOVERY_IMAGE_MAX_SIZE = 134217728
 RECOVERY_IMAGE_MAX_VERSION_ID_SIZE = 32
 
 
 class recovery_image_header(ctypes.LittleEndianStructure):
     _pack_ = 1
     _fields_ = [('header_length', ctypes.c_ushort),
-                ('format', ctypes.c_ushort),
+                ('type', ctypes.c_ushort),
                 ('marker', ctypes.c_uint),
                 ('image_length', ctypes.c_uint),
                 ('sig_length', ctypes.c_uint),
-                ('platform_id_length', ctypes.c_ubyte)]
+                ('platform_id_length', ctypes.c_ubyte),
+                ('pubkey_length', ctypes.c_uint)]
 
 class recovery_image_section_header(ctypes.LittleEndianStructure):
     _pack_ = 1
@@ -65,6 +71,7 @@ def process_recovery_image(root):
     xml = {}
 
     version_id = root.attrib.get(XML_VERSION_ATTRIB)
+    type_xml = root.attrib.get(XML_TYPE_ATTRIB)
 
     if (version_id in (None, "") or (len(version_id) > (RECOVERY_IMAGE_MAX_VERSION_ID_SIZE - 1))):
         raise ValueError("Invalid or no recovery image version ID provided")
@@ -76,6 +83,7 @@ def process_recovery_image(root):
 
     xml["version_id"] = version_id.strip().encode("utf8")
     xml["platform_id"] = platform_id.strip().encode("utf8")
+    xml["type"] = int(type_xml)
 
     sections = root.findall(XML_RECOVERY_SECTION_TAG)
 
@@ -84,8 +92,10 @@ def process_recovery_image(root):
             xml["version_id"]))
 
     xml["sections"] = []
-
+    with open(input_bin_path, "rb") as f:
+        imagedata = f.read()
     for s in sections:
+        recoverydata = b""
         recovery_section = {}
         write_addr = s.findall(XML_WRITE_ADDRESS_TAG)
 
@@ -94,7 +104,16 @@ def process_recovery_image(root):
                 xml["version_id"]))
             
         recovery_section["addr"] = write_addr[0].text.strip()
+        regions = s.findall(XML_REGION_TAG)
+        for region in regions:
+            startaddress = region.findall(XML_START_ADDR_TAG)[0].text.strip()
+            endaddress = region.findall(XML_END_ADDR_TAG)[0].text.strip()
+            recoverydata = recoverydata + imagedata[int(startaddress, 16):int(endaddress, 16) + 1]
 
+        recovery_section["image"] = recoverydata
+        xml["sections"].append(recovery_section)
+
+        '''
         encoded_image = s.findall(XML_ENCODED_IMAGE_TAG)
         if not encoded_image or len(encoded_image) > 1:
             raise ValueError("Invalid number of EncodedImage tags in recovery image: {0}".format(
@@ -118,6 +137,7 @@ def process_recovery_image(root):
                     xml["sections"].append(recovery_section)
                     break
                 ind += 1
+        '''
 
     if not xml["sections"]:
         raise ValueError("No recovery sections found for recovery image: {0}".format(xml["version_id"]))
@@ -136,6 +156,7 @@ def load_config(config_file):
     config = {}
     config["xml"] = ""
     config["output"] = ""
+    config["input"]=""
     config["prv_key_path"] = ""
     config["key_size"] = ""
 
@@ -152,12 +173,14 @@ def load_config(config_file):
 
         if string.startswith("Output"):
             config["output"] = string.split("=")[-1].strip()
+        elif string.startswith("InputImage"):
+            config["input"] = string.split("=")[-1].strip()
         elif string.startswith("KeySize"):
             config["key_size"] = string.split("=")[-1].strip()
         elif string.startswith("Key"):
             config["prv_key_path"] = string.split("=")[-1].strip()
-        else:
-            config["xml"] = string
+        elif string.startswith("Xml"):
+            config["xml"] = string.split("=")[-1].strip()
 
     return config
 
@@ -184,7 +207,7 @@ def get_recovery_image_len(xml, sig_len):
     :return the total length of the recovery image 
     """
     
-    header_len = 49 + len(xml["platform_id"]) + 1
+    header_len = 49 + len(xml["platform_id"])
 
     image_lens = 0
     for section in xml["sections"]:
@@ -233,7 +256,7 @@ def generate_recovery_image_section_list(xml):
                 s["addr"]))
         section = generate_recovery_image_section_instance(s)
         section_list.append(section)
-        min_addr = sec_addr + len(s["image"])
+        min_addr = sec_addr + len(s["image"]) - 1
 
     return section_list
 
@@ -284,7 +307,7 @@ def generate_recovery_image(xml, recovery_image_header_instance, recovery_image_
                     ('recovery_sections', ctypes.c_ubyte * sections_size)]
 
     complete_header_instance = complete_header(recovery_image_header_instance.header_length,
-        recovery_image_header_instance.format, recovery_image_header_instance.marker,
+        recovery_image_header_instance.type, recovery_image_header_instance.marker,
         version_id_buf, recovery_image_header_instance.image_length,
         recovery_image_header_instance.sig_length,
         recovery_image_header_instance.platform_id_length, platform_id_buf)
@@ -323,7 +346,9 @@ def write_recovery_image(sign, recovery_image, key, output_file_name, recovery_i
         raise ValueError("Recovery image doesn't match output size")
 
     if sign:
-        h = SHA256.new(recovery_image)
+        recovery_hash_buf = (ctypes.c_ubyte * ctypes.sizeof(recovery_image))()
+        ctypes.memmove(ctypes.addressof(recovery_hash_buf), ctypes.addressof(recovery_image), ctypes.sizeof(recovery_image))
+        h = SHA256.new(recovery_hash_buf)
         signer = PKCS1_v1_5.new(key)
         signature = signer.sign(h)
         signature = (ctypes.c_ubyte * recovery_image_header.sig_length).from_buffer_copy(signature)
@@ -361,7 +386,7 @@ def load_key(key_size, prv_key_path):
             traceback.print_exc ()
             return False, key_size, None
 
-        return True, int((key.size() + 1)/8), key
+        return True, int(key.n.bit_length() / 8), key
     else:
         print("No RSA private key provided in config, unsigned recovery image will be generated.")
         return False, key_size, None
@@ -376,6 +401,7 @@ else:
 config = load_config(path)
 key_size = None
 prv_key_path = None
+input_bin_path = None
 
 if "key_size" in config and config["key_size"]:
     key_size = int(config["key_size"])
@@ -383,17 +409,20 @@ if "key_size" in config and config["key_size"]:
 if "prv_key_path" in config and config["prv_key_path"]:
     prv_key_path = config["prv_key_path"]
 
+if "input" in config and config["input"]:
+    input_bin_path = config["input"]
+
 sign, key_size, key = load_key(key_size, prv_key_path)
 
 sig_len = 0 if key_size is None else key_size
 
 processed_xml = load_and_process_xml(config["xml"])
 
-platform_id_len = len(processed_xml["platform_id"]) + 1
+platform_id_len = len(processed_xml["platform_id"])
 header_len = 49 + platform_id_len
 image_len = get_recovery_image_len(processed_xml, sig_len)
-
-recovery_image_header_instance = recovery_image_header(header_len, RECOVERY_IMAGE_FORMAT_NUM,
+type_in_xml = processed_xml['type']
+recovery_image_header_instance = recovery_image_header(header_len, type_in_xml,
 	RECOVERY_IMAGE_MAGIC_NUM, image_len, sig_len, platform_id_len)
 
 recovery_image_sections_list = generate_recovery_image_section_list(processed_xml)
