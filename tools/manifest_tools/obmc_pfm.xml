@@ -9,20 +9,14 @@
     </Region>
 
     <Region>
-      <StartAddr>0x00120000</StartAddr> <!-- sofs -->
-      <EndAddr>0x0031FFFF</EndAddr>
+      <StartAddr>0x00120000</StartAddr> <!-- rwfs -->
+      <EndAddr>0x010FFFFF</EndAddr>
       <OperationOnFailure>Nothing</OperationOnFailure>
     </Region>
 
     <Region>
-      <StartAddr>0x0320000</StartAddr> <!-- rwfs -->
-      <EndAddr>0x0151FFFF</EndAddr>
-      <OperationOnFailure>Nothing</OperationOnFailure>
-    </Region>
-
-    <Region>
-      <StartAddr>0x8000000</StartAddr> <!-- staging -->
-      <EndAddr>0x0D2DFFFF</EndAddr>
+      <StartAddr>0x08000000</StartAddr> <!-- staging -->
+      <EndAddr>0x0BFFFFFF</EndAddr>
       <OperationOnFailure>Nothing</OperationOnFailure>
     </Region>
   </ReadWrite>
@@ -41,18 +35,8 @@
     <PrivateKey>prikey_2048.pem</PrivateKey>
     <HashType>SHA256</HashType>
     <Region>
-      <StartAddr>0x000E0000</StartAddr> <!-- pfm -->
-      <EndAddr>0x0000FFFFF</EndAddr>
-    </Region>
-    <ValidateOnBoot>true</ValidateOnBoot>
-  </SignedImage>
-
-  <SignedImage>
-    <PrivateKey>prikey_2048.pem</PrivateKey>
-    <HashType>SHA256</HashType>
-    <Region>
-      <StartAddr>0x01520000</StartAddr> <!-- fit-image -->
-      <EndAddr>0x0421FFFF</EndAddr>
+      <StartAddr>0x01100000</StartAddr> <!-- fit-image -->
+      <EndAddr>0x03DFFFFF</EndAddr>
     </Region>
     <ValidateOnBoot>true</ValidateOnBoot>
   </SignedImage>
