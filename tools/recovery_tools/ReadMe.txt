@@ -1,5 +1,5 @@
 1. The recovery tool creates the recover image with the recovery header and the recovery data.
-2. Please configure the "recovery_image_generator.config" files with the valid data for BMC.
+2. Please configure the config files with the valid data.
 3. This tool requires the input XML file and this file has the type of the image, recovery sections details.
 4. The valid values for type that can be provided in the xml are as follows,
         BMC: 00 00
@@ -27,4 +27,4 @@
                 imagedata=data(data coming from xml )
         Signature=256 bytes
 6. To generate the recovery image for BMC, please run the python script as follows,
-        python3 recovery_image_generator.py recovery_image_generator.config
+        python3 recovery_image_generator.py obmc_recovery_image_generator.config

@@ -104,7 +104,7 @@ def load_config (config_file):
     config["hash_type"] = ""
     config["key_type"] = ""
     config["gen_hash"]=""
-    config["image_input"]=""
+    config["input_image"]=""
     with open (config_file, 'r') as fh:
         data = fh.readlines ()
 
@@ -129,8 +129,8 @@ def load_config (config_file):
             config["prv_key_path"] = string.split ("=")[-1].strip ()
         elif string.startswith("GenHash"):
             config["gen_hash"] = string.split("=")[-1].strip()
-        elif string.startswith("ImageInput"):
-            config["image_input"] = string.split("=")[-1].strip()
+        elif string.startswith("InputImage"):
+            config["input_image"] = string.split("=")[-1].strip()
         else:
             config["xml_list"].append (string)
 
@@ -243,8 +243,8 @@ def load_xmls (config_filename, max_num_xmls, xml_type):
     if "gen_hash" in config and config["gen_hash"]:
         if(config["gen_hash"] == "1"):
             hash_token = 1
-            if "image_input" in config and config["image_input"]:
-                image_path = config["image_input"]
+            if "input_image" in config and config["input_image"]:
+                image_path = config["input_image"]
         elif(config["gen_hash"] == "0"):
             hash_token = 0
             image_path = ""
