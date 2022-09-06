@@ -111,5 +111,5 @@ Requires Python3
     "OTP_Image":"otp_zephyr.bin"    - zephyr data to append in the provisioning Image
 
 3. Please run the provisioning tool using the below command.
-    python3 provisioning_image_generator.py provisioning_image_generator_rootkey.ini
+    python3 provisioning_image_generator.py
 

@@ -26,5 +26,5 @@
                 imagelength=4 bytes(encoded data coming from xml file)
                 imagedata=data(data coming from xml )
         Signature=256 bytes
-6. To generate the recovery image for BMC, please run the python script as follows,
-        python3 recovery_image_generator.py obmc_recovery_image_generator.config
+6. To generate the recovery image, please run the python script as follows,
+        python3 recovery_image_generator.py
