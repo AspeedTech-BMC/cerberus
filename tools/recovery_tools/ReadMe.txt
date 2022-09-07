@@ -5,7 +5,6 @@
         BMC: 00 00
         PCH: 01 00
         ROT: 02 00
-        Provisioning: 03 00
         Key Cancellation: 04 00
         Decommission: 05 00
 5.  Below is the structure of the recovery image file.
