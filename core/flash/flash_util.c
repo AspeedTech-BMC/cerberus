@@ -443,7 +443,7 @@ static void hash_update_thread(void *arg1, void *unused1, void *unused2)
 	struct hash_msgq_data_type hash_msgq_data;
 	struct flash_msgq_data_type flash_msgq_data;
 	struct hash_engine *hash = (struct hash_engine *)arg1;
-	int i, status;
+	int status;
 
 	while(1) {
 		status = k_msgq_get(&hash_msgq, &hash_msgq_data, K_FOREVER);
@@ -452,7 +452,7 @@ static void hash_update_thread(void *arg1, void *unused1, void *unused2)
 			continue;
 		}
 
-		hash->update(hash, &hash_buffer[hash_msgq_data.buf_id], hash_msgq_data.next_read);
+		hash->update(hash, (uint8_t *)&hash_buffer[hash_msgq_data.buf_id], hash_msgq_data.next_read);
 		if (hash_msgq_data.last_req) {
 			k_sem_give(&hash_done_sem);
 		}
@@ -503,6 +503,7 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 				hash, NULL, NULL,
 				0,
 				0, K_NO_WAIT);
+		k_thread_name_set(hash_pid, "Hash Update Handler");
 		thread_created = true;
 	}
 
@@ -521,7 +522,7 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
 
 			k_msgq_get(&flash_msgq, &flash_msgq_data, K_FOREVER);
 			buf_id = flash_msgq_data.buf_id;
-			status = flash->read (flash, current_addr, &hash_buffer[buf_id], next_read);
+			status = flash->read (flash, current_addr, (uint8_t *)&hash_buffer[buf_id], next_read);
 			if (status != 0) {
 				return status;
 			}
