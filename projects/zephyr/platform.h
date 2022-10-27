@@ -19,16 +19,13 @@
 typedef struct k_timer TimerHandle_t;
 typedef k_ticks_t TickType_t;
 
-#define pvPortMalloc            malloc
-#define vPortFree                       free
 #define portMAX_DELAY           ( k_ticks_t ) 0xffffffffUL
 
-/* FreeRTOS memory management. */
-#define platform_malloc         pvPortMalloc
-#define platform_free           vPortFree
-
-void *platform_calloc(size_t nmemb, size_t size);
-void *platform_realloc(void *ptr, size_t size);
+/* Zephyr memory management. */
+#define	platform_malloc		malloc
+#define	platform_calloc		calloc
+#define	platform_realloc	realloc
+#define	platform_free		free
 
 /* FreeRTOS internet operations. */
 uint32_t platform_htonl(uint32_t host_long);

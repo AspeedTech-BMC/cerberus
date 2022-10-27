@@ -17,50 +17,6 @@
 #define NO_MEMORY                       1
 
 
-/**
- * FreeRTOS implementation the standard library function 'calloc'.
- *
- * @param nmemb The number of elements to allocate.
- * @param size The size of each element.
- *
- * @return The allocated memory, initialized to 0.
- */
-void *platform_calloc(size_t nmemb, size_t size)
-{
-	void *mem;
-
-	mem = pvPortMalloc(nmemb * size);
-	if (mem != NULL) {
-		memset(mem, 0, nmemb * size);
-	}
-
-	return mem;
-}
-
-/**
- * FreeRTOS implementation for the standard library function 'realloc'.
- *
- * @param ptr The pointer to resize.
- * @param size The new size of the allocated memory.
- *
- * @return The resized memory.
- */
-#if configFRTOS_MEMORY_SCHEME == 3
-void *platform_realloc(void *ptr, size_t size)
-{
-	void *mem;
-
-	vTaskSuspendAll();
-	{
-		mem = realloc(ptr, size);
-	}
-	(void) xTaskResumeAll();
-
-	return mem;
-}
-#endif
-
-
 #define PLATFORM_TIMEOUT_ERROR(code)            ROT_ERROR(ROT_MODULE_PLATFORM_TIMEOUT, code)
 
 /**
