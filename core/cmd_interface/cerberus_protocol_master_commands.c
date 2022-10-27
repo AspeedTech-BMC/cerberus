@@ -70,84 +70,183 @@ static void cerberus_protocol_free_pcd (struct pcd_manager *manager, struct pcd 
 }
 
 /**
+ * Populate the Cerberus protocol header segment of a Cerberus Protocol request
+ *
+ * @param header Buffer to fill with Cerberus Protocol header
+ * @param command Command ID to utilize in header
+ */
+static void cerberus_protocol_populate_cerberus_protocol_header (
+	struct cerberus_protocol_header *header, uint8_t command)
+{
+	header->msg_type = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
+	header->integrity_check = 0;
+	header->pci_vendor_id = CERBERUS_PROTOCOL_MSFT_PCI_VID;
+	header->reserved1 = 0;
+	header->crypt = 0;
+	header->reserved2 = 0;
+	header->rq = 0;
+	header->command = command;
+}
+
+/**
+ * Construct get device capabilities request.
+ *
+ * @param device_mgr Device manager instance to utilize.
+ * @param buf The buffer containing the generated request.
+ * @param buf_len Maximum size of buffer.
+ *
+ * @return Length of the generated request if the request was successfully constructed or an
+ * error code.
+ */
+int cerberus_protocol_generate_get_device_capabilities_request (struct device_manager *device_mgr,
+	uint8_t *buf, size_t buf_len)
+{
+	struct cerberus_protocol_device_capabilities *rq =
+		(struct cerberus_protocol_device_capabilities*) buf;
+	int status;
+
+	if ((device_mgr == NULL) || (rq == NULL)) {
+		return CMD_HANDLER_INVALID_ARGUMENT;
+	}
+
+	if (buf_len < (sizeof (struct cerberus_protocol_device_capabilities))) {
+		return CMD_HANDLER_BUF_TOO_SMALL;
+	}
+
+	cerberus_protocol_populate_cerberus_protocol_header (&rq->header,
+		CERBERUS_PROTOCOL_GET_DEVICE_CAPABILITIES);
+
+	status = device_manager_get_device_capabilities_request (device_mgr, &rq->capabilities);
+	if (status != 0) {
+		return status;
+	}
+
+	return sizeof (struct cerberus_protocol_device_capabilities);
+}
+
+/**
  * Construct get certificate digest request.
  *
- * @param attestation Attestation manager instance to utilize.
+ * @param slot_num Slot number to request.
+ * @param key_alg Key exchange algorithm to request.
  * @param buf Output buffer for the generated request data.
  * @param buf_len Maximum size of buffer.
  *
  * @return Length of the generated request data if the request was successfully constructed or
  * an error code.
  */
-int cerberus_protocol_issue_get_certificate_digest (struct attestation_master *attestation,
+int cerberus_protocol_generate_get_certificate_digest_request (uint8_t slot_num, uint8_t key_alg,
 	uint8_t *buf, size_t buf_len)
 {
-	struct cerberus_protocol_digest_info *rq = (struct cerberus_protocol_digest_info*) buf;
+	struct cerberus_protocol_get_certificate_digest *rq =
+		(struct cerberus_protocol_get_certificate_digest*) buf;
 
-	if (buf_len < sizeof (struct cerberus_protocol_digest_info)) {
+	if (rq == NULL) {
+		return CMD_HANDLER_INVALID_ARGUMENT;
+	}
+
+	if (buf_len < sizeof (struct cerberus_protocol_get_certificate_digest)) {
 		return CMD_HANDLER_BUF_TOO_SMALL;
 	}
 
-	rq->slot_num = 0;
-	rq->key_alg = ATTESTATION_KEY_EXCHANGE_NONE;
+	if ((slot_num > ATTESTATION_MAX_SLOT_NUM) ||
+		(key_alg >= NUM_ATTESTATION_KEY_EXCHANGE_ALGORITHMS)) {
+		return CMD_HANDLER_OUT_OF_RANGE;
+	}
 
-	return (sizeof (struct cerberus_protocol_digest_info));
+	cerberus_protocol_populate_cerberus_protocol_header (&rq->header, CERBERUS_PROTOCOL_GET_DIGEST);
+
+	rq->slot_num = slot_num;
+	rq->key_alg = key_alg;
+
+	return (sizeof (struct cerberus_protocol_get_certificate_digest));
 }
 
 /**
  * Construct get certificate request.
  *
- * @param params Parameters needed to construct request.
+ * @param slot_num Slot number to request.
+ * @param cert_num Certificate number to request.
  * @param buf Output buffer for the generated request data.
  * @param buf_len Maximum size of buffer.
+ * @param offset Offset from start of certificate in bytes to request
+ * @param length Number of bytes to read back, 0 for max payload length
  *
  * @return Length of the generated request data if the request was successfully constructed or
  * an error code.
  */
-int cerberus_protocol_issue_get_certificate (struct cerberus_protocol_cert_req_params *params,
-	uint8_t *buf, size_t buf_len)
+int cerberus_protocol_generate_get_certificate_request (uint8_t slot_num, uint8_t cert_num,
+	uint8_t *buf, size_t buf_len, uint16_t offset, uint16_t length)
 {
-	struct cerberus_protocol_cert_info *rq = (struct cerberus_protocol_cert_info*) buf;
+	struct cerberus_protocol_get_certificate *rq = (struct cerberus_protocol_get_certificate*) buf;
 
-	if (params == NULL) {
+	if (rq == NULL) {
 		return CMD_HANDLER_INVALID_ARGUMENT;
 	}
 
-	if (buf_len < sizeof (struct cerberus_protocol_cert_info)) {
+	if (buf_len < sizeof (struct cerberus_protocol_get_certificate)) {
 		return CMD_HANDLER_BUF_TOO_SMALL;
 	}
 
-	rq->slot_num = params->slot_num;
-	rq->cert_num = params->cert_num;
-	rq->offset = 0;
-	rq->length = 0;
+	if (slot_num > ATTESTATION_MAX_SLOT_NUM) {
+		return CMD_HANDLER_OUT_OF_RANGE;
+	}
 
-	return (sizeof (struct cerberus_protocol_cert_info));
+	cerberus_protocol_populate_cerberus_protocol_header (&rq->header,
+		CERBERUS_PROTOCOL_GET_CERTIFICATE);
+
+	rq->slot_num = slot_num;
+	rq->cert_num = cert_num;
+	rq->offset = offset;
+	rq->length = length;
+
+	return (sizeof (struct cerberus_protocol_get_certificate));
 }
 
 /**
  * Construct challenge request.
  *
  * @param attestation Attestation manager instance to utilize.
- * @param params Parameters needed to construct request.
+ * @param eid EID of target device in attestation challenge request.
+ * @param slot_num Requested slot number for target device to utilize.
  * @param buf Output buffer for the generated request data.
  * @param buf_len Maximum size of buffer.
  *
  * @return Length of the generated request data if the request was successfully constructed or
  * an error code.
  */
-int cerberus_protocol_issue_challenge (struct attestation_master *attestation,
-	struct cerberus_protocol_challenge_req_params *params, uint8_t *buf, size_t buf_len)
+int cerberus_protocol_generate_challenge_request (struct attestation_master *attestation,
+	uint8_t eid, uint8_t slot_num, uint8_t *buf, size_t buf_len)
 {
-	if (params == NULL) {
+	struct cerberus_protocol_challenge *rq = (struct cerberus_protocol_challenge*) buf;
+	int status;
+
+	if ((attestation == NULL) || (rq == NULL)) {
 		return CMD_HANDLER_INVALID_ARGUMENT;
 	}
 
-	return attestation->issue_challenge (attestation, params->eid, params->slot_num, buf, buf_len);
+	if (buf_len < sizeof (struct cerberus_protocol_challenge)) {
+		return CMD_HANDLER_BUF_TOO_SMALL;
+	}
+
+	if (slot_num > ATTESTATION_MAX_SLOT_NUM) {
+		return CMD_HANDLER_OUT_OF_RANGE;
+	}
+
+	cerberus_protocol_populate_cerberus_protocol_header (&rq->header,
+		CERBERUS_PROTOCOL_ATTESTATION_CHALLENGE);
+
+	status = attestation->generate_challenge_request (attestation, eid, slot_num, &rq->challenge);
+	if (!ROT_IS_ERROR (status)) {
+		return sizeof (struct cerberus_protocol_challenge);
+	}
+	else {
+		return status;
+	}
 }
 
 /**
- * Process manifest update init packet
+ * Process manifest update init request
  *
  * @param manifest_interface Interface to handle manifest update commands
  * @param request Manifest update request to process
@@ -155,7 +254,7 @@ int cerberus_protocol_issue_challenge (struct attestation_master *attestation,
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_manifest_update_init (
-	struct manifest_cmd_interface *manifest_interface, struct cmd_interface_request *request)
+	struct manifest_cmd_interface *manifest_interface, struct cmd_interface_msg *request)
 {
 	/* Just use the CFM structures since they are the same for all manifests. */
 	struct cerberus_protocol_prepare_cfm_update *rq =
@@ -174,7 +273,7 @@ static int cerberus_protocol_manifest_update_init (
 }
 
 /**
- * Process manifest update packet
+ * Process manifest update request
  *
  * @param manifest_interface Interface to handle manifest update commands
  * @param request Manifest update request to process
@@ -182,7 +281,7 @@ static int cerberus_protocol_manifest_update_init (
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_manifest_update (struct manifest_cmd_interface *manifest_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	/* Just use the CFM structures since they are the same for all manifests. */
 	struct cerberus_protocol_cfm_update *rq = (struct cerberus_protocol_cfm_update*) request->data;
@@ -204,7 +303,7 @@ static int cerberus_protocol_manifest_update (struct manifest_cmd_interface *man
 }
 
 /**
- * Process manifest update complete packet
+ * Process manifest update complete request
  *
  * @param manifest_interface Interface to handle manifest update commands
  * @param request Manifest update complete request to process
@@ -213,7 +312,7 @@ static int cerberus_protocol_manifest_update (struct manifest_cmd_interface *man
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_manifest_update_complete (
-	struct manifest_cmd_interface *manifest_interface, struct cmd_interface_request *request,
+	struct manifest_cmd_interface *manifest_interface, struct cmd_interface_msg *request,
 	bool delayed_activation_allowed)
 {
 	/* Just use the CFM structures since they are the same for all manifests. */
@@ -247,7 +346,7 @@ static int cerberus_protocol_manifest_update_complete (
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_cfm_update_init (struct manifest_cmd_interface *cfm_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_manifest_update_init (cfm_interface, request);
 }
@@ -261,7 +360,7 @@ int cerberus_protocol_cfm_update_init (struct manifest_cmd_interface *cfm_interf
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_cfm_update (struct manifest_cmd_interface *cfm_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_manifest_update (cfm_interface, request);
 }
@@ -275,7 +374,7 @@ int cerberus_protocol_cfm_update (struct manifest_cmd_interface *cfm_interface,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_cfm_update_complete (struct manifest_cmd_interface *cfm_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_manifest_update_complete (cfm_interface, request, true);
 }
@@ -289,7 +388,7 @@ int cerberus_protocol_cfm_update_complete (struct manifest_cmd_interface *cfm_in
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_manifest_id_version (struct manifest *manifest,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	/* Just use the CFM structures since they are the same for all manifests. */
 	struct cerberus_protocol_get_cfm_id_version_response *rsp =
@@ -323,7 +422,7 @@ int cerberus_protocol_get_manifest_id_version (struct manifest *manifest,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_manifest_id_platform (struct manifest *manifest,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	/* Just use the CFM structures since the same same for all manifests. */
 	struct cerberus_protocol_get_cfm_id_platform_response *rsp =
@@ -362,7 +461,7 @@ int cerberus_protocol_get_manifest_id_platform (struct manifest *manifest,
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_get_cfm_id_version (struct cfm *cfm,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_get_manifest_id_version (&cfm->base, request);
 }
@@ -376,13 +475,13 @@ static int cerberus_protocol_get_cfm_id_version (struct cfm *cfm,
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_get_cfm_id_platform (struct cfm *cfm,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_get_manifest_id_platform (&cfm->base, request);
 }
 
 /**
- * Process CFM ID packet
+ * Process CFM ID request
  *
  * @param cfm_mgr CFM manager instance to utilize
  * @param request CFM ID request to process
@@ -390,7 +489,7 @@ static int cerberus_protocol_get_cfm_id_platform (struct cfm *cfm,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_cfm_id (struct cfm_manager *cfm_mgr,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_cfm_id *rq = (struct cerberus_protocol_get_cfm_id*) request->data;
 	struct cfm *curr_cfm = NULL;
@@ -428,7 +527,7 @@ int cerberus_protocol_get_cfm_id (struct cfm_manager *cfm_mgr,
 }
 
 /**
- * Process CFM component IDs packet
+ * Process CFM component IDs request
  *
  * @param cfm_mgr CFM manager instance to utilize
  * @param request CFM component IDs request to process
@@ -436,17 +535,15 @@ int cerberus_protocol_get_cfm_id (struct cfm_manager *cfm_mgr,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_cfm_component_ids (struct cfm_manager *cfm_mgr,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_cfm_component_ids *rq =
 		(struct cerberus_protocol_get_cfm_component_ids*) request->data;
 	struct cerberus_protocol_get_cfm_component_ids_response *rsp =
 		(struct cerberus_protocol_get_cfm_component_ids_response*) request->data;
-	struct cfm_component_ids component_ids;
 	struct cfm *curr_cfm = NULL;
-	uint16_t length;
-	uint32_t id_length;
 	uint32_t offset;
+	size_t length;
 	int status = 0;
 
 	if (request->length != sizeof (struct cerberus_protocol_get_cfm_component_ids)) {
@@ -465,9 +562,8 @@ int cerberus_protocol_get_cfm_component_ids (struct cfm_manager *cfm_mgr,
 		return status;
 	}
 
-	offset = rq->offset;
-
 	if (curr_cfm != NULL) {
+		offset = rq->offset;
 		rsp->valid = 1;
 
 		status = curr_cfm->base.get_id (&curr_cfm->base, &rsp->version);
@@ -475,26 +571,17 @@ int cerberus_protocol_get_cfm_component_ids (struct cfm_manager *cfm_mgr,
 			goto exit;
 		}
 
-		status = curr_cfm->get_supported_component_ids (curr_cfm, &component_ids);
-		if (status != 0) {
+		length = CERBERUS_PROTOCOL_MAX_COMPONENT_IDS (request);
+
+		status = curr_cfm->buffer_supported_components (curr_cfm, offset, length,
+			cerberus_protocol_cfm_component_ids (rsp));
+		if (ROT_IS_ERROR (status)) {
 			goto exit;
 		}
 
-		id_length = component_ids.count * sizeof (uint32_t);
+		request->length = cerberus_protocol_get_cfm_component_ids_response_length (status);
 
-		if (offset >= id_length) {
-			request->length = cerberus_protocol_get_cfm_component_ids_response_length (0);
-			goto cleanup_component_ids;
-		}
-
-		length = min (CERBERUS_PROTOCOL_MAX_COMPONENT_IDS (request), id_length - offset);
-		memcpy (cerberus_protocol_cfm_component_ids (rsp), &((uint8_t*) component_ids.ids)[offset],
-			length);
-
-		request->length = cerberus_protocol_get_cfm_component_ids_response_length (length);
-
-	cleanup_component_ids:
-		curr_cfm->free_component_ids (curr_cfm, &component_ids);
+		status = 0;
 	}
 	else {
 		rsp->valid = 0;
@@ -504,6 +591,7 @@ int cerberus_protocol_get_cfm_component_ids (struct cfm_manager *cfm_mgr,
 
 exit:
 	cerberus_protocol_free_cfm (cfm_mgr, curr_cfm);
+
 	return status;
 }
 
@@ -516,7 +604,7 @@ exit:
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_pcd_update_init (struct manifest_cmd_interface *pcd_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_manifest_update_init (pcd_interface, request);
 }
@@ -530,7 +618,7 @@ int cerberus_protocol_pcd_update_init (struct manifest_cmd_interface *pcd_interf
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_pcd_update (struct manifest_cmd_interface *pcd_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_manifest_update (pcd_interface, request);
 }
@@ -544,13 +632,13 @@ int cerberus_protocol_pcd_update (struct manifest_cmd_interface *pcd_interface,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_pcd_update_complete (struct manifest_cmd_interface *pcd_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_manifest_update_complete (pcd_interface, request, false);
 }
 
 /**
- * Process PCD platform ID packet
+ * Process PCD platform ID request
  *
  * @param pcd PCD instance to utilize
  * @param request Get PCD platform ID request to process
@@ -558,13 +646,13 @@ int cerberus_protocol_pcd_update_complete (struct manifest_cmd_interface *pcd_in
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_get_pcd_platform_id (struct pcd *pcd,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_get_manifest_id_platform (&pcd->base, request);
 }
 
 /**
- * Process PCD version ID packet
+ * Process PCD version ID request
  *
  * @param pcd PCD instance to utilize
  * @param request Get PCD version ID request to process
@@ -572,13 +660,13 @@ static int cerberus_protocol_get_pcd_platform_id (struct pcd *pcd,
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_get_pcd_version_id (struct pcd *pcd,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_get_manifest_id_version (&pcd->base, request);
 }
 
 /**
- * Process PCD ID packet
+ * Process PCD ID request
  *
  * @param pcd_mgr PCD manager instance to utilize
  * @param request Get PCD ID request to process
@@ -586,7 +674,7 @@ static int cerberus_protocol_get_pcd_version_id (struct pcd *pcd,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_pcd_id (struct pcd_manager *pcd_mgr,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_pcd_id *rq = (struct cerberus_protocol_get_pcd_id*) request->data;
 	struct pcd *curr_pcd = NULL;
@@ -621,7 +709,7 @@ int cerberus_protocol_get_pcd_id (struct pcd_manager *pcd_mgr,
 }
 
 /**
- * Process a FW update status packet
+ * Process a FW update status request
  *
  * @param control Firmware update control instance to query
  * @param rsp Status response message to update
@@ -640,38 +728,36 @@ int cerberus_protocol_get_fw_update_status (struct firmware_update_control *cont
 }
 
 /**
- * Process PFM update status packet
+ * Process PFM update status request
  *
- * @param pfm_0 PFM command interface for port 0.
- * @param pfm_1 PFM command interface for port 1.
+ * @param pfm_cmd List of PFM command interfaces for all available ports.
+ * @param num_ports Number of available ports.
  * @param request PFM update status request to process
  *
  * @return 0 if request processing completed successfully or an error code.
  */
-int cerberus_protocol_get_pfm_update_status (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct cmd_interface_request *request)
+int cerberus_protocol_get_pfm_update_status (struct manifest_cmd_interface *pfm_cmd[],
+	uint8_t num_ports, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_update_status *rq =
 		(struct cerberus_protocol_update_status*) request->data;
 	struct cerberus_protocol_update_status_response *rsp =
 		(struct cerberus_protocol_update_status_response*) request->data;
-	struct manifest_cmd_interface *curr_pfm_interface;
 
-	if (rq->port_id > 1) {
+	if (rq->port_id >= num_ports) {
 		return CMD_HANDLER_OUT_OF_RANGE;
 	}
 
-	curr_pfm_interface = cerberus_protocol_get_pfm_cmd_interface (pfm_0, pfm_1, rq->port_id);
-	if (curr_pfm_interface == NULL) {
+	if (pfm_cmd[rq->port_id] == NULL) {
 		return CMD_HANDLER_UNSUPPORTED_INDEX;
 	}
 
-	rsp->update_status = curr_pfm_interface->get_status (curr_pfm_interface);
+	rsp->update_status = pfm_cmd[rq->port_id]->get_status (pfm_cmd[rq->port_id]);
 	return 0;
 }
 
 /**
- * Process manifest update status packet
+ * Process manifest update status request
  *
  * @param manifest_interface Interface to handle manifest update commands
  * @param request Manifest update status request to process
@@ -679,7 +765,7 @@ int cerberus_protocol_get_pfm_update_status (struct manifest_cmd_interface *pfm_
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_get_manifest_update_status (
-	struct manifest_cmd_interface *manifest_interface, struct cmd_interface_request *request)
+	struct manifest_cmd_interface *manifest_interface, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_update_status_response *rsp =
 		(struct cerberus_protocol_update_status_response*) request->data;
@@ -693,7 +779,7 @@ static int cerberus_protocol_get_manifest_update_status (
 }
 
 /**
- * Process CFM update status packet
+ * Process CFM update status request
  *
  * @param cfm_interface CFM command interface
  * @param request CFM update status request to process
@@ -701,13 +787,13 @@ static int cerberus_protocol_get_manifest_update_status (
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_cfm_update_status (struct manifest_cmd_interface *cfm_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_get_manifest_update_status (cfm_interface, request);
 }
 
 /**
- * Process PCD update status packet
+ * Process PCD update status request
  *
  * @param pcd_interface PCD command interface
  * @param request PCD update status request to process
@@ -715,7 +801,7 @@ int cerberus_protocol_get_cfm_update_status (struct manifest_cmd_interface *cfm_
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_pcd_update_status (struct manifest_cmd_interface *pcd_interface,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_get_manifest_update_status (pcd_interface, request);
 }
@@ -723,40 +809,30 @@ int cerberus_protocol_get_pcd_update_status (struct manifest_cmd_interface *pcd_
 /**
  * Process a request for host verification actions on reset.
  *
- * @param host_0 Host processor for port 0
- * @param host_1 Host processor for port 1
+ * @param host List of host processors for all available ports
+ * @param num_ports Number of available ports
  * @param request Host verification actions request to process
  *
  * @return Response length if request processing completed successfully or an error code.
  */
-int cerberus_protocol_get_host_next_verification_status (struct host_processor *host_0,
-	struct host_processor *host_1, struct cmd_interface_request *request)
+int cerberus_protocol_get_host_next_verification_status (struct host_processor *host[],
+	uint8_t num_ports, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_update_status *rq =
 		(struct cerberus_protocol_update_status*) request->data;
 	struct cerberus_protocol_update_status_response *rsp =
 		(struct cerberus_protocol_update_status_response*) request->data;
-	struct host_processor *host;
 	int status;
 
-	switch (rq->port_id) {
-		case 0:
-			host = host_0;
-			break;
-
-		case 1:
-			host = host_1;
-			break;
-
-		default:
-			return CMD_HANDLER_OUT_OF_RANGE;
+	if (rq->port_id >= num_ports) {
+		return CMD_HANDLER_OUT_OF_RANGE;
 	}
 
-	if (host == NULL) {
+	if ((host == NULL) || host[rq->port_id] == NULL) {
 		return CMD_HANDLER_UNSUPPORTED_INDEX;
 	}
 
-	status = host->get_next_reset_verification_actions (host);
+	status = host[rq->port_id]->get_next_reset_verification_actions (host[rq->port_id]);
 	if (ROT_IS_ERROR (status)) {
 		return status;
 	}
@@ -766,7 +842,7 @@ int cerberus_protocol_get_host_next_verification_status (struct host_processor *
 }
 
 /**
- * Process recovery image get update status packet
+ * Process recovery image get update status request
  *
  * @param recovery_0 The recovery image command interface instance for port 0.
  * @param recovery_1 The recovery image command interface instance for port 1.
@@ -776,7 +852,7 @@ int cerberus_protocol_get_host_next_verification_status (struct host_processor *
  */
 int cerberus_protocol_get_recovery_image_update_status (
 	struct recovery_image_cmd_interface *recovery_0,
-	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_request *request)
+	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_update_status *rq =
 		(struct cerberus_protocol_update_status*) request->data;
@@ -799,7 +875,7 @@ int cerberus_protocol_get_recovery_image_update_status (
 }
 
 /**
- * Process a rest configuration update status packet
+ * Process a reset configuration update status request
  *
  * @param background Background command processing instance to query
  * @param rsp Status response message to update
@@ -809,24 +885,27 @@ int cerberus_protocol_get_recovery_image_update_status (
 int cerberus_protocol_get_reset_config_status (struct cmd_background *background,
 	struct cerberus_protocol_update_status_response *rsp)
 {
+#ifdef CMD_ENABLE_RESET_CONFIG
 	if (background == NULL) {
 		return CMD_HANDLER_UNSUPPORTED_INDEX;
 	}
 
 	rsp->update_status = background->get_config_reset_status (background);
 	return 0;
+#else
+	return CMD_HANDLER_UNSUPPORTED_COMMAND;
+#endif
 }
 
 /**
- * Process update status packet
+ * Process update status request
  *
  * @param control Firmware update control instance to query
- * @param pfm_0 Port 0 PFM command interface
- * @param pfm_1 Port 1 PFM command interface
+ * @param num_ports Number of available ports
+ * @param pfm_cmd List of PFM command interfaces for all available ports
  * @param cfm CFM command interface
  * @param pcd PCD command interface
- * @param host_0 Port 0 host processor
- * @param host_1 Port 1 host processor
+ * @param host List of host processors for all available ports
  * @param recovery_0 The recovery image command interface instance for port 0.
  * @param recovery_1 The recovery image command interface instance for port 1.
  * @param background Command background instance to query
@@ -834,13 +913,12 @@ int cerberus_protocol_get_reset_config_status (struct cmd_background *background
  *
  * @return 0 if request processing completed successfully or an error code.
  */
-int cerberus_protocol_get_update_status (struct firmware_update_control *control,
-	struct manifest_cmd_interface *pfm_0, struct manifest_cmd_interface *pfm_1,
-	struct manifest_cmd_interface *cfm, struct manifest_cmd_interface *pcd,
-	struct host_processor *host_0, struct host_processor *host_1,
+int cerberus_protocol_get_update_status (struct firmware_update_control *control, uint8_t num_ports,
+	struct manifest_cmd_interface *pfm_cmd[], struct manifest_cmd_interface *cfm,
+	struct manifest_cmd_interface *pcd, struct host_processor *host[],
 	struct recovery_image_cmd_interface *recovery_0,
 	struct recovery_image_cmd_interface *recovery_1, struct cmd_background *background,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_update_status *req =
 		(struct cerberus_protocol_update_status*) request->data;
@@ -858,7 +936,7 @@ int cerberus_protocol_get_update_status (struct firmware_update_control *control
 			break;
 
 		case CERBERUS_PROTOCOL_PFM_UPDATE_STATUS:
-			status = cerberus_protocol_get_pfm_update_status (pfm_0, pfm_1, request);
+			status = cerberus_protocol_get_pfm_update_status (pfm_cmd, num_ports, request);
 			break;
 
 		case CERBERUS_PROTOCOL_CFM_UPDATE_STATUS:
@@ -870,7 +948,7 @@ int cerberus_protocol_get_update_status (struct firmware_update_control *control
 			break;
 
 		case CERBERUS_PROTOCOL_HOST_FW_NEXT_RESET:
-			status = cerberus_protocol_get_host_next_verification_status (host_0, host_1, request);
+			status = cerberus_protocol_get_host_next_verification_status (host, num_ports, request);
 			break;
 
 		case CERBERUS_PROTOCOL_RECOVERY_IMAGE_UPDATE_STATUS:
@@ -893,7 +971,7 @@ int cerberus_protocol_get_update_status (struct firmware_update_control *control
 }
 
 /**
- * Process an extended FW update status packet
+ * Process an extended FW update status request
  *
  * @param control Firmware update control instance to query
  * @param rsp Status response message to update
@@ -910,7 +988,7 @@ int cerberus_protocol_get_extended_fw_update_status (struct firmware_update_cont
 }
 
 /**
- * Process recovery image extended get update status packet.
+ * Process recovery image extended get update status request.
  *
  * @param manager_0 The recovery image manager instance for port 0.
  * @param manager_1 The recovery image manager instance for port 1.
@@ -955,7 +1033,7 @@ int cerberus_protocol_get_extended_recovery_image_update_status (
 }
 
 /**
- * Process extended update status packet
+ * Process extended update status request
  *
  * @param control Firmware update control instance to utilize
  * @param recovery_manager_0 The recovery image manager instance for port 0.
@@ -970,7 +1048,7 @@ int cerberus_protocol_get_extended_update_status (struct firmware_update_control
 	struct recovery_image_manager *recovery_manager_0,
 	struct recovery_image_manager *recovery_manager_1,
 	struct recovery_image_cmd_interface *recovery_cmd_0,
-	struct recovery_image_cmd_interface *recovery_cmd_1, struct cmd_interface_request *request)
+	struct recovery_image_cmd_interface *recovery_cmd_1, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_extended_update_status *rq =
 		(struct cerberus_protocol_extended_update_status*) request->data;
@@ -1004,141 +1082,82 @@ int cerberus_protocol_get_extended_update_status (struct firmware_update_control
 }
 
 /**
- * Process certificate digest packet
+ * Process certificate digest response. This function only ensures the response is valid per
+ * Cerberus protocol response definition, the certificate digest is not validated or stored.
  *
- * @param attestation Attestation manager instance to utilize
- * @param request Certificate digest request to process
+ * @param response Certificate digest response to process
  *
- * @return 0 if request processed successfully or an error code.
+ * @return 0 if response processed successfully or an error code.
  */
-int cerberus_protocol_process_certificate_digest (struct attestation_master *attestation,
-	struct cmd_interface_request *request)
+int cerberus_protocol_process_certificate_digest_response (struct cmd_interface_msg *response)
 {
-	struct attestation_chain_digest digests;
-	struct cerberus_protocol_cert_req_params cert_params;
-	struct cerberus_protocol_challenge_req_params challenge_params;
 	struct cerberus_protocol_get_certificate_digest_response *rsp =
-		(struct cerberus_protocol_get_certificate_digest_response*) request->data;
-	struct cerberus_protocol_header *header = (struct cerberus_protocol_header*) request->data;
-	int status = 0;
+		(struct cerberus_protocol_get_certificate_digest_response*) response->data;
+	size_t digests_len;
 
-	request->crypto_timeout = true;
-
-	if (request->length !=
-		(sizeof (struct cerberus_protocol_get_certificate_digest_response) +
-			(rsp->num_digests * SHA256_HASH_LENGTH))) {
+	if (response->length <= sizeof (struct cerberus_protocol_get_certificate_digest_response)) {
 		return CMD_HANDLER_BAD_LENGTH;
 	}
 
-	/* TOOD: Ensure the flow for getting certs and digests supports v3 protocol behavior. */
-	digests.num_cert = rsp->num_digests;
-	digests.digest = &request->data[sizeof (*rsp)];
-	digests.digest_len = SHA256_HASH_LENGTH;
+	digests_len = rsp->num_digests * SHA256_HASH_LENGTH;
 
-	/* TODO: This flow should be updated to handle the case where multiple certificates don't match.
-	 * Otherwise, a new Get Digets command would need to be sent after getting ecah cert.
-	 *
-	 * Maybe instead of issuing the next command directly from here, the device mananger should be
-	 * updated with some state indicating that certs need to be refreshed.  The top-level
-	 * orchestrator for attestation would query the device manager and run the next appropriate
-	 * steps. */
-	status = attestation->compare_digests (attestation, request->source_eid, &digests);
-	if (ROT_IS_ERROR (status)) {
-		return status;
+	if (response->length !=
+		cerberus_protocol_get_certificate_digest_response_length (digests_len)) {
+		return CMD_HANDLER_BAD_LENGTH;
 	}
 
-	/* TODO: Use message max provided with the request. */
-	if (status != 0) {
-		cert_params.slot_num = ATTESTATION_RIOT_SLOT_NUM;
-		cert_params.cert_num = status - 1;
-
-		header->command = CERBERUS_PROTOCOL_GET_CERTIFICATE;
-
-		status = cerberus_protocol_issue_get_certificate (&cert_params,
-			&request->data[sizeof (*header)], MCTP_PROTOCOL_MAX_MESSAGE_BODY - sizeof (*header));
-	}
-	else {
-		challenge_params.slot_num = ATTESTATION_RIOT_SLOT_NUM;
-		challenge_params.eid = request->source_eid;
-
-		header->command = CERBERUS_PROTOCOL_ATTESTATION_CHALLENGE;
-
-		status = cerberus_protocol_issue_challenge (attestation, &challenge_params,
-			&request->data[sizeof (*header)], MCTP_PROTOCOL_MAX_MESSAGE_BODY - sizeof (*header));
-	}
-
-	if ROT_IS_ERROR (status) {
-		return status;
-	}
-
-	request->new_request = true;
-	request->length = sizeof (struct cerberus_protocol_header) + status;
 	return 0;
 }
 
 /**
- * Process certificate packet
+ * Process certificate response message. This function only ensures the response is valid per
+ * Cerberus protocol response definition, the certificate is not validated or stored.
  *
- * @param attestation Attestation manager instance to utilize
- * @param request Certificate response to process
+ * @param response Certificate response to process
  *
- * @return 0 if request processed successfully or an error code.
+ * @return 0 if response processed successfully or an error code.
  */
-int cerberus_protocol_process_certificate (struct attestation_master *attestation,
-	struct cmd_interface_request *request)
+int cerberus_protocol_process_certificate_response (struct cmd_interface_msg *response)
 {
 	struct cerberus_protocol_get_certificate_response *rsp =
-		(struct cerberus_protocol_get_certificate_response*) request->data;
-	struct cerberus_protocol_get_certificate_digest *rq =
-		(struct cerberus_protocol_get_certificate_digest*) request->data;
-	int status;
+		(struct cerberus_protocol_get_certificate_response*) response->data;
 
-	if (request->length < sizeof (struct cerberus_protocol_get_certificate_response)) {
+	if (response->length <= sizeof (struct cerberus_protocol_get_certificate_response)) {
 		return CMD_HANDLER_BAD_LENGTH;
 	}
 
-	status = attestation->store_certificate (attestation, request->source_eid, rsp->slot_num,
-		rsp->cert_num, &request->data[sizeof (*rsp)], request->length - sizeof (*rsp));
-	if (status != 0) {
-		return status;
+	if (rsp->slot_num > ATTESTATION_MAX_SLOT_NUM) {
+		return CMD_HANDLER_UNSUPPORTED_INDEX;
 	}
 
-	rq->header.command = CERBERUS_PROTOCOL_GET_DIGEST;
-
-	/* TODO: Use message max provided with the request. */
-	status = cerberus_protocol_issue_get_certificate_digest (attestation,
-		&request->data[CERBERUS_PROTOCOL_MIN_MSG_LEN], CERBERUS_PROTOCOL_MAX_PAYLOAD_PER_MSG);
-	if (ROT_IS_ERROR (status)) {
-		return status;
-	}
-
-	request->new_request = true;
-	request->length = CERBERUS_PROTOCOL_MIN_MSG_LEN + status;
 	return 0;
 }
 
 /**
- * Process challenge response packet
+ * Process challenge response message. This function only ensures the response is valid per
+ * Cerberus protocol response definition, the challenge is not validated.
  *
- * @param attestation Attestation manager instance to utilize
- * @param request Challenge response to process
+ * @param response Challenge response to process
  *
  * @return Completion status, 0 if success or an error code.
  */
-int cerberus_protocol_process_challenge_response (struct attestation_master *attestation,
-	struct cmd_interface_request *request)
+int cerberus_protocol_process_challenge_response (struct cmd_interface_msg *response)
 {
-	int status;
+	struct cerberus_protocol_challenge_response *rsp =
+		(struct cerberus_protocol_challenge_response*) response->data;
 
-	request->crypto_timeout = true;
-
-	status = attestation->process_challenge_response (attestation,
-		&request->data[CERBERUS_PROTOCOL_MIN_MSG_LEN],
-		request->length - CERBERUS_PROTOCOL_MIN_MSG_LEN, request->source_eid);
-	if (ROT_IS_ERROR (status)) {
-		return status;
+	if ((response->length <= sizeof (struct cerberus_protocol_challenge_response)) ||
+		(response->length <= cerberus_protocol_challenge_response_length (rsp))) {
+		return CMD_HANDLER_BAD_LENGTH;
 	}
 
-	request->length = status;
+	if (rsp->challenge.slot_num > ATTESTATION_MAX_SLOT_NUM) {
+		return CMD_HANDLER_UNSUPPORTED_INDEX;
+	}
+
+	if (rsp->challenge.reserved != 0) {
+		return CMD_HANDLER_RSVD_NOT_ZERO;
+	}
+
 	return 0;
 }

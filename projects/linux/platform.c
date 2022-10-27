@@ -96,11 +96,15 @@ int platform_increase_timeout (uint32_t msec, platform_clock *timeout)
  *
  * @param currtime The platform_clock type to initialize.
  *
- * @return 0 if the current tickcount was initialized successfully or an error code.
+ * @return 0 if the current tick count was initialized successfully or an error code.
  */
 int platform_init_current_tick (platform_clock *currtime)
 {
 	int status;
+
+	if (currtime == NULL) {
+		return PLATFORM_TIMEOUT_ERROR (EINVAL);
+	}
 
 	status = clock_gettime (CLOCK_MONOTONIC, currtime);
 	if (status != 0) {
@@ -142,28 +146,6 @@ int platform_has_timeout_expired (platform_clock *timeout)
 }
 
 /**
- * Get the elapsed time in milliseconds since last boot
- *
- * @return elapsed time in milliseconds since last boot.
- */
-uint64_t platform_get_time_since_boot (void)
-{
-	struct timespec now;
-	uint64_t time;
-	int status;
-
-	status = clock_gettime (CLOCK_MONOTONIC, &now);
-	if (status != 0) {
-		time = 0;
-	}
-	else {
-		time = (now.tv_sec * 1000) + (now.tv_nsec / 1000000ULL);
-	}
-
-	return time;
-}
-
-/**
  * Get the duration between two clock instances.  These are expected to be initialized with
  * {@link platform_init_current_tick}.
  *
@@ -200,6 +182,28 @@ uint32_t platform_get_duration (const platform_clock *start, const platform_cloc
 
 		return duration;
 	}
+}
+
+/**
+ * Get the current system time.
+ *
+ * @return The current time, in milliseconds.
+ */
+uint64_t platform_get_time (void)
+{
+	struct timespec now;
+	uint64_t time;
+	int status;
+
+	status = clock_gettime (CLOCK_REALTIME, &now);
+	if (status != 0) {
+		time = 0;
+	}
+	else {
+		time = (now.tv_sec * 1000) + (now.tv_nsec / 1000000ULL);
+	}
+
+	return time;
 }
 
 
@@ -456,4 +460,140 @@ void platform_timer_delete (platform_timer *timer)
 			sem_destroy (&timer->timer);
 		}
 	}
+}
+
+
+#define	PLATFORM_SEMAPHORE_ERROR(code)		ROT_ERROR (ROT_MODULE_PLATFORM_SEMAPHORE, code)
+
+/**
+ * Initialize a semaphore.
+ *
+ * @param sem The semaphore to initialize.
+ *
+ * @return 0 if the semaphore was initialized successfully or an error code.
+ */
+int platform_semaphore_init (platform_semaphore *sem)
+{
+	int status;
+
+	if (sem == NULL) {
+		return PLATFORM_SEMAPHORE_ERROR (EINVAL);
+	}
+
+	status = sem_init (sem, 0, 0);
+	return (status == 0) ? 0 : PLATFORM_SEMAPHORE_ERROR (errno);
+}
+
+/**
+ * Free a semaphore.
+ *
+ * @param sem The semaphore to free.
+ */
+void platform_semaphore_free (platform_semaphore *sem)
+{
+	if (sem) {
+		sem_destroy (sem);
+	}
+}
+
+/**
+ * Signal a semaphore.
+ *
+ * @param sem The semaphore to signal.
+ *
+ * @return 0 if the semaphore was signaled successfully or an error code.
+ */
+int platform_semaphore_post (platform_semaphore *sem)
+{
+	int status;
+
+	if (sem == NULL) {
+		return PLATFORM_SEMAPHORE_ERROR (EINVAL);
+	}
+
+	status = sem_post (sem);
+	return (status == 0) ? 0 : PLATFORM_SEMAPHORE_ERROR (errno);
+}
+
+/**
+ * Wait for a semaphore to be signaled.  This will block until either the semaphore is signaled or
+ * the timeout expires.  If the semaphore is already signaled, it will return immediately.
+ *
+ * @param sem The semaphore to wait on.
+ * @param ms_timeout The amount of time to wait for the semaphore to be signaled, in milliseconds.
+ * Specifying at timeout of 0 will cause the call to block indefinitely.
+ *
+ * @return 0 if the semaphore was signaled, 1 if the timeout expired, or an error code.
+ */
+int platform_semaphore_wait (platform_semaphore *sem, uint32_t ms_timeout)
+{
+	platform_clock timeout;
+	int status;
+
+	if (sem == NULL) {
+		return PLATFORM_SEMAPHORE_ERROR (EINVAL);
+	}
+
+	if (ms_timeout == 0) {
+		status = sem_wait (sem);
+	}
+	else {
+		status = platform_init_timeout_from_clock (ms_timeout, CLOCK_REALTIME, &timeout);
+		if (status != 0) {
+			return status;
+		}
+
+		status = sem_timedwait (sem, &timeout);
+		if ((status != 0) && (errno == ETIMEDOUT)) {
+			return 1;
+		}
+	}
+
+	return (status == 0) ? 0 : PLATFORM_SEMAPHORE_ERROR (errno);
+}
+
+/**
+ * Check the state of the semaphore and return immediately.  If the semaphore was signaled, checking
+ * the state will consume the signal.
+ *
+ * @param sem The semaphore to check.
+ *
+ * @return 0 if the semaphore was signaled, 1 if it was not, or an error code.
+ */
+int platform_semaphore_try_wait (platform_semaphore *sem)
+{
+	int status;
+
+	if (sem == NULL) {
+		return PLATFORM_SEMAPHORE_ERROR (EINVAL);
+	}
+
+	status = sem_trywait (sem);
+	if (status == 0) {
+		return 0;
+	}
+	else if (errno == EAGAIN) {
+		return 1;
+	}
+	else {
+		return PLATFORM_SEMAPHORE_ERROR (errno);
+	}
+}
+
+/**
+ * Reset a semaphore to the unsignaled state.
+ *
+ * @param sem The semaphore to reset.
+ *
+ * @return 0 if the semaphore was reset successfully or an error code.
+ */
+int platform_semaphore_reset (platform_semaphore *sem)
+{
+	int status;
+
+	do {
+		status = platform_semaphore_try_wait (sem);
+	} while (status == 0);
+
+	return (status == 1) ? 0 : status;
 }

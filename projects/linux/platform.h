@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-#ifndef LINUX_PLATFORM_H_
-#define LINUX_PLATFORM_H_
+#ifndef PLATFORM_H_
+#define PLATFORM_H_
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -32,7 +32,7 @@ int platform_init_timeout (uint32_t msec, platform_clock *timeout);
 int platform_increase_timeout (uint32_t msec, platform_clock *timeout);
 int platform_init_current_tick (platform_clock *currtime);
 int platform_has_timeout_expired (platform_clock *timeout);
-uint64_t platform_get_time_since_boot (void);
+uint64_t platform_get_time (void);
 uint32_t platform_get_duration (const platform_clock *start, const platform_clock *end);
 
 
@@ -69,4 +69,14 @@ int platform_timer_disarm (platform_timer *timer);
 void platform_timer_delete (platform_timer *timer);
 
 
-#endif /* LINUX_PLATFORM_H_ */
+/* Linux semaphore */
+typedef sem_t platform_semaphore;
+int platform_semaphore_init (platform_semaphore *sem);
+void platform_semaphore_free (platform_semaphore *sem);
+int platform_semaphore_post (platform_semaphore *sem);
+int platform_semaphore_wait (platform_semaphore *sem, uint32_t ms_timeout);
+int platform_semaphore_try_wait (platform_semaphore *sem);
+int platform_semaphore_reset (platform_semaphore *sem);
+
+
+#endif /* PLATFORM_H_ */

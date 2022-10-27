@@ -51,10 +51,14 @@ struct cmd_background_task {
 	TaskHandle_t task;								/**< The task that will execute requests. */
 	SemaphoreHandle_t lock;							/**< Synchronization for task status. */
 	uint8_t running;								/**< Flag indicating if an operation is running. */
-	struct cmd_background_attestation attestation;	/**< Attestation command context. */
-	struct cmd_background_config config;			/**< Configuration reset context. */
-	struct cmd_background_riot riot;				/**< RIoT key context. */
 	void *arg;										/**< Opaque argument for command handling. */
+	struct cmd_background_riot riot;				/**< RIoT key context. */
+#ifdef CMD_ENABLE_UNSEAL
+	struct cmd_background_attestation attestation;	/**< Attestation command context. */
+#endif
+#if defined CMD_ENABLE_RESET_CONFIG || defined CMD_ENABLE_INTRUSION
+	struct cmd_background_config config;			/**< Configuration reset context. */
+#endif
 
 	/**
 	 * Internal handler that can be called before processing base events.  This allows the task to
@@ -80,6 +84,8 @@ int cmd_background_task_generate_aux_key (struct cmd_background_task *task,
 
 /* Internal definitions for use by derived types. */
 #define	CMD_BACKGROUND_EXTERNAL_HANDLER			(1U << 31)
+
+#define	CMD_BACKGROUND_TASK_EXTERNAL_HANDLER		0xFF
 
 
 #endif /* CMD_BACKGROUND_TASK_H_ */

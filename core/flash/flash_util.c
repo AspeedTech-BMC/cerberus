@@ -28,7 +28,7 @@
  *
  * @return 0 if the flash contents are valid or an error code.
  */
-int flash_verify_contents (struct flash *flash, uint32_t start_addr, size_t length,
+int flash_verify_contents (const struct flash *flash, uint32_t start_addr, size_t length,
 	struct hash_engine *hash, enum hash_type type, struct rsa_engine *rsa, const uint8_t *signature,
 	size_t sig_length, const struct rsa_public_key *pub_key, uint8_t *hash_out, size_t hash_length)
 {
@@ -64,10 +64,10 @@ int flash_verify_contents (struct flash *flash, uint32_t start_addr, size_t leng
  *
  * @return 0 if the flash contents are valid or an error code.
  */
-int flash_verify_noncontiguous_contents (struct flash *flash, const struct flash_region *regions,
-	size_t count, struct hash_engine *hash, enum hash_type type, struct rsa_engine *rsa,
-	const uint8_t *signature, size_t sig_length, const struct rsa_public_key *pub_key,
-	uint8_t *hash_out, size_t hash_length)
+int flash_verify_noncontiguous_contents (const struct flash *flash,
+	const struct flash_region *regions, size_t count, struct hash_engine *hash, enum hash_type type,
+	struct rsa_engine *rsa, const uint8_t *signature, size_t sig_length,
+	const struct rsa_public_key *pub_key, uint8_t *hash_out, size_t hash_length)
 {
 	return flash_verify_noncontiguous_contents_at_offset (flash, 0, regions, count, hash, type, rsa,
 		signature, sig_length, pub_key, hash_out, hash_length);
@@ -95,7 +95,7 @@ int flash_verify_noncontiguous_contents (struct flash *flash, const struct flash
  *
  * @return 0 if the flash contents are valid or an error code.
  */
-int flash_verify_noncontiguous_contents_at_offset (struct flash *flash, uint32_t offset,
+int flash_verify_noncontiguous_contents_at_offset (const struct flash *flash, uint32_t offset,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash, enum hash_type type,
 	struct rsa_engine *rsa, const uint8_t *signature, size_t sig_length,
 	const struct rsa_public_key *pub_key, uint8_t *hash_out, size_t hash_length)
@@ -154,7 +154,7 @@ int flash_verify_noncontiguous_contents_at_offset (struct flash *flash, uint32_t
  *
  * @return 0 if the flash contents are valid or an error code.
  */
-int flash_contents_verification (struct flash *flash, uint32_t start_addr, size_t length,
+int flash_contents_verification (const struct flash *flash, uint32_t start_addr, size_t length,
 	struct hash_engine *hash, enum hash_type type, struct signature_verification *verification,
 	const uint8_t *signature, size_t sig_length, uint8_t *hash_out, size_t hash_length)
 {
@@ -189,7 +189,7 @@ int flash_contents_verification (struct flash *flash, uint32_t start_addr, size_
  *
  * @return 0 if the flash contents are valid or an error code.
  */
-int flash_noncontiguous_contents_verification (struct flash *flash,
+int flash_noncontiguous_contents_verification (const struct flash *flash,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash, enum hash_type type,
 	struct signature_verification *verification, const uint8_t *signature, size_t sig_length,
 	uint8_t *hash_out, size_t hash_length)
@@ -219,7 +219,7 @@ int flash_noncontiguous_contents_verification (struct flash *flash,
  *
  * @return 0 if the flash contents are valid or an error code.
  */
-int flash_noncontiguous_contents_verification_at_offset (struct flash *flash, uint32_t offset,
+int flash_noncontiguous_contents_verification_at_offset (const struct flash *flash, uint32_t offset,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash, enum hash_type type,
 	struct signature_verification *verification, const uint8_t *signature, size_t sig_length,
 	uint8_t *hash_out, size_t hash_length)
@@ -274,7 +274,7 @@ int flash_noncontiguous_contents_verification_at_offset (struct flash *flash, ui
  *
  * @return 0 if the hash was generated successfully or an error code.
  */
-int flash_hash_contents (struct flash *flash, uint32_t start_addr, size_t length,
+int flash_hash_contents (const struct flash *flash, uint32_t start_addr, size_t length,
 	struct hash_engine *hash, enum hash_type type, uint8_t *hash_out, size_t hash_length)
 {
 	struct flash_region region;
@@ -302,9 +302,9 @@ int flash_hash_contents (struct flash *flash, uint32_t start_addr, size_t length
  *
  * @return 0 if the hash was generated successfully or an error code.
  */
-int flash_hash_noncontiguous_contents (struct flash *flash, const struct flash_region *regions,
-	size_t count, struct hash_engine *hash, enum hash_type type, uint8_t *hash_out,
-	size_t hash_length)
+int flash_hash_noncontiguous_contents (const struct flash *flash,
+	const struct flash_region *regions, size_t count, struct hash_engine *hash, enum hash_type type,
+	uint8_t *hash_out, size_t hash_length)
 {
 	return flash_hash_noncontiguous_contents_at_offset (flash, 0, regions, count, hash, type,
 		hash_out, hash_length);
@@ -325,7 +325,7 @@ int flash_hash_noncontiguous_contents (struct flash *flash, const struct flash_r
  *
  * @return 0 if the hash was generated successfully or an error code.
  */
-int flash_hash_noncontiguous_contents_at_offset (struct flash *flash, uint32_t offset,
+int flash_hash_noncontiguous_contents_at_offset (const struct flash *flash, uint32_t offset,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash, enum hash_type type,
 	uint8_t *hash_out, size_t hash_length)
 {
@@ -372,7 +372,7 @@ fail:
  *
  * @return 0 if the hash was updated successfully or an error code.
  */
-int flash_hash_update_contents (struct flash *flash, uint32_t start_addr, size_t length,
+int flash_hash_update_contents (const struct flash *flash, uint32_t start_addr, size_t length,
 	struct hash_engine *hash)
 {
 	struct flash_region region;
@@ -400,7 +400,7 @@ int flash_hash_update_contents (struct flash *flash, uint32_t start_addr, size_t
  *
  * @return 0 if the hash was updated successfully or an error code.
  */
-int flash_hash_update_noncontiguous_contents (struct flash *flash,
+int flash_hash_update_noncontiguous_contents (const struct flash *flash,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash)
 {
 	return flash_hash_update_noncontiguous_contents_at_offset (flash, 0, regions, count, hash);
@@ -477,7 +477,7 @@ static void hash_update_thread(void *arg1, void *unused1, void *unused2)
  *
  * @return 0 if the hash was updated successfully or an error code.
  */
-int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uint32_t offset,
+int flash_hash_update_noncontiguous_contents_at_offset (const struct flash *flash, uint32_t offset,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash)
 {
 	size_t next_read;
@@ -617,8 +617,9 @@ int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uin
  *
  * @return 0 if the region was successfully erased or an error code.
  */
-static int flash_erase_region_ext (struct flash *flash, uint32_t start_addr, size_t length,
-	int (*block_size) (struct flash*, uint32_t*), int (*erase) (struct flash*, uint32_t))
+static int flash_erase_region_ext (const struct flash *flash, uint32_t start_addr, size_t length,
+	int (*block_size) (const struct flash*, uint32_t*),
+	int (*erase) (const struct flash*, uint32_t))
 {
 	uint32_t block;
 	size_t erased;
@@ -652,7 +653,7 @@ static int flash_erase_region_ext (struct flash *flash, uint32_t start_addr, siz
  *
  * @return 0 if the region was successfully erased or an error code.
  */
-int flash_erase_region (struct flash *flash, uint32_t start_addr, size_t length)
+int flash_erase_region (const struct flash *flash, uint32_t start_addr, size_t length)
 {
 	if (flash == NULL) {
 		return FLASH_UTIL_INVALID_ARGUMENT;
@@ -675,7 +676,7 @@ int flash_erase_region (struct flash *flash, uint32_t start_addr, size_t length)
  *
  * @return 0 if the region was successfully erased or an error code.
  */
-int flash_sector_erase_region (struct flash *flash, uint32_t start_addr, size_t length)
+int flash_sector_erase_region (const struct flash *flash, uint32_t start_addr, size_t length)
 {
 	if (flash == NULL) {
 		return FLASH_UTIL_INVALID_ARGUMENT;
@@ -697,7 +698,7 @@ int flash_sector_erase_region (struct flash *flash, uint32_t start_addr, size_t 
  *
  * @return 0 if the region contains the expected data or an error code.
  */
-static int flash_check_region_for_data (struct flash *flash, uint32_t start_addr,
+static int flash_check_region_for_data (const struct flash *flash, uint32_t start_addr,
 	const uint8_t *data, size_t length, bool const_byte)
 {
 	uint8_t block[FLASH_VERIFICATION_BLOCK];
@@ -739,7 +740,7 @@ static int flash_check_region_for_data (struct flash *flash, uint32_t start_addr
  *
  * @return 0 if all bytes in the region are blank or an error code.
  */
-int flash_blank_check (struct flash *flash, uint32_t start_addr, size_t length)
+int flash_blank_check (const struct flash *flash, uint32_t start_addr, size_t length)
 {
 	uint8_t blank = 0xff;
 	int status = flash_check_region_for_data (flash, start_addr, &blank, length, true);
@@ -756,7 +757,7 @@ int flash_blank_check (struct flash *flash, uint32_t start_addr, size_t length)
  *
  * @return 0 if all bytes in the region are set to the expected value or an error code.
  */
-int flash_value_check (struct flash *flash, uint32_t start_addr, size_t length, uint8_t value)
+int flash_value_check (const struct flash *flash, uint32_t start_addr, size_t length, uint8_t value)
 {
 	int status = flash_check_region_for_data (flash, start_addr, &value, length, true);
 	return (status == FLASH_UTIL_DATA_MISMATCH) ? FLASH_UTIL_UNEXPECTED_VALUE : status;
@@ -776,8 +777,8 @@ int flash_value_check (struct flash *flash, uint32_t start_addr, size_t length, 
  *
  * @return 0 if the region was successfully erased and blank checked or an error code.
  */
-static int flash_erase_region_and_verify_ext (struct flash *flash, uint32_t start_addr,
-	size_t length, int (*erase) (struct flash*, uint32_t, size_t))
+static int flash_erase_region_and_verify_ext (const struct flash *flash, uint32_t start_addr,
+	size_t length, int (*erase) (const struct flash*, uint32_t, size_t))
 {
 	int status;
 
@@ -802,7 +803,7 @@ static int flash_erase_region_and_verify_ext (struct flash *flash, uint32_t star
  *
  * @return 0 if the region was successfully erased or an error code.
  */
-int flash_erase_region_and_verify (struct flash *flash, uint32_t start_addr, size_t length)
+int flash_erase_region_and_verify (const struct flash *flash, uint32_t start_addr, size_t length)
 {
 	return flash_erase_region_and_verify_ext (flash, start_addr, length, flash_erase_region);
 }
@@ -820,7 +821,8 @@ int flash_erase_region_and_verify (struct flash *flash, uint32_t start_addr, siz
  *
  * @return 0 if the region was successfully erased or an error code.
  */
-int flash_sector_erase_region_and_verify (struct flash *flash, uint32_t start_addr, size_t length)
+int flash_sector_erase_region_and_verify (const struct flash *flash, uint32_t start_addr,
+	size_t length)
 {
 	return flash_erase_region_and_verify_ext (flash, start_addr, length, flash_sector_erase_region);
 }
@@ -836,8 +838,8 @@ int flash_sector_erase_region_and_verify (struct flash *flash, uint32_t start_ad
  *
  * @return 0 if the data was successfully programmed in flash or an error code.
  */
-static int flash_program_data_ext (struct flash *flash, uint32_t start_addr, const uint8_t *data,
-	size_t length, int (*erase) (struct flash*, uint32_t, size_t))
+static int flash_program_data_ext (const struct flash *flash, uint32_t start_addr,
+	const uint8_t *data, size_t length, int (*erase) (const struct flash*, uint32_t, size_t))
 {
 	int status;
 
@@ -876,7 +878,7 @@ static int flash_program_data_ext (struct flash *flash, uint32_t start_addr, con
  *
  * @return 0 if the data was successfully programmed in flash or an error code.
  */
-int flash_program_data (struct flash *flash, uint32_t start_addr, const uint8_t *data,
+int flash_program_data (const struct flash *flash, uint32_t start_addr, const uint8_t *data,
 	size_t length)
 {
 	return flash_program_data_ext (flash, start_addr, data, length, flash_erase_region);
@@ -893,7 +895,7 @@ int flash_program_data (struct flash *flash, uint32_t start_addr, const uint8_t 
  *
  * @return 0 if the data was successfully programmed in flash or an error code.
  */
-int flash_sector_program_data (struct flash *flash, uint32_t start_addr, const uint8_t *data,
+int flash_sector_program_data (const struct flash *flash, uint32_t start_addr, const uint8_t *data,
 	size_t length)
 {
 	return flash_program_data_ext (flash, start_addr, data, length, flash_sector_erase_region);
@@ -909,7 +911,7 @@ int flash_sector_program_data (struct flash *flash, uint32_t start_addr, const u
  *
  * @return 0 if the data in the flash exactly matches the expected data or an error code.
  */
-int flash_verify_data (struct flash *flash, uint32_t start_addr, const uint8_t *data,
+int flash_verify_data (const struct flash *flash, uint32_t start_addr, const uint8_t *data,
 	size_t length)
 {
 	if (data == NULL) {
@@ -932,8 +934,8 @@ int flash_verify_data (struct flash *flash, uint32_t start_addr, const uint8_t *
  *
  * @return 0 if the data was successfully programmed in flash or an error code.
  */
-static int flash_program_and_verify_ext (struct flash *flash, uint32_t start_addr,
-	const uint8_t *data, size_t length, int (*erase) (struct flash*, uint32_t, size_t))
+static int flash_program_and_verify_ext (const struct flash *flash, uint32_t start_addr,
+	const uint8_t *data, size_t length, int (*erase) (const struct flash*, uint32_t, size_t))
 {
 	int status;
 
@@ -959,7 +961,7 @@ static int flash_program_and_verify_ext (struct flash *flash, uint32_t start_add
  *
  * @return 0 if the data was successfully programmed in flash or an error code.
  */
-int flash_program_and_verify (struct flash *flash, uint32_t start_addr, const uint8_t *data,
+int flash_program_and_verify (const struct flash *flash, uint32_t start_addr, const uint8_t *data,
 	size_t length)
 {
 	return flash_program_and_verify_ext (flash, start_addr, data, length, flash_erase_region);
@@ -979,8 +981,8 @@ int flash_program_and_verify (struct flash *flash, uint32_t start_addr, const ui
  *
  * @return 0 if the data was successfully programmed in flash or an error code.
  */
-int flash_sector_program_and_verify (struct flash *flash, uint32_t start_addr, const uint8_t *data,
-	size_t length)
+int flash_sector_program_and_verify (const struct flash *flash, uint32_t start_addr,
+	const uint8_t *data, size_t length)
 {
 	return flash_program_and_verify_ext (flash, start_addr, data, length,
 		flash_sector_erase_region);
@@ -1000,7 +1002,7 @@ int flash_sector_program_and_verify (struct flash *flash, uint32_t start_addr, c
  *
  * @return 0 if the data was successfully programmed in flash or an error code.
  */
-int flash_write_and_verify (struct flash *flash, uint32_t start_addr, const uint8_t *data,
+int flash_write_and_verify (const struct flash *flash, uint32_t start_addr, const uint8_t *data,
 	size_t length)
 {
 	return flash_program_and_verify_ext (flash, start_addr, data, length, NULL);
@@ -1064,8 +1066,8 @@ static int flash_check_copy_region (uint32_t dest_addr, uint32_t src_addr, size_
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-static int flash_copy_data_to_blank_region (struct flash *dest_flash, uint32_t dest_addr,
-	struct flash *src_flash, uint32_t src_addr, size_t length, uint32_t page, uint8_t verify)
+static int flash_copy_data_to_blank_region (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length, uint32_t page, uint8_t verify)
 {
 	uint8_t data[page];
 	size_t block_len;
@@ -1125,10 +1127,10 @@ static int flash_copy_data_to_blank_region (struct flash *dest_flash, uint32_t d
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-static int flash_copy_data_region_ext (struct flash *dest_flash, uint32_t dest_addr,
-	struct flash *src_flash, uint32_t src_addr, size_t length,
-	int (*erase) (struct flash*, uint32_t, size_t), int (*block_size) (struct flash*, uint32_t*),
-	uint8_t verify)
+static int flash_copy_data_region_ext (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length,
+	int (*erase) (const struct flash*, uint32_t, size_t),
+	int (*block_size) (const struct flash*, uint32_t*), uint8_t verify)
 {
 	uint32_t page;
 	int status;
@@ -1194,9 +1196,9 @@ static int flash_copy_data_region_ext (struct flash *dest_flash, uint32_t dest_a
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-static int flash_copy_data_region (struct flash *dest_flash, uint32_t dest_addr,
-	struct flash *src_flash, uint32_t src_addr, size_t length,
-	int (*erase) (struct flash*, uint32_t, size_t), uint8_t verify)
+static int flash_copy_data_region (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length,
+	int (*erase) (const struct flash*, uint32_t, size_t), uint8_t verify)
 {
 	if ((dest_flash == NULL) || (src_flash == NULL)) {
 		return FLASH_UTIL_INVALID_ARGUMENT;
@@ -1222,8 +1224,8 @@ static int flash_copy_data_region (struct flash *dest_flash, uint32_t dest_addr,
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-static int flash_sector_copy_data_region (struct flash *dest_flash, uint32_t dest_addr,
-	struct flash *src_flash, uint32_t src_addr, size_t length, uint8_t verify)
+static int flash_sector_copy_data_region (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length, uint8_t verify)
 {
 	if ((dest_flash == NULL) || (src_flash == NULL)) {
 		return FLASH_UTIL_INVALID_ARGUMENT;
@@ -1247,7 +1249,7 @@ static int flash_sector_copy_data_region (struct flash *dest_flash, uint32_t des
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_copy (struct flash *flash, uint32_t dest_addr, uint32_t src_addr, size_t length)
+int flash_copy (const struct flash *flash, uint32_t dest_addr, uint32_t src_addr, size_t length)
 {
 	return flash_copy_data_region (flash, dest_addr, flash, src_addr, length,
 		flash_erase_region, 0);
@@ -1267,7 +1269,8 @@ int flash_copy (struct flash *flash, uint32_t dest_addr, uint32_t src_addr, size
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_sector_copy (struct flash *flash, uint32_t dest_addr, uint32_t src_addr, size_t length)
+int flash_sector_copy (const struct flash *flash, uint32_t dest_addr, uint32_t src_addr,
+	size_t length)
 {
 	return flash_sector_copy_data_region (flash, dest_addr, flash, src_addr, length, 0);
 }
@@ -1282,7 +1285,7 @@ int flash_sector_copy (struct flash *flash, uint32_t dest_addr, uint32_t src_add
  *
  * @return 0 if the two regions contain the same data or an error code.
  */
-int flash_verify_copy (struct flash *flash, uint32_t addr1, uint32_t addr2, size_t length)
+int flash_verify_copy (const struct flash *flash, uint32_t addr1, uint32_t addr2, size_t length)
 {
 	return flash_verify_copy_ext (flash, addr1, flash, addr2, length);
 }
@@ -1302,7 +1305,7 @@ int flash_verify_copy (struct flash *flash, uint32_t addr1, uint32_t addr2, size
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_copy_and_verify (struct flash *flash, uint32_t dest_addr, uint32_t src_addr,
+int flash_copy_and_verify (const struct flash *flash, uint32_t dest_addr, uint32_t src_addr,
 	size_t length)
 {
 	return flash_copy_data_region (flash, dest_addr, flash, src_addr, length,
@@ -1324,7 +1327,7 @@ int flash_copy_and_verify (struct flash *flash, uint32_t dest_addr, uint32_t src
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_sector_copy_and_verify (struct flash *flash, uint32_t dest_addr, uint32_t src_addr,
+int flash_sector_copy_and_verify (const struct flash *flash, uint32_t dest_addr, uint32_t src_addr,
 	size_t length)
 {
 	return flash_sector_copy_data_region (flash, dest_addr, flash, src_addr, length, 1);
@@ -1344,7 +1347,8 @@ int flash_sector_copy_and_verify (struct flash *flash, uint32_t dest_addr, uint3
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_copy_to_blank (struct flash *flash, uint32_t dest_addr, uint32_t src_addr, size_t length)
+int flash_copy_to_blank (const struct flash *flash, uint32_t dest_addr, uint32_t src_addr,
+	size_t length)
 {
 	return flash_copy_data_region (flash, dest_addr, flash, src_addr, length, NULL, 0);
 }
@@ -1364,8 +1368,8 @@ int flash_copy_to_blank (struct flash *flash, uint32_t dest_addr, uint32_t src_a
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_copy_to_blank_and_verify (struct flash *flash, uint32_t dest_addr, uint32_t src_addr,
-	size_t length)
+int flash_copy_to_blank_and_verify (const struct flash *flash, uint32_t dest_addr,
+	uint32_t src_addr, size_t length)
 {
 	return flash_copy_data_region (flash, dest_addr, flash, src_addr, length, NULL, 1);
 }
@@ -1386,8 +1390,8 @@ int flash_copy_to_blank_and_verify (struct flash *flash, uint32_t dest_addr, uin
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_copy_ext (struct flash *dest_flash, uint32_t dest_addr, struct flash *src_flash,
-	uint32_t src_addr, size_t length)
+int flash_copy_ext (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length)
 {
 	return flash_copy_data_region (dest_flash, dest_addr, src_flash, src_addr, length,
 		flash_erase_region, 0);
@@ -1409,8 +1413,8 @@ int flash_copy_ext (struct flash *dest_flash, uint32_t dest_addr, struct flash *
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_sector_copy_ext (struct flash *dest_flash, uint32_t dest_addr,
-	struct flash *src_flash, uint32_t src_addr, size_t length)
+int flash_sector_copy_ext (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length)
 {
 	return flash_sector_copy_data_region (dest_flash, dest_addr, src_flash, src_addr, length, 0);
 }
@@ -1427,7 +1431,7 @@ int flash_sector_copy_ext (struct flash *dest_flash, uint32_t dest_addr,
  *
  * @return 0 if the two regions contain the same data or an error code.
  */
-int flash_verify_copy_ext (struct flash *flash1, uint32_t addr1, struct flash *flash2,
+int flash_verify_copy_ext (const struct flash *flash1, uint32_t addr1, const struct flash *flash2,
 	uint32_t addr2, size_t length)
 {
 	uint8_t data[FLASH_VERIFICATION_BLOCK];
@@ -1471,8 +1475,8 @@ int flash_verify_copy_ext (struct flash *flash1, uint32_t addr1, struct flash *f
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_copy_ext_and_verify (struct flash *dest_flash, uint32_t dest_addr,
-	struct flash *src_flash, uint32_t src_addr, size_t length)
+int flash_copy_ext_and_verify (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length)
 {
 	return flash_copy_data_region (dest_flash, dest_addr, src_flash, src_addr, length,
 		flash_erase_region, 1);
@@ -1495,8 +1499,8 @@ int flash_copy_ext_and_verify (struct flash *dest_flash, uint32_t dest_addr,
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_sector_copy_ext_and_verify (struct flash *dest_flash, uint32_t dest_addr,
-	struct flash *src_flash, uint32_t src_addr, size_t length)
+int flash_sector_copy_ext_and_verify (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length)
 {
 	return flash_sector_copy_data_region (dest_flash, dest_addr, src_flash, src_addr, length, 1);
 }
@@ -1517,8 +1521,8 @@ int flash_sector_copy_ext_and_verify (struct flash *dest_flash, uint32_t dest_ad
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_copy_ext_to_blank (struct flash *dest_flash, uint32_t dest_addr, struct flash *src_flash,
-	uint32_t src_addr, size_t length)
+int flash_copy_ext_to_blank (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length)
 {
 	return flash_copy_data_region (dest_flash, dest_addr, src_flash, src_addr, length, NULL, 0);
 }
@@ -1540,8 +1544,8 @@ int flash_copy_ext_to_blank (struct flash *dest_flash, uint32_t dest_addr, struc
  *
  * @return 0 if the data was successfully copied or an error code.
  */
-int flash_copy_ext_to_blank_and_verify (struct flash *dest_flash, uint32_t dest_addr,
-	struct flash *src_flash, uint32_t src_addr, size_t length)
+int flash_copy_ext_to_blank_and_verify (const struct flash *dest_flash, uint32_t dest_addr,
+	const struct flash *src_flash, uint32_t src_addr, size_t length)
 {
 	return flash_copy_data_region (dest_flash, dest_addr, src_flash, src_addr, length, NULL, 1);
 }

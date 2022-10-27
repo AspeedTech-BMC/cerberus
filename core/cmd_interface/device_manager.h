@@ -6,7 +6,20 @@
 
 #include <stdint.h>
 #include "status/rot_status.h"
+#include "manifest/manifest_format.h"
 #include "common/certificate.h"
+#include "crypto/hash.h"
+
+
+/**
+ * Number in device table reserved for self
+ */
+#define DEVICE_MANAGER_SELF_DEVICE_NUM					0
+
+/**
+ * Number in device table reserved for MCTP bridge
+ */
+#define DEVICE_MANAGER_MCTP_BRIDGE_DEVICE_NUM			1
 
 
 /**
@@ -17,16 +30,6 @@ enum {
 	DEVICE_MANAGER_AVAILABLE,							/**< Device ready for communication, but unauthenticated */
 	DEVICE_MANAGER_AUTHENTICATED,						/**< Authenticated state */
 	NUM_DEVICE_MANAGER_STATES							/**< Number of device states */
-};
-
-/**
- * Device directions on bus relative to the local Cerberus.
- */
-enum {
-	DEVICE_MANAGER_UPSTREAM = 0,						/**< Upstream device */
-	DEVICE_MANAGER_DOWNSTREAM,							/**< Downstream device */
-	DEVICE_MANAGER_SELF,								/**< Self entry */
-	NUM_DEVICE_DIRECTIONS								/**< Number of device directions */
 };
 
 /**
@@ -147,8 +150,8 @@ struct device_manager_cert_chain {
 struct device_manager_entry {
 	struct device_manager_info info;					/**< Device info and capabilities*/
 	struct device_manager_cert_chain cert_chain;		/**< Device certificate chain */
-	uint8_t direction;									/**< Direction in hierarchy relative to Cerberus */
 	uint8_t state;										/**< Device state */
+	uint8_t component_type[SHA256_HASH_LENGTH];			/**< Digest of component type key in PCD and CFM */
 };
 
 /**
@@ -168,12 +171,11 @@ void device_manager_release (struct device_manager *mgr);
 int device_manager_resize_entries_table (struct device_manager *mgr, int num_devices);
 
 int device_manager_get_device_num (struct device_manager *mgr, uint8_t eid);
-int device_manager_get_device_direction (struct device_manager *mgr, int device_num);
 int device_manager_get_device_addr (struct device_manager *mgr, int device_num);
 int device_manager_get_device_eid (struct device_manager *mgr, int device_num);
 int device_manager_update_device_eid (struct device_manager *mgr, int device_num, uint8_t eid);
-int device_manager_update_device_entry (struct device_manager *mgr, int device_num,
-	uint8_t direction, uint8_t eid, uint8_t smbus_addr);
+int device_manager_update_device_entry (struct device_manager *mgr, int device_num, uint8_t eid,
+	uint8_t smbus_addr);
 
 int device_manager_get_device_capabilities (struct device_manager *mgr, int device_num,
 	struct device_manager_full_capabilities *capabilities);
@@ -205,6 +207,10 @@ int device_manager_get_device_cert_chain (struct device_manager *mgr, int device
 
 int device_manager_get_device_state (struct device_manager *mgr, int device_num);
 int device_manager_update_device_state (struct device_manager *mgr, int device_num, int state);
+
+const uint8_t* device_manager_get_component_type (struct device_manager *mgr, uint8_t eid);
+int device_manager_update_component_type (struct device_manager *mgr, struct hash_engine *hash,
+	uint8_t eid, const char* component_type);
 
 
 #define	DEVICE_MGR_ERROR(code)		ROT_ERROR (ROT_MODULE_DEVICE_MANAGER, code)

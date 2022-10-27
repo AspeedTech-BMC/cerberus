@@ -5,11 +5,11 @@
 #define CERBERUS_PROTOCOL_H_
 
 #include <stdint.h>
-#include "mctp/mctp_protocol.h"
+#include "mctp/mctp_base_protocol.h"
 
 
 #define CERBERUS_PROTOCOL_MIN_MSG_LEN						(sizeof (struct cerberus_protocol_header))
-#define CERBERUS_PROTOCOL_MAX_PAYLOAD_PER_MSG				(MCTP_PROTOCOL_MAX_MESSAGE_BODY - CERBERUS_PROTOCOL_MIN_MSG_LEN)
+#define CERBERUS_PROTOCOL_MAX_PAYLOAD_PER_MSG				(MCTP_BASE_PROTOCOL_MAX_MESSAGE_BODY - CERBERUS_PROTOCOL_MIN_MSG_LEN)
 
 #define CERBERUS_PROTOCOL_MSFT_PCI_VID						0x1414
 #define CERBERUS_PROTOCOL_PROTOCOL_VERSION					4
@@ -41,7 +41,7 @@ enum {
 	CERBERUS_PROTOCOL_GET_LOG_INFO = 0x4F,						/**< Get log info */
 	CERBERUS_PROTOCOL_READ_LOG,									/**< Read back log */
 	CERBERUS_PROTOCOL_CLEAR_LOG,								/**< Clear log */
-	CERBERUS_PROTOCOL_GET_ATTESTATION_DATA,						/**< Retrive raw data for log measurements */
+	CERBERUS_PROTOCOL_GET_ATTESTATION_DATA,						/**< Retrieve raw data for log measurements */
 	CERBERUS_PROTOCOL_GET_PFM_ID = 0x59,						/**< Get PFM ID */
 	CERBERUS_PROTOCOL_GET_PFM_SUPPORTED_FW,						/**< Get PFM supported FW versions */
 	CERBERUS_PROTOCOL_INIT_PFM_UPDATE,							/**< Initialize PFM update process */
@@ -55,7 +55,7 @@ enum {
 	CERBERUS_PROTOCOL_INIT_PCD_UPDATE,							/**< Initialize PCD update process */
 	CERBERUS_PROTOCOL_PCD_UPDATE,								/**< Send PCD update data */
 	CERBERUS_PROTOCOL_COMPLETE_PCD_UPDATE,						/**< Trigger Cerberus to verify PCD update */
-	CERBERUS_PROTOCOL_INIT_FW_UPDATE,							/**< Intiailize FW update process */
+	CERBERUS_PROTOCOL_INIT_FW_UPDATE,							/**< Initialize FW update process */
 	CERBERUS_PROTOCOL_FW_UPDATE,								/**< Send FW update data */
 	CERBERUS_PROTOCOL_GET_UPDATE_STATUS,						/**< Get update status */
 	CERBERUS_PROTOCOL_COMPLETE_FW_UPDATE,						/**< Trigger Cerberus to start FW update */
@@ -87,10 +87,7 @@ enum {
 	CERBERUS_PROTOCOL_DEBUG_START_ATTESTATION = 0xF0,			/**< Debug command to start attestation */
 	CERBERUS_PROTOCOL_DEBUG_GET_ATTESTATION_STATE,				/**< Debug command to get attestation status */
 	CERBERUS_PROTOCOL_DEBUG_FILL_LOG,							/**< Debug command to fill up debug log */
-	CERBERUS_PROTOCOL_DEBUG_GET_DEVICE_MANAGER_CERT,			/**< Debug command to retrieve device certificate */
-	CERBERUS_PROTOCOL_DEBUG_GET_DEVICE_MANAGER_CERT_DIGEST,		/**< Debug command to retrieve device certificate digest */
-	CERBERUS_PROTOCOL_DEBUG_GET_DEVICE_MANAGER_CHALLENGE,		/**< Debug command to retrieve device challenge */
-	CERBORUS_PROTOCOL_DEBUG_RESERVED = 0xFF,					/**< Not available to use as a debug command. */
+	CERBERUS_PROTOCOL_DEBUG_RESERVED = 0xFF,					/**< Not available to use as a debug command. */
 };
 
 /**

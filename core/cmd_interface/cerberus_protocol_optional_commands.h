@@ -19,7 +19,7 @@
 #include "firmware/firmware_update_control.h"
 #include "manifest/pfm/pfm_manager.h"
 #include "manifest/manifest_cmd_interface.h"
-#include "mctp/mctp_protocol.h"
+#include "mctp/mctp_base_protocol.h"
 #include "recovery/recovery_image_cmd_interface.h"
 #include "recovery/recovery_image_manager.h"
 
@@ -66,7 +66,10 @@ enum {
  */
 enum {
 	CERBERUS_PROTOCOL_REVERT_BYPASS = 0,					/**< Reset device to the unprotected state */
-	CERBERUS_PROTOCOL_FACTORY_RESET							/**< Restore factory default configuration */
+	CERBERUS_PROTOCOL_FACTORY_RESET,						/**< Restore factory default configuration */
+	CERBERUS_PROTOCOL_CLEAR_PCD,							/**< Remove any PCD used by the device. */
+	CERBERUS_PROTOCOL_CLEAR_CFM,							/**< Remove any CFM used for component attestation. */
+	CERBERUS_PROTOCOL_RESET_INTRUSION,						/**< Clear the device intrusion state. */
 };
 
 /**
@@ -929,45 +932,44 @@ struct cerberus_protocol_session_sync_response {
 
 
 int cerberus_protocol_fw_update_init (struct firmware_update_control *control,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 int cerberus_protocol_fw_update (struct firmware_update_control *control,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 int cerberus_protocol_fw_update_start (struct firmware_update_control *control,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 
 int cerberus_protocol_get_log_info (struct pcr_store *pcr_store,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 int cerberus_protocol_log_read (struct pcr_store *pcr_store, struct hash_engine *hash,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 int cerberus_protocol_log_clear (struct cmd_background *background,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 
-int cerberus_protocol_get_pfm_id (struct pfm_manager *pfm_mgr_0, struct pfm_manager *pfm_mgr_1,
-	struct cmd_interface_request *request);
-int cerberus_protocol_get_pfm_fw (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct pfm_manager *pfm_mgr_0,
-	struct pfm_manager *pfm_mgr_1, struct cmd_interface_request *request);
+int cerberus_protocol_get_pfm_id (struct pfm_manager* pfm_mgr[], uint8_t num_ports,
+	struct cmd_interface_msg *request);
+int cerberus_protocol_get_pfm_fw (struct pfm_manager* pfm_mgr[], uint8_t num_ports,
+	struct cmd_interface_msg *request);
 
 struct manifest_cmd_interface* cerberus_protocol_get_pfm_cmd_interface (
 	struct manifest_cmd_interface *pfm_0, struct manifest_cmd_interface *pfm_1, uint8_t port);
 
-int cerberus_protocol_pfm_update_init (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct cmd_interface_request *request);
-int cerberus_protocol_pfm_update (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct cmd_interface_request *request);
-int cerberus_protocol_pfm_update_complete (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct cmd_interface_request *request);
+int cerberus_protocol_pfm_update_init (struct manifest_cmd_interface* pfm_cmd[], uint8_t num_ports,
+	struct cmd_interface_msg *request);
+int cerberus_protocol_pfm_update (struct manifest_cmd_interface *pfm_cmd[], uint8_t num_ports,
+	struct cmd_interface_msg *request);
+int cerberus_protocol_pfm_update_complete (struct manifest_cmd_interface *pfm_cmd[],
+	uint8_t num_ports, struct cmd_interface_msg *request);
 
 int cerberus_protocol_get_host_reset_status (struct host_control *host_0_ctrl,
-	struct host_control *host_1_ctrl, struct cmd_interface_request *request);
+	struct host_control *host_1_ctrl, struct cmd_interface_msg *request);
 
 int cerberus_protocol_unseal_message (struct cmd_background *background,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 int cerberus_protocol_unseal_message_result (struct cmd_background *background,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 
 int cerberus_protocol_reset_config (struct cmd_authorization *cmd_auth,
-	struct cmd_background *background, struct cmd_interface_request *request);
+	struct cmd_background *background, struct cmd_interface_msg *request);
 
 struct recovery_image_cmd_interface* cerberus_protocol_get_recovery_image_cmd_interface (
 	struct recovery_image_cmd_interface *recovery_0,
@@ -977,21 +979,21 @@ struct recovery_image_manager* cerberus_protocol_get_recovery_image_manager (
 	struct recovery_image_manager *recovery_manager_1, uint8_t port);
 
 int cerberus_protocol_prepare_recovery_image ( struct recovery_image_cmd_interface *recovery_0,
-	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_request *request);
+	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_msg *request);
 int cerberus_protocol_update_recovery_image (struct recovery_image_cmd_interface *recovery_0,
-	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_request *request);
+	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_msg *request);
 int cerberus_protocol_activate_recovery_image (struct recovery_image_cmd_interface *recovery_0,
-	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_request *request);
+	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_msg *request);
 int cerberus_protocol_get_recovery_image_id (struct recovery_image_manager *manager_0,
-	struct recovery_image_manager *manager_1, struct cmd_interface_request *request);
+	struct recovery_image_manager *manager_1, struct cmd_interface_msg *request);
 
 int cerberus_protocol_get_attestation_data (struct pcr_store *store,
-	struct cmd_interface_request *request);
+	struct cmd_interface_msg *request);
 
 int cerberus_protocol_key_exchange (struct session_manager *session,
-	struct cmd_interface_request *request, uint8_t encrypted);
+	struct cmd_interface_msg *request, uint8_t encrypted);
 int cerberus_protocol_session_sync (struct session_manager *session,
-	struct cmd_interface_request *request, uint8_t encrypted);
+	struct cmd_interface_msg *request, uint8_t encrypted);
 
 
-#endif // CERBERUS_PROTOCOL_OPTIONAL_COMMANDS_H_
+#endif /* CERBERUS_PROTOCOL_OPTIONAL_COMMANDS_H_ */

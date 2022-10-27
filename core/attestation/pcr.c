@@ -172,7 +172,7 @@ int pcr_init (struct pcr_bank *pcr, uint8_t pcr_num_measurements)
 
 	if (pcr_num_measurements == 0) {
 		pcr_num_measurements = 1;
-		pcr->explicit = true;
+		pcr->explicit_measurement = true;
 	}
 
 	pcr->measurement_list = platform_calloc (pcr_num_measurements, sizeof (struct pcr_measurement));
@@ -363,7 +363,7 @@ int pcr_compute (struct pcr_bank *pcr, struct hash_engine *hash, uint8_t *measur
 		platform_mutex_lock (&pcr->lock);
 	}
 
-	if (!pcr->explicit) {
+	if (!pcr->explicit_measurement) {
 		for (i_measurement = 0; i_measurement < (int) pcr->num_measurements; ++i_measurement) {
 			status = hash->start_sha256 (hash);
 			if (status != 0) {
@@ -402,7 +402,7 @@ int pcr_compute (struct pcr_bank *pcr, struct hash_engine *hash, uint8_t *measur
 		platform_mutex_unlock (&pcr->lock);
 	}
 
-	if (pcr->explicit) {
+	if (pcr->explicit_measurement) {
 		return 1;
 	}
 
@@ -431,7 +431,7 @@ exit:
 int pcr_set_measurement_data (struct pcr_bank *pcr, uint8_t measurement_index,
 	struct pcr_measured_data *measurement_data)
 {
-	if ((pcr == NULL) || (measurement_data == NULL)) {
+	if (pcr == NULL) {
 		return PCR_INVALID_ARGUMENT;
 	}
 
@@ -439,33 +439,35 @@ int pcr_set_measurement_data (struct pcr_bank *pcr, uint8_t measurement_index,
 		return PCR_INVALID_INDEX;
 	}
 
-	switch (measurement_data->type) {
-		case PCR_DATA_TYPE_1BYTE:
-		case PCR_DATA_TYPE_2BYTE:
-		case PCR_DATA_TYPE_4BYTE:
-		case PCR_DATA_TYPE_8BYTE:
-			break;
+	if (measurement_data != NULL) {
+		switch (measurement_data->type) {
+			case PCR_DATA_TYPE_1BYTE:
+			case PCR_DATA_TYPE_2BYTE:
+			case PCR_DATA_TYPE_4BYTE:
+			case PCR_DATA_TYPE_8BYTE:
+				break;
 
-		case PCR_DATA_TYPE_MEMORY:
-			if (measurement_data->data.memory.buffer == NULL) {
-				return PCR_MEASURED_DATA_INVALID_MEMORY;
-			}
-			break;
+			case PCR_DATA_TYPE_MEMORY:
+				if (measurement_data->data.memory.buffer == NULL) {
+					return PCR_MEASURED_DATA_INVALID_MEMORY;
+				}
+				break;
 
-		case PCR_DATA_TYPE_FLASH:
-			if (measurement_data->data.flash.flash == NULL) {
-				return PCR_MEASURED_DATA_INVALID_FLASH_DEVICE;
-			}
-			break;
+			case PCR_DATA_TYPE_FLASH:
+				if (measurement_data->data.flash.flash == NULL) {
+					return PCR_MEASURED_DATA_INVALID_FLASH_DEVICE;
+				}
+				break;
 
-		case PCR_DATA_TYPE_CALLBACK:
-			if (measurement_data->data.callback.get_data == NULL) {
-				return PCR_MEASURED_DATA_INVALID_CALLBACK;
-			}
-			break;
+			case PCR_DATA_TYPE_CALLBACK:
+				if (measurement_data->data.callback.get_data == NULL) {
+					return PCR_MEASURED_DATA_INVALID_CALLBACK;
+				}
+				break;
 
-		default:
-			return PCR_INVALID_DATA_TYPE;
+			default:
+				return PCR_INVALID_DATA_TYPE;
+		}
 	}
 
 	pcr->measurement_list[measurement_index].measured_data = measurement_data;
@@ -715,7 +717,7 @@ int pcr_get_num_measurements (struct pcr_bank *pcr)
 		return PCR_INVALID_ARGUMENT;
 	}
 
-	if (pcr->explicit) {
+	if (pcr->explicit_measurement) {
 		return 0;
 	}
 
@@ -804,8 +806,8 @@ int pcr_get_tcg_log (struct pcr_bank *pcr, uint32_t pcr_num, uint8_t *buffer, si
 	size_t num_bytes = 0;
 	size_t i_measurement = 0;
 	uint8_t *entry_ptr = NULL;
-	size_t entry_len;
-	size_t entry_offset;
+	size_t entry_len = 0;
+	size_t entry_offset = 0;
 	int status = 0;
 
 	if ((pcr == NULL) || (buffer == NULL) || (total_len == NULL)) {
@@ -814,7 +816,7 @@ int pcr_get_tcg_log (struct pcr_bank *pcr, uint32_t pcr_num, uint8_t *buffer, si
 
 	*total_len = 0;
 
-	if (pcr->explicit) {
+	if (pcr->explicit_measurement) {
 		return 0;
 	}
 

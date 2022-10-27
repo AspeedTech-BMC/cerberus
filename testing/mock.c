@@ -534,6 +534,37 @@ int mock_expect_share_save_arg (struct mock *from, int src_id, struct mock *to, 
 }
 
 /**
+ * Set a custom action to execute while processing an expected call on the mock.  The action will be
+ * executed prior to any argument processing by the mock.
+ *
+ * This will only update the last expectation that was added to the mock and an expectation can only
+ * have one action assigned.  If this is called multiple times, the last action will be the one that
+ * is executed.
+ *
+ * @param mock The mock instance to update.
+ * @param action The action to execute in response to the expected call.
+ * @param context A user context to save with the expectation.  This will be available to the action
+ * through expected parameters for the call that are provided to the action callback.
+ *
+ * @return 0 if the mock was updated successfully or an error code.
+ */
+int mock_expect_external_action (struct mock *mock, mock_call_action action, void *context)
+{
+	if ((mock == NULL) || (action == NULL)) {
+		return MOCK_INVALID_ARGUMENT;
+	}
+
+	if (mock->exp_tail == NULL) {
+		return MOCK_NO_EXPECTATION;
+	}
+
+	mock->exp_tail->action = action;
+	mock->exp_tail->context = context;
+
+	return 0;
+}
+
+/**
  * Print the information for an expected function call.
  *
  * @param mock The mock expecting the function call.
@@ -542,7 +573,7 @@ int mock_expect_share_save_arg (struct mock *from, int src_id, struct mock *to, 
 static void mock_print_func (struct mock *mock, struct mock_call *call)
 {
 	int i;
-	platform_printf ("%s (%p", mock->func_name_map (call->func), call->instance);
+	platform_printf ("%s (%p", mock->func_name_map ((void*) call->func), call->instance);
 	for (i = 0; i < call->argc; i++) {
 		platform_printf (", 0x%lx", call->argv[i].value);
 	}
@@ -742,7 +773,7 @@ int mock_validate (struct mock *mock)
 					else {
 						for (i = 0; i < exp_pos->argc; i++) {
 							fail |= mock_validate_arg (mock, current,
-								mock->arg_name_map (exp_pos->func, i), &exp_pos->argv[i],
+								mock->arg_name_map ((void*) exp_pos->func, i), &exp_pos->argv[i],
 								&call_pos->argv[i]);
 						}
 					}
@@ -850,7 +881,7 @@ void mock_set_name (struct mock *mock, const char *name)
  *
  * @return The new call instance or null.
  */
-struct mock_call* mock_allocate_call (void *func, void *instance, size_t args, ...)
+struct mock_call* mock_allocate_call (const void *func, const void *instance, size_t args, ...)
 {
 	struct mock_call *call;
 	va_list arg_list;
@@ -933,6 +964,11 @@ intptr_t mock_return_from_call (struct mock *mock, struct mock_call *call)
 	}
 
 	if (expected != NULL) {
+		/* Call any external action registered with the expectation. */
+		if (expected->action) {
+			status = expected->action (expected, call);
+		}
+
 		for (i = 0; i < expected->argc; i++) {
 			update_value = false;
 
@@ -993,7 +1029,9 @@ intptr_t mock_return_from_call (struct mock *mock, struct mock_call *call)
 			}
 		}
 
-		status = expected->return_val;
+		if (status == 0) {
+			status = expected->return_val;
+		}
 		mock->next_call = expected->next;
 	}
 

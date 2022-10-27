@@ -31,6 +31,7 @@ enum riot_cert_state {
  * Interface for executing background operations from the command handler.
  */
 struct cmd_background {
+#ifdef CMD_ENABLE_UNSEAL
 	/**
 	 * Process an attestation payload to unseal the device encryption key.
 	 *
@@ -58,7 +59,9 @@ struct cmd_background {
 	 */
 	int (*unseal_result) (struct cmd_background *cmd, uint8_t *key, size_t *key_length,
 		uint32_t *unseal_status);
+#endif
 
+#ifdef CMD_ENABLE_RESET_CONFIG
 	/**
 	 * Remove all configuration necessary for host firmware validation and restore the device to
 	 * bypass mode.
@@ -86,7 +89,20 @@ struct cmd_background {
 	 * @return 0 if the operation was successfully scheduled or an error code.
 	 */
 	int (*clear_platform_config) (struct cmd_background *cmd);
+#endif
 
+#ifdef CMD_ENABLE_INTRUSION
+	/**
+	 * Reset the intrusion state.
+	 *
+	 * @param cmd The background context for executing the operation.
+	 *
+	 * @return 0 if the operation was successfuly scheduled or an error code.
+	 */
+	int (*reset_intrusion) (struct cmd_background *cmd);
+#endif
+
+#if defined CMD_ENABLE_RESET_CONFIG || defined CMD_ENABLE_INTRUSION
 	/**
 	 * Get the status of the last configuration reset operation.
 	 *
@@ -97,7 +113,9 @@ struct cmd_background {
 	 * operation.
 	 */
 	int (*get_config_reset_status) (struct cmd_background *cmd);
+#endif
 
+#ifdef CMD_ENABLE_DEBUG_LOG
 	/**
 	 * Remove all entries from debug log.
 	 *
@@ -107,7 +125,7 @@ struct cmd_background {
 	 */
 	int (*debug_log_clear) (struct cmd_background *cmd);
 
-#ifdef ENABLE_DEBUG_COMMANDS
+#ifdef CMD_SUPPORT_DEBUG_COMMANDS
 	/**
 	 * Fill debug log for testing purposes.
 	 *
@@ -116,6 +134,7 @@ struct cmd_background {
 	 * @return Completion status, 0 if success or an error code.
 	 */
 	int (*debug_log_fill) (struct cmd_background *cmd);
+#endif
 #endif
 
 	/**
@@ -159,6 +178,7 @@ enum {
 	CMD_BACKGROUND_TASK_BUSY = CMD_BACKGROUND_ERROR (0x0A),				/**< The command task is busy performing an operation. */
 	CMD_BACKGROUND_UNSUPPORTED_OP = CMD_BACKGROUND_ERROR (0x0B),		/**< The scheduled operation is not understood by the task. */
 	CMD_BACKGROUND_PLATFORM_CFG_FAILED = CMD_BACKGROUND_ERROR (0x0C),	/**< Failed to clear platform configuration. */
+	CMD_BACKGROUND_INTRUSION_FAILED = CMD_BACKGROUND_ERROR (0x0D),		/**< Failed to reset the intrusion state. */
 };
 
 

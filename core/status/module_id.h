@@ -31,7 +31,7 @@ enum {
 	ROT_MODULE_SPI_FILTER_IRQ = 0x0013,					/**< IRQ handler for the SPI filter. */
 	ROT_MODULE_LOGGING = 0x0014,						/**< Logger for system or security events. */
 	ROT_MODULE_CMD_HANDLER = 0x0015,					/**< Handler for received commands. */
-	ROT_MODULE_MCTP_PROTOCOL = 0x0016,					/**< MCTP protocol handler. */
+	ROT_MODULE_MCTP_BASE_PROTOCOL = 0x0016,				/**< MCTP base protocol handler. */
 	ROT_MODULE_RIOT_CORE = 0x0017,						/**< Implementation of RIoT Core. */
 	ROT_MODULE_HOST_FW_UTIL = 0x0018,					/**< Host firmware validation functions. */
 	ROT_MODULE_BMC_RECOVERY = 0x0019,					/**< BMC recovery manager. */
@@ -97,7 +97,21 @@ enum {
 	ROT_MODULE_HOST_STATE_OBSERVER = 0x0055,			/**< Observers for host state changes. */
 	ROT_MODULE_SYSTEM = 0x0056,							/**< Main system manager. */
 	ROT_MODULE_SYSTEM_OBSERVER = 0x0057,				/**< Observers for system events. */
+<<<<<<< HEAD
 	ROT_MODULE_I2C_FILTER = 0x0010,
+=======
+	ROT_MODULE_PLATFORM_SEMAPHORE = 0x0058,				/**< Platform abstraction for semaphores. */
+	ROT_MODULE_INTRUSION_STATE = 0x0059,				/**< Chassis intrusion state detection. */
+	ROT_MODULE_INTRUSION_STATE_OBSERVER = 0x005a,		/**< Observers for intrusion state changes. */
+	ROT_MODULE_INTRUSION_MANAGER = 0x005b,				/**< Manager for intrusion detection. */
+	ROT_MODULE_CMD_HANDLER_MCTP_CTRL = 0x005c,			/**< Handler for received MCTP control protocol messages. */
+	ROT_MODULE_CERBERUS_PROTOCOL_OBSERVER = 0x005d,		/**< System command interface observer. */
+	ROT_MODULE_ECC_DER_UTIL = 0x005e,					/**< Utilities for handling DER encoded ECC information. */
+	ROT_MODULE_BUFFER_UTIL = 0x005f,					/**< General buffer handling utilities. */
+	ROT_MODULE_OCP_RECOVERY_DEVICE = 0x0060,			/**< Device handler for the OCP Recovery protocol. */
+	ROT_MODULE_OCP_RECOVERY_SMBUS = 0x0061,				/**< SMBus layer for the OCP Recovery protocol. */
+	ROT_MODULE_MCTP_CONTROL_PROTOCOL_OBSERVER = 0x0062,	/**< MCTP control command interface observer. */
+>>>>>>> upstream/master
 };
 
 

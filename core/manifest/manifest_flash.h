@@ -30,7 +30,7 @@ struct manifest_flash {
 	size_t max_signature;						/**< Maximum supported signature length. */
 	struct manifest_toc_header toc_header;		/**< The table of contents header data. */
 	uint8_t toc_hash[SHA512_HASH_LENGTH];		/**< Hash of the manifest table of contents. */
-	enum hash_type toc_hash_type;				/**< The type of hash used in the table of conents. */
+	enum hash_type toc_hash_type;				/**< The type of hash used in the table of contents. */
 	size_t toc_hash_length;						/**< Length of the table of contents hash. */
 	char *platform_id;							/**< Buffer to hold the platform ID. */
 	size_t max_platform_id;						/**< Maximum supported platform ID length. */
@@ -65,12 +65,16 @@ int manifest_flash_read_element_data (struct manifest_flash *manifest, struct ha
 	uint8_t type, int start, uint8_t parent_type, uint32_t read_offset, uint8_t *found,
 	uint8_t *format, size_t *total_len, uint8_t **element, size_t length);
 
+int manifest_flash_get_num_child_elements (struct manifest_flash *manifest,
+	struct hash_engine *hash, int entry, uint8_t type, uint8_t parent_type, uint8_t child_type,
+	size_t *child_len);
+
 uint32_t manifest_flash_get_addr (struct manifest_flash *manifest);
 struct flash* manifest_flash_get_flash (struct manifest_flash *manifest);
 
 int manifest_flash_compare_id (struct manifest_flash *manifest1, struct manifest_flash *manifest2);
 int manifest_flash_compare_platform_id (struct manifest_flash *manifest1,
-	struct manifest_flash *manifest2);
+	struct manifest_flash *manifest2, bool sku_upgrade_permitted);
 
 
 #endif //MANIFEST_FLASH_H

@@ -11,7 +11,11 @@
 /**
  * Global singleton for the debug log.
  */
-extern struct logging *debug_log;
+#ifndef LOGGING_DEBUG_LOG_CONST_INSTANCE
+extern const struct logging *debug_log;
+#else
+extern const struct logging *const debug_log;
+#endif
 
 
 /**
@@ -40,11 +44,12 @@ enum debug_log_component {
 	DEBUG_LOG_COMPONENT_BOOT,					/**< Log entry for the bootloader */
 	DEBUG_LOG_COMPONENT_FLASH,					/**< Log entry for flash. */
 	DEBUG_LOG_COMPONENT_SPI,					/**< Log entry for SPI failures */
-	DEBUG_LOG_COMPONENT_RECOVERY_IMAGE,			/**< Log entry for recovery images */
+	DEBUG_LOG_COMPONENT_RECOVERY,				/**< Log entry for recovery handling */
 	DEBUG_LOG_COMPONENT_MCTP,					/**< Log entry for MCTP stack */
 	DEBUG_LOG_COMPONENT_TPM,					/**< Log entry for TPM */
 	DEBUG_LOG_COMPONENT_RIOT,					/**< Log entry for RIoT */
 	DEBUG_LOG_COMPONENT_SYSTEM,					/**< Log entry for system management. */
+	DEBUG_LOG_COMPONENT_INTRUSION,				/**< Log entry for chassis intrusion. */
 	DEBUG_LOG_COMPONENT_DEVICE_SPECIFIC = 0xf0,	/**< Base component ID for device-specific messages. */
 	/* Component IDs 0xf0 - 0xff are reserved for device-specific logging. */
 };
@@ -107,10 +112,12 @@ struct debug_log_entry {
 
 int debug_log_create_entry (uint8_t severity, uint8_t component, uint8_t msg_index, uint32_t arg1,
 	uint32_t arg2);
+#ifndef LOGGING_DISABLE_FLUSH
 int debug_log_flush (void);
+#endif
 int debug_log_clear (void);
 int debug_log_get_size (void);
 int debug_log_read_contents (uint32_t offset, uint8_t *contents, size_t length);
 
 
-#endif //DEBUG_LOG_H_
+#endif /* DEBUG_LOG_H_ */

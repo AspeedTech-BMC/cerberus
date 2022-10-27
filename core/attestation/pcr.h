@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "status/rot_status.h"
 #include "platform.h"
 #include "crypto/hash.h"
 #include "pcr_data.h"
@@ -42,7 +43,7 @@ struct pcr_measurement {
 struct pcr_bank {
 	struct pcr_measurement *measurement_list;				/**< List of measurements */
 	size_t num_measurements;								/**< Number of measurements */
-	bool explicit;											/**< PCR bank contains an explicit measurement */
+	bool explicit_measurement;								/**< PCR bank contains an explicit measurement */
 	platform_mutex lock;									/**< Synchronization lock */
 };
 
@@ -124,7 +125,7 @@ int pcr_set_measurement_data (struct pcr_bank *pcr, uint8_t measurement_index,
 int pcr_get_measurement_data (struct pcr_bank *pcr, uint8_t measurement_index, size_t offset,
 	uint8_t *buffer, size_t length, uint32_t *total_len);
 
-int pcr_get_tcg_log (struct pcr_bank *pcr, uint32_t pcr_num, uint8_t *buffer, size_t offset, 
+int pcr_get_tcg_log (struct pcr_bank *pcr, uint32_t pcr_num, uint8_t *buffer, size_t offset,
 	size_t length, size_t *total_len);
 
 int pcr_lock (struct pcr_bank *pcr);

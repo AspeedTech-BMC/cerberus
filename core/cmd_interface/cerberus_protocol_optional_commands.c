@@ -20,7 +20,6 @@
 #include "cmd_authorization.h"
 #include "cmd_background.h"
 #include "cmd_interface.h"
-#include "device_manager.h"
 #include "session_manager.h"
 #include "recovery/recovery_image.h"
 #include "cerberus_protocol_required_commands.h"
@@ -29,102 +28,32 @@
 
 
 /**
- * Get PFM cmd interface for a specified PFM.
- *
- * @param pfm_0 PFM command interface for port 0.
- * @param pfm_1 PFM command interface for port 1.
- * @param port The port to query.
- *
- * @return The PFM cmd interface if a valid PFM was found or null.
- */
-struct manifest_cmd_interface* cerberus_protocol_get_pfm_cmd_interface (
-	struct manifest_cmd_interface *pfm_0, struct manifest_cmd_interface *pfm_1, uint8_t port)
-{
-	if (port == 0) {
-		return pfm_0;
-	}
-	else if (port == 1) {
-		return pfm_1;
-	}
-
-	return NULL;
-}
-
-/**
- * Get PFM manager interface for a specified PFM.
- *
- * @param pfm_mgr_0 Port 0 PFM manager.
- * @param pfm_mgr_1 Port 1 PFM manager.
- * @param port The PFM port to query.
- *
- * @return The PFM manager interface if a valid PFM was found or null.
- */
-static struct pfm_manager* cerberus_protocol_get_pfm_manager (struct pfm_manager *pfm_mgr_0,
-	struct pfm_manager *pfm_mgr_1, uint8_t port)
-{
-	if (port == 0) {
-		return pfm_mgr_0;
-	}
-	else if (port == 1) {
-		return pfm_mgr_1;
-	}
-
-	return NULL;
-}
-
-/**
  * Get PFM interface for a specified PFM location.
  *
- * @param pfm_mgr_0 Port 0 PFM manager.
- * @param pfm_mgr_1 Port 1 PFM manager.
- * @param port The PFM port to query.
+ * @param pfm_mgr PFM manager for the requested port.
  * @param region The PFM region to query. 0 for active, 1 for pending.
  * @param pfm Output for the PFM.
  *
  * @return 0 if the operation was successful or an error code.
  */
-static int cerberus_protocol_get_curr_pfm (struct pfm_manager *pfm_mgr_0,
-	struct pfm_manager *pfm_mgr_1, uint8_t port, uint8_t region, struct pfm **pfm)
+static int cerberus_protocol_get_curr_pfm (struct pfm_manager *pfm_mgr, uint8_t region,
+	struct pfm **pfm)
 {
-	struct pfm_manager *curr_pfm_mgr = cerberus_protocol_get_pfm_manager (pfm_mgr_0, pfm_mgr_1,
-		port);
-
-	if (curr_pfm_mgr == NULL) {
+	if (pfm_mgr == NULL) {
 		return CMD_HANDLER_UNSUPPORTED_INDEX;
 	}
 
 	if (region == 0) {
-		*pfm = curr_pfm_mgr->get_active_pfm (curr_pfm_mgr);
+		*pfm = pfm_mgr->get_active_pfm (pfm_mgr);
 	}
 	else if (region == 1) {
-		*pfm = curr_pfm_mgr->get_pending_pfm (curr_pfm_mgr);
+		*pfm = pfm_mgr->get_pending_pfm (pfm_mgr);
 	}
 	else {
 		return CMD_HANDLER_OUT_OF_RANGE;
 	}
 
 	return 0;
-}
-
-/**
- * Release a pfm instance.
- *
- * @param manager PFM manager for port 0.
- * @param manager PFM manager for port 1.
- * @param port The PFM port to query.
- * @param pfm The PFM to release.
- */
-static void cerberus_protocol_free_pfm (struct pfm_manager* pfm_mgr_0,
-	struct pfm_manager* pfm_mgr_1, uint8_t port, struct pfm *pfm)
-{
-	struct pfm_manager *curr_pfm_mgr = NULL;
-
-	curr_pfm_mgr = cerberus_protocol_get_pfm_manager (pfm_mgr_0, pfm_mgr_1, port);
-	if (curr_pfm_mgr == NULL) {
-		return;
-	}
-
-	curr_pfm_mgr->free_pfm (curr_pfm_mgr, pfm);
 }
 
 /**
@@ -174,7 +103,7 @@ struct recovery_image_manager* cerberus_protocol_get_recovery_image_manager (
 }
 
 /**
- * Process FW update init packet
+ * Process FW update init request
  *
  * @param control Firmware update control instance to utilize
  * @param request FW update request to process
@@ -182,7 +111,7 @@ struct recovery_image_manager* cerberus_protocol_get_recovery_image_manager (
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_fw_update_init (struct firmware_update_control *control,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_prepare_fw_update *rq =
 		(struct cerberus_protocol_prepare_fw_update*) request->data;
@@ -196,7 +125,7 @@ int cerberus_protocol_fw_update_init (struct firmware_update_control *control,
 }
 
 /**
- * Process FW update packet
+ * Process FW update request
  *
  * @param control Firmware update control instance to utilize
  * @param request FW update request to process
@@ -204,7 +133,7 @@ int cerberus_protocol_fw_update_init (struct firmware_update_control *control,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_fw_update (struct firmware_update_control *control,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_fw_update *rq = (struct cerberus_protocol_fw_update*) request->data;
 	int status;
@@ -221,7 +150,7 @@ int cerberus_protocol_fw_update (struct firmware_update_control *control,
 }
 
 /**
- * Process FW update start packet
+ * Process FW update start request
  *
  * @param control Firmware update control instance to utilize
  * @param request FW update start request to process
@@ -229,7 +158,7 @@ int cerberus_protocol_fw_update (struct firmware_update_control *control,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_fw_update_start (struct firmware_update_control *control,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	if (request->length != sizeof (struct cerberus_protocol_complete_fw_update)) {
 		return CMD_HANDLER_BAD_LENGTH;
@@ -240,7 +169,7 @@ int cerberus_protocol_fw_update_start (struct firmware_update_control *control,
 }
 
 /**
- * Process log info packet
+ * Process log info request
  *
  * @param pcr_store PCR store instance to utilize
  * @param request Log info request to process
@@ -248,7 +177,7 @@ int cerberus_protocol_fw_update_start (struct firmware_update_control *control,
  * @return 0 if request completed successfully or an error code.
  */
 int cerberus_protocol_get_log_info (struct pcr_store *pcr_store,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_log_info_response *rsp =
 		(struct cerberus_protocol_get_log_info_response*) request->data;
@@ -277,7 +206,7 @@ int cerberus_protocol_get_log_info (struct pcr_store *pcr_store,
 }
 
 /**
- * Process log read packet
+ * Process log read request
  *
  * @param pcr_store PCR store instance to utilize
  * @param hash Hash engine to utilize
@@ -286,7 +215,7 @@ int cerberus_protocol_get_log_info (struct pcr_store *pcr_store,
  * @return 0 if request completed successfully or an error code.
  */
 int cerberus_protocol_log_read (struct pcr_store *pcr_store, struct hash_engine *hash,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_log *rq = (struct cerberus_protocol_get_log*) request->data;
 	struct cerberus_protocol_get_log_response *rsp =
@@ -322,7 +251,7 @@ int cerberus_protocol_log_read (struct pcr_store *pcr_store, struct hash_engine 
 }
 
 /**
- * Process log clear packet
+ * Process log clear request
  *
  * @param background Command background instance to utilize
  * @param request Log clear request to process
@@ -330,7 +259,7 @@ int cerberus_protocol_log_read (struct pcr_store *pcr_store, struct hash_engine 
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_log_clear (struct cmd_background *background,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_clear_log *rq = (struct cerberus_protocol_clear_log*) request->data;
 
@@ -340,10 +269,13 @@ int cerberus_protocol_log_clear (struct cmd_background *background,
 
 	request->length = 0;
 
+#ifdef CMD_ENABLE_DEBUG_LOG
 	if (rq->log_type == CERBERUS_PROTOCOL_DEBUG_LOG) {
 		return background->debug_log_clear (background);
 	}
-	else if (rq->log_type == CERBERUS_PROTOCOL_ATTESTATION_LOG) {
+	else
+#endif
+	if (rq->log_type == CERBERUS_PROTOCOL_ATTESTATION_LOG) {
 		return 0;
 	}
 
@@ -351,7 +283,7 @@ int cerberus_protocol_log_clear (struct cmd_background *background,
 }
 
 /**
- * Process PFM ID version packet
+ * Process PFM ID version request
  *
  * @param pfm PFM to query
  * @param request PFM ID request to process
@@ -359,13 +291,13 @@ int cerberus_protocol_log_clear (struct cmd_background *background,
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_get_pfm_id_version (struct pfm *pfm,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_get_manifest_id_version (&pfm->base, request);
 }
 
 /**
- * Process PFM ID platform packet
+ * Process PFM ID platform request
  *
  * @param pfm PFM to query
  * @param request PFM ID request to process
@@ -373,22 +305,22 @@ static int cerberus_protocol_get_pfm_id_version (struct pfm *pfm,
  * @return 0 if request processing completed successfully or an error code.
  */
 static int cerberus_protocol_get_pfm_id_platform (struct pfm *pfm,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	return cerberus_protocol_get_manifest_id_platform (&pfm->base, request);
 }
 
 /**
- * Process PFM ID packet
+ * Process PFM ID request
  *
- * @param pfm_mgr_0 PFM manager for port 0
- * @param pfm_mgr_1 PFM manager for port 1
+ * @param pfm_mgr List of PFM managers for all available ports
+ * @param num_ports Numbers of available ports
  * @param request PFM ID request to process
  *
  * @return 0 if request processing completed successfully or an error code.
  */
-int cerberus_protocol_get_pfm_id (struct pfm_manager *pfm_mgr_0, struct pfm_manager *pfm_mgr_1,
-	struct cmd_interface_request *request)
+int cerberus_protocol_get_pfm_id (struct pfm_manager *pfm_mgr[], uint8_t num_ports,
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_pfm_id *rq = (struct cerberus_protocol_get_pfm_id*) request->data;
 	struct pfm *curr_pfm = NULL;
@@ -405,11 +337,11 @@ int cerberus_protocol_get_pfm_id (struct pfm_manager *pfm_mgr_0, struct pfm_mana
 
 	port = rq->port_id;
 	id = rq->id;
-	if ((port > 1) || (id > 1)) {
+	if ((port >= num_ports) || (id > 1)) {
 		return CMD_HANDLER_OUT_OF_RANGE;
 	}
 
-	status = cerberus_protocol_get_curr_pfm (pfm_mgr_0, pfm_mgr_1, port, rq->region, &curr_pfm);
+	status = cerberus_protocol_get_curr_pfm (pfm_mgr[port], rq->region, &curr_pfm);
 	/* When there's no valid PFM manager, return a success
 	 * with response indicating no valid manifest */
 	if ((status != 0) && (status != CMD_HANDLER_UNSUPPORTED_INDEX)) {
@@ -423,24 +355,24 @@ int cerberus_protocol_get_pfm_id (struct pfm_manager *pfm_mgr_0, struct pfm_mana
 		status = cerberus_protocol_get_pfm_id_platform (curr_pfm, request);
 	}
 
-	cerberus_protocol_free_pfm (pfm_mgr_0, pfm_mgr_1, port, curr_pfm);
+	if (pfm_mgr[port] != NULL) {
+		pfm_mgr[port]->free_pfm (pfm_mgr[port], curr_pfm);
+	}
+
 	return status;
 }
 
 /**
- * Process PFM fw packet
+ * Process PFM fw request
  *
- * @param pfm_0 PFM command interface for port 0.
- * @param pfm_1 PFM command interface for port 1.
- * @param pfm_mgr_0 PFM manager for port 0.
- * @param pfm_mgr_1 PFM manager for port 1.
+ * @param pfm_mgr List of PFM managers for all available ports
+ * @param num_ports Numbers of available ports
  * @param request PFM supported FW request to process
  *
  * @return 0 if request processing completed successfully or an error code.
  */
-int cerberus_protocol_get_pfm_fw (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct pfm_manager *pfm_mgr_0,
-	struct pfm_manager *pfm_mgr_1, struct cmd_interface_request *request)
+int cerberus_protocol_get_pfm_fw (struct pfm_manager *pfm_mgr[], uint8_t num_ports,
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_pfm_supported_fw *rq =
 		(struct cerberus_protocol_get_pfm_supported_fw*) request->data;
@@ -461,15 +393,14 @@ int cerberus_protocol_get_pfm_fw (struct manifest_cmd_interface *pfm_0,
 		return CMD_HANDLER_BAD_LENGTH;
 	}
 
-	if (rq->port_id > 1) {
+	if (rq->port_id >= num_ports) {
 		return CMD_HANDLER_OUT_OF_RANGE;
 	}
 
 	offset = rq->offset;
 	port = rq->port_id;
 
-	status = cerberus_protocol_get_curr_pfm (pfm_mgr_0, pfm_mgr_1, rq->port_id, rq->region,
-		&curr_pfm);
+	status = cerberus_protocol_get_curr_pfm (pfm_mgr[port], rq->region, &curr_pfm);
 	if (status != 0) {
 		if (status == CMD_HANDLER_UNSUPPORTED_INDEX) {
 			status = 0;
@@ -512,73 +443,71 @@ int cerberus_protocol_get_pfm_fw (struct manifest_cmd_interface *pfm_0,
 	}
 
 exit:
-	cerberus_protocol_free_pfm (pfm_mgr_0, pfm_mgr_1, port, curr_pfm);
+	if (pfm_mgr[port] != NULL) {
+		pfm_mgr[port]->free_pfm (pfm_mgr[port], curr_pfm);
+	}
 	return status;
 }
 
 /**
- * Process PFM update init packet
+ * Process PFM update init request
  *
- * @param pfm_0 PFM command interface for port 0.
- * @param pfm_1 PFM command interface for port 1.
+ * @param pfm_cmd List of PFM command interfaces for all available ports
+ * @param num_ports Number of available ports
  * @param request PFM update init request to process
  *
  * @return 0 if request processing completed successfully or an error code.
  */
-int cerberus_protocol_pfm_update_init (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct cmd_interface_request *request)
+int cerberus_protocol_pfm_update_init (struct manifest_cmd_interface* pfm_cmd[], uint8_t num_ports,
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_prepare_pfm_update *rq =
 		(struct cerberus_protocol_prepare_pfm_update*) request->data;
-	struct manifest_cmd_interface *curr_pfm_interface;
 
 	if (request->length != sizeof (struct cerberus_protocol_prepare_pfm_update)) {
 		return CMD_HANDLER_BAD_LENGTH;
 	}
 
-	if (rq->port_id > 1) {
+	if (rq->port_id >= num_ports) {
 		return CMD_HANDLER_OUT_OF_RANGE;
 	}
 
-	curr_pfm_interface = cerberus_protocol_get_pfm_cmd_interface (pfm_0, pfm_1, rq->port_id);
-	if (curr_pfm_interface == NULL) {
+	if (pfm_cmd[rq->port_id] == NULL) {
 		return CMD_HANDLER_UNSUPPORTED_INDEX;
 	}
 
 	request->length = 0;
-	return curr_pfm_interface->prepare_manifest (curr_pfm_interface, rq->size);
+	return pfm_cmd[rq->port_id]->prepare_manifest (pfm_cmd[rq->port_id], rq->size);
 }
 
 /**
- * Process PFM update packet
+ * Process PFM update request
  *
- * @param pfm_0 PFM command interface for port 0.
- * @param pfm_1 PFM command interface for port 1.
- * @param request PFM update request to process
+ * @param pfm_cmd List of PFM command interface for all available ports.
+ * @param num_ports Number of available ports.
+ * @param request PFM update request to process.
  *
  * @return 0 if request processing completed successfully or an error code.
  */
-int cerberus_protocol_pfm_update (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct cmd_interface_request *request)
+int cerberus_protocol_pfm_update (struct manifest_cmd_interface *pfm_cmd[], uint8_t num_ports,
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_pfm_update *rq = (struct cerberus_protocol_pfm_update*) request->data;
-	struct manifest_cmd_interface *curr_pfm_interface;
 	int status;
 
 	if (request->length < sizeof (struct cerberus_protocol_pfm_update)) {
 		return CMD_HANDLER_BAD_LENGTH;
 	}
 
-	if (rq->port_id > 1) {
+	if (rq->port_id >= num_ports) {
 		return CMD_HANDLER_OUT_OF_RANGE;
 	}
 
-	curr_pfm_interface = cerberus_protocol_get_pfm_cmd_interface (pfm_0, pfm_1, rq->port_id);
-	if (curr_pfm_interface == NULL) {
+	if (pfm_cmd[rq->port_id] == NULL) {
 		return CMD_HANDLER_UNSUPPORTED_INDEX;
 	}
 
-	status = curr_pfm_interface->store_manifest (curr_pfm_interface, &rq->payload,
+	status = pfm_cmd[rq->port_id]->store_manifest (pfm_cmd[rq->port_id], &rq->payload,
 		cerberus_protocol_pfm_update_length (request));
 
 	request->length = 0;
@@ -586,36 +515,34 @@ int cerberus_protocol_pfm_update (struct manifest_cmd_interface *pfm_0,
 }
 
 /**
- * Process PFM update complete packet
+ * Process PFM update complete request
  *
- * @param pfm_0 PFM command interface for port 0.
- * @param pfm_1 PFM command interface for port 1.
+ * @param pfm_cmd List of PFM command interface for all available ports.
+ * @param num_ports Numbers of available ports.
  * @param request PFM update complete request to process
  *
  * @return 0 if request processing completed successfully or an error code.
  */
-int cerberus_protocol_pfm_update_complete (struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct cmd_interface_request *request)
+int cerberus_protocol_pfm_update_complete (struct manifest_cmd_interface *pfm_cmd[],
+	uint8_t num_ports, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_complete_pfm_update *rq =
 		(struct cerberus_protocol_complete_pfm_update*) request->data;
-	struct manifest_cmd_interface *curr_pfm_interface;
 
 	if (request->length != sizeof (struct cerberus_protocol_complete_pfm_update)) {
 		return CMD_HANDLER_BAD_LENGTH;
 	}
 
-	if (rq->port_id > 1) {
+	if (rq->port_id >= num_ports) {
 		return CMD_HANDLER_OUT_OF_RANGE;
 	}
 
-	curr_pfm_interface = cerberus_protocol_get_pfm_cmd_interface (pfm_0, pfm_1, rq->port_id);
-	if (curr_pfm_interface == NULL) {
+	if (pfm_cmd[rq->port_id] == NULL) {
 		return CMD_HANDLER_UNSUPPORTED_INDEX;
 	}
 
 	request->length = 0;
-	return curr_pfm_interface->finish_manifest (curr_pfm_interface, rq->activation);
+	return pfm_cmd[rq->port_id]->finish_manifest (pfm_cmd[rq->port_id], rq->activation);
 
 }
 
@@ -629,7 +556,7 @@ int cerberus_protocol_pfm_update_complete (struct manifest_cmd_interface *pfm_0,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_host_reset_status (struct host_control *host_0_ctrl,
-	struct host_control *host_1_ctrl, struct cmd_interface_request *request)
+	struct host_control *host_1_ctrl, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_host_state *rq =
 		(struct cerberus_protocol_get_host_state*) request->data;
@@ -692,8 +619,9 @@ int cerberus_protocol_get_host_reset_status (struct host_control *host_0_ctrl,
  * @return 0 if processing completed successfully or an error code.
  */
 int cerberus_protocol_unseal_message (struct cmd_background *background,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
+#ifdef CMD_ENABLE_UNSEAL
 	struct cerberus_protocol_message_unseal *rq =
 		(struct cerberus_protocol_message_unseal*) request->data;
 	uint8_t *end = request->data + request->length;
@@ -738,6 +666,9 @@ int cerberus_protocol_unseal_message (struct cmd_background *background,
 
 	request->length = 0;
 	return status;
+#else
+	return CMD_HANDLER_UNSUPPORTED_COMMAND;
+#endif
 }
 
 /**
@@ -749,8 +680,9 @@ int cerberus_protocol_unseal_message (struct cmd_background *background,
  * @return 0 if processing completed successfully or an error code.
  */
 int cerberus_protocol_unseal_message_result (struct cmd_background *background,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
+#ifdef CMD_ENABLE_UNSEAL
 	struct cerberus_protocol_message_unseal_result_completed_response *rsp =
 		(struct cerberus_protocol_message_unseal_result_completed_response*) request->data;
 	size_t max_buf_len;
@@ -782,6 +714,9 @@ int cerberus_protocol_unseal_message_result (struct cmd_background *background,
 	}
 
 	return 0;
+#else
+	return CMD_HANDLER_UNSUPPORTED_COMMAND;
+#endif
 }
 
 /**
@@ -794,8 +729,9 @@ int cerberus_protocol_unseal_message_result (struct cmd_background *background,
  * @return 0 if processing completed successfully or an error code.
  */
 int cerberus_protocol_reset_config (struct cmd_authorization *cmd_auth,
-	struct cmd_background *background, struct cmd_interface_request *request)
+	struct cmd_background *background, struct cmd_interface_msg *request)
 {
+#if defined CMD_ENABLE_RESET_CONFIG || defined CMD_ENABLE_INTRUSION
 	struct cerberus_protocol_reset_config *rq =
 		(struct cerberus_protocol_reset_config*) request->data;
 	struct cerberus_protocol_reset_config_response *rsp =
@@ -813,20 +749,29 @@ int cerberus_protocol_reset_config (struct cmd_authorization *cmd_auth,
 	}
 
 	switch (rq->type) {
-		case 0:
+#ifdef CMD_ENABLE_RESET_CONFIG
+		case CERBERUS_PROTOCOL_REVERT_BYPASS:
 			auth = cmd_auth->authorize_revert_bypass;
 			action = background->reset_bypass;
 			break;
 
-		case 1:
+		case CERBERUS_PROTOCOL_FACTORY_RESET:
 			auth = cmd_auth->authorize_reset_defaults;
 			action = background->restore_defaults;
 			break;
 
-		case 2:
+		case CERBERUS_PROTOCOL_CLEAR_PCD:
 			auth = cmd_auth->authorize_clear_platform_config;
 			action = background->clear_platform_config;
 			break;
+#endif
+
+#ifdef CMD_ENABLE_INTRUSION
+		case CERBERUS_PROTOCOL_RESET_INTRUSION:
+			auth = cmd_auth->authorize_reset_intrusion;
+			action = background->reset_intrusion;
+			break;
+#endif
 
 		default:
 			return CMD_HANDLER_UNSUPPORTED_INDEX;
@@ -853,10 +798,13 @@ int cerberus_protocol_reset_config (struct cmd_authorization *cmd_auth,
 	}
 
 	return status;
+#else
+	return CMD_HANDLER_UNSUPPORTED_COMMAND;
+#endif
 }
 
 /**
- * Process a prepare recovery image packet.
+ * Process a prepare recovery image request.
  *
  * @param recovery_0 Recovery image update command interface instance for port 0.
  * @param recovery_1 Recovery image update command interface instance for port 1.
@@ -865,7 +813,7 @@ int cerberus_protocol_reset_config (struct cmd_authorization *cmd_auth,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_prepare_recovery_image (struct recovery_image_cmd_interface *recovery_0,
-	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_request *request)
+	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_prepare_recovery_image_update *rq =
 		(struct cerberus_protocol_prepare_recovery_image_update*) request->data;
@@ -890,7 +838,7 @@ int cerberus_protocol_prepare_recovery_image (struct recovery_image_cmd_interfac
 }
 
 /**
- * Process an update recovery image packet.
+ * Process an update recovery image request.
  *
  * @param recovery_0 Recovery image update command interface instance for port 0.
  * @param recovery_1 Recovery image update command interface instance for port 1.
@@ -899,7 +847,7 @@ int cerberus_protocol_prepare_recovery_image (struct recovery_image_cmd_interfac
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_update_recovery_image (struct recovery_image_cmd_interface *recovery_0,
-	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_request *request)
+	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_recovery_image_update *rq =
 		(struct cerberus_protocol_recovery_image_update*) request->data;
@@ -928,7 +876,7 @@ int cerberus_protocol_update_recovery_image (struct recovery_image_cmd_interface
 }
 
 /**
- * Process an activate recovery image packet.
+ * Process an activate recovery image request.
  *
  * @param recovery_0 Recovery image update command interface instance for port 0.
  * @param recovery_1 Recovery image update command interface instance for port 1.
@@ -937,7 +885,7 @@ int cerberus_protocol_update_recovery_image (struct recovery_image_cmd_interface
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_activate_recovery_image (struct recovery_image_cmd_interface *recovery_0,
-	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_request *request)
+	struct recovery_image_cmd_interface *recovery_1, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_complete_recovery_image_update *rq =
 		(struct cerberus_protocol_complete_recovery_image_update*) request->data;
@@ -962,7 +910,7 @@ int cerberus_protocol_activate_recovery_image (struct recovery_image_cmd_interfa
 }
 
 /**
- * Process get recovery image ID packet.
+ * Process get recovery image ID request.
  *
  * @param manager_0 Recovery image manager instance for port 0.
  * @param manager_1 Recovery image manager instance for port 1.
@@ -971,7 +919,7 @@ int cerberus_protocol_activate_recovery_image (struct recovery_image_cmd_interfa
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_get_recovery_image_id (struct recovery_image_manager *manager_0,
-	struct recovery_image_manager *manager_1, struct cmd_interface_request *request)
+	struct recovery_image_manager *manager_1, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_recovery_image_id *rq =
 		(struct cerberus_protocol_get_recovery_image_id*) request->data;
@@ -1020,7 +968,7 @@ exit:
 }
 
 /**
- * Process get attestation data packet
+ * Process get attestation data request
  *
  * @param pcr_store PCR store instance to utilize
  * @param request Log read request to process
@@ -1028,7 +976,7 @@ exit:
  * @return 0 if request completed successfully or an error code.
  */
 int cerberus_protocol_get_attestation_data (struct pcr_store *pcr_store,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_attestation_data *rq =
 		(struct cerberus_protocol_get_attestation_data*) request->data;
@@ -1053,7 +1001,7 @@ int cerberus_protocol_get_attestation_data (struct pcr_store *pcr_store,
 }
 
 /**
- * Process a key exchange packet.
+ * Process a key exchange request.
  *
  * @param session Session manager to utilize.
  * @param request Key exchange request to process.
@@ -1062,7 +1010,7 @@ int cerberus_protocol_get_attestation_data (struct pcr_store *pcr_store,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_key_exchange (struct session_manager *session,
-	struct cmd_interface_request *request, uint8_t encrypted)
+	struct cmd_interface_msg *request, uint8_t encrypted)
 {
 	struct cerberus_protocol_key_exchange_type_1 *type1_rq =
 		(struct cerberus_protocol_key_exchange_type_1*) request->data;
@@ -1122,7 +1070,7 @@ int cerberus_protocol_key_exchange (struct session_manager *session,
 }
 
 /**
- * Process a session sync packet.
+ * Process a session sync request.
  *
  * @param session Session manager to utilize.
  * @param request Session sync request to process.
@@ -1131,7 +1079,7 @@ int cerberus_protocol_key_exchange (struct session_manager *session,
  * @return 0 if request processing completed successfully or an error code.
  */
 int cerberus_protocol_session_sync (struct session_manager *session,
-	struct cmd_interface_request *request, uint8_t encrypted)
+	struct cmd_interface_msg *request, uint8_t encrypted)
 {
 	struct cerberus_protocol_session_sync *rq =
 		(struct cerberus_protocol_session_sync*) request->data;

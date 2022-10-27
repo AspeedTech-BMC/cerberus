@@ -6,19 +6,23 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "platform_config.h"
 #include "status/rot_status.h"
 
 
-/* Confiugrable ECC parameters.  Defaults can be overridden in platform_config.h. */
+/* Private key lengths */
+#define	ECC_KEY_LENGTH_256		(256 / 8)
+#define	ECC_KEY_LENGTH_384		(384 / 8)
+#define	ECC_KEY_LENGTH_521		(528 / 8)
+
+/* Configurable ECC parameters.  Defaults can be overridden in platform_config.h. */
+#include "platform_config.h"
 #ifndef ECC_MAX_KEY_LENGTH
-#define	ECC_MAX_KEY_LENGTH		521
+#define	ECC_MAX_KEY_LENGTH		ECC_KEY_LENGTH_521
 #endif
 
-/**
- * Length of the public key portion of a maximum length ECC DER key.
- */
-#define ECC_MAX_PUBKEY_DER_LEN	(((ECC_MAX_KEY_LENGTH / 8) + 1) * 2 + 32)
+#if ECC_MAX_KEY_LENGTH < ECC_KEY_LENGTH_256
+#error "ECC must at least have support for 256-bit keys."
+#endif
 
 
 /**
@@ -35,6 +39,29 @@ struct ecc_public_key {
 	void *context;		/**< The implementation context for the public key. */
 };
 
+#pragma pack(push,1)
+/**
+ * Defines a structure to hold the X and Y values for a point on a curve that represents an ECC
+ * public key.  No curve information is stored.  The curve is implied based on the key length.
+ */
+struct ecc_point_public_key {
+	uint8_t x[ECC_MAX_KEY_LENGTH];			/**< X coordinate for the ECC public key. */
+	uint8_t y[ECC_MAX_KEY_LENGTH];			/**< Y coordinate for the ECC public key. */
+	size_t key_length;						/**< Length of each coordinate in the public key. */
+};
+
+/**
+ * Defines a structure to hold the raw r and s values (i.e. not ASN.1/DER encoded) for an ECDSA
+ * signature.  These values are expected to match the private key length and have the MSBs padded
+ * with 0's when necessary.
+ */
+struct ecc_ecdsa_signature {
+	uint8_t r[ECC_MAX_KEY_LENGTH];			/**< r value for the ECDSA signature. */
+	uint8_t s[ECC_MAX_KEY_LENGTH];			/**< s value for the ECDSA signature. */
+	size_t length;							/**< Length of each integer in the ECDSA signature. */
+};
+#pragma pack(pop)
+
 /**
  * A platform-independent API for generating and using ECC key pairs.  ECC engine instances are not
  * guaranteed to be thread-safe.
@@ -44,7 +71,8 @@ struct ecc_engine {
 	 * Initialize an ECC key pair to be used by the ECC engine.
 	 *
 	 * @param engine The ECC engine to use for key initialization.
-	 * @param key The private key to use for key initialization.
+	 * @param key The private key to use for key initialization.  This must be a DER encoded private
+	 * key.
 	 * @param key_length The length of the private key data.
 	 * @param priv_key Output for the initialized private key.  This can be null to skip private key
 	 * initialization.
@@ -60,7 +88,8 @@ struct ecc_engine {
 	 * Initialize an ECC public key to be used by the ECC engine.
 	 *
 	 * @param engine The ECC engine to use for key initialization.
-	 * @param key The public key to use for key initialization.
+	 * @param key The public key to use for key initialization.  This must be a DER encoded public
+	 * key.
 	 * @param key_length The length of the public key data.
 	 * @param pub_key Output for the initialized public key.
 	 *
@@ -71,7 +100,11 @@ struct ecc_engine {
 
 #ifdef ECC_ENABLE_GENERATE_KEY_PAIR
 	/**
-	 * Generate an ECC key pair using a specified value for the private key.
+	 * Generate an ECC key pair using a specified value for the private key.  The length of the
+	 * specified private key determines the ECC curve to use for key pair generation.
+	 *  - ECC_KEY_LENGTH_256 -> NIST P-256
+	 *  - ECC_KEY_LENGTH_384 -> NIST P-384
+	 *  - ECC_KEY_LENGTH_521 -> NIST P-521
 	 *
 	 * @param engine The ECC engine to use to generate the key pair.
 	 * @param priv The private value to use for key generation.
@@ -87,9 +120,14 @@ struct ecc_engine {
 		size_t key_length, struct ecc_private_key *priv_key, struct ecc_public_key *pub_key);
 
 	/**
-	 * Generate a random ECC key pair.
+	 * Generate a random ECC key pair.  The desired length of the key determines the ECC curve to
+	 * use for key pair generation.
+	 *  - ECC_KEY_LENGTH_256 -> NIST P-256
+	 *  - ECC_KEY_LENGTH_384 -> NIST P-384
+	 *  - ECC_KEY_LENGTH_521 -> NIST P-521
 	 *
 	 * @param engine The ECC engine to use to generate the key pair.
+	 * @param key_length The length of the key that should be generated.
 	 * @param priv_key Output for the generated private key.  This can be null to skip private key
 	 * generation.
 	 * @param pub_key Output for the generated public key.  This can be null to skip public key
@@ -97,8 +135,8 @@ struct ecc_engine {
 	 *
 	 * @return 0 if the key pair was successfully generated or an error code.
 	 */
-	int (*generate_key_pair) (struct ecc_engine *engine, struct ecc_private_key *priv_key,
-		struct ecc_public_key *pub_key);
+	int (*generate_key_pair) (struct ecc_engine *engine, size_t key_length,
+		struct ecc_private_key *priv_key, struct ecc_public_key *pub_key);
 #endif
 
 	/**
@@ -128,7 +166,7 @@ struct ecc_engine {
 	 *
 	 * @param engine The ECC engine used to generate the key.
 	 * @param key The private key to encode to DER.
-	 * @param der Output buffer for the DER formatted private key.  This is a dynamically allocated
+	 * @param der Output buffer for the DER encoded private key.  This is a dynamically allocated
 	 * buffer, and it is the responsibility of the caller to free it.  This will return null in the
 	 * case of an error.
 	 * @param length Output for the length of the DER key.
@@ -143,7 +181,7 @@ struct ecc_engine {
 	 *
 	 * @param engine The ECC engine used to generate the key.
 	 * @param key The public key to encode to DER.
-	 * @param der Output buffer for the DER formatted public key.  This is a dynamically allocated
+	 * @param der Output buffer for the DER encoded public key.  This is a dynamically allocated
 	 * buffer, and it is the responsibility of the caller to free it.  This will return null in the
 	 * case of an error.
 	 * @param length Output for the length of the DER key.
@@ -155,13 +193,13 @@ struct ecc_engine {
 #endif
 
 	/**
-	 * Create an ECDSA signature for a SHA-256 message digest.
+	 * Create an ECDSA signature for a SHA2 digest.
 	 *
 	 * @param engine The ECC engine to use to sign the digest.
 	 * @param key The private key to sign with.
-	 * @param digest The message digest to use to generate the signature.
+	 * @param digest The digest to use to generate the signature.
 	 * @param length The length of the digest.
-	 * @param signature Output buffer for the ECDSA signature.
+	 * @param signature Output buffer for the ECDSA signature.  The signature will be DER encoded.
 	 * @param sig_length The length of the signature output buffer.
 	 *
 	 * @return The length of the signature or an error code.  Use ROT_IS_ERROR to check the return
@@ -171,13 +209,13 @@ struct ecc_engine {
 		size_t length, uint8_t *signature, size_t sig_length);
 
 	/**
-	 * Verify an ECDSA signature against a SHA-256 message digest.
+	 * Verify an ECDSA signature against a SHA2 digest.
 	 *
 	 * @param engine The ECC engine to use for signature verification.
 	 * @param key The public key to verify the signature with.
-	 * @param digest The message digest to use for signature verification.
+	 * @param digest The digest to use for signature verification.
 	 * @param length The length of the digest.
-	 * @param signature The ECDSA signature to verify.
+	 * @param signature The ECDSA signature to verify.  The signature must be DER encoded.
 	 * @param sig_length The length of the signature.
 	 *
 	 * @return 0 if the signature matches the digest or an error code.
@@ -242,6 +280,9 @@ enum {
 	ECC_ENGINE_HW_NOT_INIT = ECC_ENGINE_ERROR (0x11),				/**< The ECC hardware has not been initialized. */
 	ECC_ENGINE_SIG_LENGTH_FAILED = ECC_ENGINE_ERROR (0x12),			/**< Failed to get the maximum signature length. */
 	ECC_ENGINE_SECRET_LENGTH_FAILED = ECC_ENGINE_ERROR (0x13),		/**< Failed to get the maximum shared secret length. */
+	ECC_ENGINE_UNSUPPORTED_KEY_LENGTH = ECC_ENGINE_ERROR (0x14),	/**< The ECC key length is not supported by the implementation. */
+	ECC_ENGINE_UNSUPPORTED_HASH_TYPE = ECC_ENGINE_ERROR (0x15),		/**< The hash algorithm for a signature digest is not supported by the implementation. */
+	ECC_ENGINE_SELF_TEST_FAILED = ECC_ENGINE_ERROR (0x16),			/**< An internal self-test of the ECC engine failed. */
 };
 
 

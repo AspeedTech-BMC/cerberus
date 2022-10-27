@@ -10,6 +10,7 @@
 #include "flash_master.h"
 
 
+#pragma pack(push,1)
 /**
  * SFDP parameter header format.
  */
@@ -20,7 +21,7 @@ struct spi_flash_sfdp_parameter_header {
 	uint8_t length;					/**< Length of the parameter table, in dwords. */
 	uint8_t table_pointer[3];		/**< Address of the parameter table. */
 	uint8_t id_msb;					/**< MSB of the parameter identifier. */
-} __attribute__((__packed__));
+};
 
 /**
  * SFDP header format.
@@ -32,31 +33,37 @@ struct spi_flash_sfdp_header {
 	uint8_t header_count;								/**< The number of parameters headers. */
 	uint8_t unused;										/**< Unused.  Must be 0xff. */
 	struct spi_flash_sfdp_parameter_header parameter0;	/**< Header for the first parameter table. */
-} __attribute__((__packed__));
+};
+#pragma pack(pop)
 
 /**
  * SFDP interface for a single SPI flash.
  */
 struct spi_flash_sfdp {
-	struct flash_master *flash;					/**< SPI master for the flash device. */
+	const struct flash_master *flash;			/**< SPI master for the flash device. */
 	struct spi_flash_sfdp_header sfdp_header;	/**< The mandatory SFDP header information. */
 	uint8_t vendor;								/**< Vendor ID for the flash device. */
 	uint16_t device;							/**< Device ID for the flash device. */
 };
 
 
-int spi_flash_sfdp_init (struct spi_flash_sfdp *sfdp, struct flash_master *flash);
+int spi_flash_sfdp_init (struct spi_flash_sfdp *sfdp, const struct flash_master *flash);
 void spi_flash_sfdp_release (struct spi_flash_sfdp *sfdp);
 
-void spi_flash_sfdp_dump_header (struct spi_flash_sfdp *sfdp);
+void spi_flash_sfdp_dump_header (const struct spi_flash_sfdp *sfdp);
 
+
+/**
+ * The number of dwords that make up version 1.5 of the SFDP Basic Parameters Table.
+ */
+#define	SPI_FLASH_SFDP_BASIC_TABLE_V1_5_DWORDS		16
 
 /**
  * JEDEC SFDP basic parameter table.
  */
 struct spi_flash_sfdp_basic_table {
-	struct spi_flash_sfdp *sfdp;				/**< The SFDP instance for the table. */
-	void *data;									/**< The SFDP basic parameter table data. */
+	const struct spi_flash_sfdp *sfdp;						/**< The SFDP instance for the table. */
+	uint32_t data[SPI_FLASH_SFDP_BASIC_TABLE_V1_5_DWORDS];	/**< The SFDP basic parameter table data. */
 };
 
 /**
@@ -98,40 +105,41 @@ enum spi_flash_sfdp_quad_enable {
 	SPI_FLASH_SFDP_QUAD_QE_BIT1_SR2,				/**< Quad enable is bit 1 in status register 2. */
 	SPI_FLASH_SFDP_QUAD_QE_BIT6_SR1,				/**< Quad enable is bit 6 in status register 1. */
 	SPI_FLASH_SFDP_QUAD_QE_BIT7_SR2,				/**< Quad enable is bit 7 in status register 2. */
-	SPI_FLASH_SFDP_QUAD_QE_BIT1_SR2_NO_CLR,			/**< Quad enable is bit 1 in status register 2, without inadvertant clearing. */
+	SPI_FLASH_SFDP_QUAD_QE_BIT1_SR2_NO_CLR,			/**< Quad enable is bit 1 in status register 2, without inadvertent clearing. */
 	SPI_FLASH_SFDP_QUAD_QE_BIT1_SR2_35,				/**< Quad enable is bit 1 in status register 2, using 35 to read. */
 	SPI_FLASH_SFDP_QUAD_NO_QE_HOLD_DISABLE = 8,		/**< No quad enable bit, but HOLD/RESET can be disabled. */
 };
 
 
 int spi_flash_sfdp_basic_table_init (struct spi_flash_sfdp_basic_table *table,
-	struct spi_flash_sfdp *sfdp);
+	const struct spi_flash_sfdp *sfdp);
 void spi_flash_sfdp_basic_table_release (struct spi_flash_sfdp_basic_table *table);
 
-int spi_flash_sfdp_get_device_capabilities (struct spi_flash_sfdp_basic_table *table,
+int spi_flash_sfdp_get_device_capabilities (const struct spi_flash_sfdp_basic_table *table,
 	uint32_t *capabilities);
-int spi_flash_sfdp_get_device_size (struct spi_flash_sfdp_basic_table *table);
-int spi_flash_sfdp_get_page_size (struct spi_flash_sfdp_basic_table *table);
+int spi_flash_sfdp_get_device_size (const struct spi_flash_sfdp_basic_table *table);
+int spi_flash_sfdp_get_page_size (const struct spi_flash_sfdp_basic_table *table);
 
-int spi_flash_sfdp_get_read_commands (struct spi_flash_sfdp_basic_table *table,
+int spi_flash_sfdp_get_read_commands (const struct spi_flash_sfdp_basic_table *table,
 	struct spi_flash_sfdp_read_commands *read);
 
-bool spi_flash_sfdp_use_busy_flag_status (struct spi_flash_sfdp_basic_table *table);
-bool spi_flash_sfdp_use_volatile_write_enable (struct spi_flash_sfdp_basic_table *table);
+bool spi_flash_sfdp_use_busy_flag_status (const struct spi_flash_sfdp_basic_table *table);
+bool spi_flash_sfdp_use_volatile_write_enable (const struct spi_flash_sfdp_basic_table *table);
 
-bool spi_flash_sfdp_supports_4byte_commands (struct spi_flash_sfdp_basic_table *table);
-int spi_flash_sfdp_get_4byte_mode_switch (struct spi_flash_sfdp_basic_table *table,
+bool spi_flash_sfdp_supports_4byte_commands (const struct spi_flash_sfdp_basic_table *table);
+int spi_flash_sfdp_get_4byte_mode_switch (const struct spi_flash_sfdp_basic_table *table,
 	enum spi_flash_sfdp_4byte_addressing *addr_4byte);
-bool spi_flash_sfdp_exit_4byte_mode_on_reset (struct spi_flash_sfdp_basic_table *table);
+bool spi_flash_sfdp_exit_4byte_mode_on_reset (const struct spi_flash_sfdp_basic_table *table);
 
-int spi_flash_sfdp_get_quad_enable (struct spi_flash_sfdp_basic_table *table,
+int spi_flash_sfdp_get_quad_enable (const struct spi_flash_sfdp_basic_table *table,
 	enum spi_flash_sfdp_quad_enable *quad_enable);
 
-int spi_flash_sfdp_get_reset_command (struct spi_flash_sfdp_basic_table *table, uint8_t *reset);
-int spi_flash_sfdp_get_deep_powerdown_commands (struct spi_flash_sfdp_basic_table *table,
+int spi_flash_sfdp_get_reset_command (const struct spi_flash_sfdp_basic_table *table,
+	uint8_t *reset);
+int spi_flash_sfdp_get_deep_powerdown_commands (const struct spi_flash_sfdp_basic_table *table,
 	uint8_t *enter, uint8_t *exit);
 
-void spi_flash_sfdp_dump_basic_table (struct spi_flash_sfdp_basic_table *table);
+void spi_flash_sfdp_dump_basic_table (const struct spi_flash_sfdp_basic_table *table);
 
 
 #define	SPI_FLASH_SFDP_ERROR(code)		ROT_ERROR (ROT_MODULE_SPI_FLASH_SFDP, code)
@@ -148,7 +156,7 @@ enum {
 	SPI_FLASH_SFDP_4BYTE_INCOMPATIBLE = SPI_FLASH_SFDP_ERROR (0x05),	/**< Device is not compatible with supported 4-byte addressing. */
 	SPI_FLASH_SFDP_QUAD_ENABLE_UNKNOWN = SPI_FLASH_SFDP_ERROR (0x06),	/**< QSPI enabled method cannot be determined. */
 	SPI_FLASH_SFDP_RESET_NOT_SUPPORTED = SPI_FLASH_SFDP_ERROR (0x07),	/**< Soft reset is not supported by the device. */
-	SPI_FLASH_SFDP_PWRDOWN_NOT_SUPPORTED = SPI_FLASH_SFDP_ERROR (0x08),	/**< Deep powerdown is not supported by the device. */
+	SPI_FLASH_SFDP_PWRDOWN_NOT_SUPPORTED = SPI_FLASH_SFDP_ERROR (0x08),	/**< Deep power down is not supported by the device. */
 };
 
 

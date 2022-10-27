@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-#ifndef FREERTOS_PLATFORM_H_
-#define FREERTOS_PLATFORM_H_
+#ifndef PLATFORM_H_
+#define PLATFORM_H_
 
 #include <stdint.h>
 #include "platform_compiler.h"
@@ -10,6 +10,7 @@
 #include "task.h"
 #include "semphr.h"
 #include "timers.h"
+#include "common/common_math.h"
 
 
 /* FreeRTOS memory management. */
@@ -19,9 +20,9 @@ void* platform_calloc (size_t nmemb, size_t size);
 void* platform_realloc (void *ptr, size_t size);
 
 
-/* FreeRTOS internet operations. */
-uint32_t platform_htonl (uint32_t host_long);
-uint16_t platform_htons (uint16_t host_short);
+/* FreeRTOS internet operations.  Assumes a little endian CPU. */
+#define	platform_htonl	SWAP_BYTES_UINT32
+#define	platform_htons	SWAP_BYTES_UINT16
 
 
 /* FreeRTOS sleep and system time. */
@@ -36,7 +37,7 @@ int platform_init_timeout (uint32_t msec, platform_clock *timeout);
 int platform_increase_timeout (uint32_t msec, platform_clock *timeout);
 int platform_init_current_tick (platform_clock *currtime);
 int platform_has_timeout_expired (platform_clock *timeout);
-uint64_t platform_get_time_since_boot (void);
+uint64_t platform_get_time (void);
 uint32_t platform_get_duration (const platform_clock *start, const platform_clock *end);
 
 
@@ -46,7 +47,6 @@ int platform_mutex_init (platform_mutex *mutex);
 int platform_mutex_free (platform_mutex *mutex);
 int platform_mutex_lock (platform_mutex *mutex);
 int platform_mutex_unlock (platform_mutex *mutex);
-
 
 /* FreeRTOS recursive mutex */
 int platform_recursive_mutex_init (platform_mutex *mutex);
@@ -71,4 +71,14 @@ int platform_timer_disarm (platform_timer *timer);
 void platform_timer_delete (platform_timer *timer);
 
 
-#endif /* FREERTOS_PLATFORM_H_ */
+/* FreeRTOS semaphore */
+typedef SemaphoreHandle_t platform_semaphore;
+int platform_semaphore_init (platform_semaphore *sem);
+void platform_semaphore_free (platform_semaphore *sem);
+int platform_semaphore_post (platform_semaphore *sem);
+int platform_semaphore_wait (platform_semaphore *sem, uint32_t ms_timeout);
+int platform_semaphore_try_wait (platform_semaphore *sem);
+int platform_semaphore_reset (platform_semaphore *sem);
+
+
+#endif /* PLATFORM_H_ */

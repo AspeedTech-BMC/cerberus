@@ -13,103 +13,98 @@
 
 
 static int cmd_interface_slave_process_request (struct cmd_interface *intf,
-	struct cmd_interface_request *request)
+	struct cmd_interface_msg *request)
 {
-	struct cmd_interface_slave *interface = (struct cmd_interface_slave*) intf;
+	struct cmd_interface_slave *slave = (struct cmd_interface_slave*) intf;
 	uint8_t command_id;
 	uint8_t command_set;
-	int device_num;
 	int status;
 
-	status = cmd_interface_process_request (&interface->base, request, &command_id, &command_set,
-		true, true);
-	if (status == CMD_HANDLER_ERROR_MESSAGE) {
-		return CMD_HANDLER_UNKNOWN_COMMAND;
-	}
+	status = cmd_interface_process_cerberus_protocol_message (&slave->base, request, &command_id,
+		&command_set, true, true);
 	if (status != 0) {
 		return status;
 	}
-
-	device_num = device_manager_get_device_num (interface->device_manager, request->source_eid);
-	if (ROT_IS_ERROR (device_num)) {
-		return device_num;
-	}
-
+  
 	switch (command_id) {
 		case CERBERUS_PROTOCOL_GET_FW_VERSION:
-			status = cerberus_protocol_get_fw_version (interface->fw_version, request);
+			status = cerberus_protocol_get_fw_version (slave->fw_version, request);
 			break;
 
 		case CERBERUS_PROTOCOL_GET_DIGEST:
-			status = cerberus_protocol_get_certificate_digest (interface->slave_attestation,
-				interface->base.session, request);
+			status = cerberus_protocol_get_certificate_digest (slave->slave_attestation,
+				slave->base.session, request);
 			break;
 
 		case CERBERUS_PROTOCOL_GET_CERTIFICATE:
-			status = cerberus_protocol_get_certificate (interface->slave_attestation, request);
+			status = cerberus_protocol_get_certificate (slave->slave_attestation, request);
 			break;
 
 		case CERBERUS_PROTOCOL_ATTESTATION_CHALLENGE:
-			status = cerberus_protocol_get_challenge_response (interface->slave_attestation,
-				interface->base.session, request);
+			status = cerberus_protocol_get_challenge_response (slave->slave_attestation,
+				slave->base.session, request);
 			break;
 
 		case CERBERUS_PROTOCOL_GET_DEVICE_CAPABILITIES:
-			status = cerberus_protocol_get_device_capabilities (interface->device_manager,
-				request, device_num);
+			status = cerberus_protocol_get_device_capabilities (slave->device_manager,
+				request);
 			break;
 
 		case CERBERUS_PROTOCOL_EXPORT_CSR:
-			status = cerberus_protocol_export_csr (interface->riot, request);
+			status = cerberus_protocol_export_csr (slave->riot, request);
 			break;
 
 		case CERBERUS_PROTOCOL_IMPORT_CA_SIGNED_CERT:
-			status = cerberus_protocol_import_ca_signed_cert (interface->riot,
-				interface->background, request);
+			status = cerberus_protocol_import_ca_signed_cert (slave->riot,
+				slave->background, request);
 			break;
 
 		case CERBERUS_PROTOCOL_GET_SIGNED_CERT_STATE:
-			status = cerberus_protocol_get_signed_cert_state (interface->background, request);
+			status = cerberus_protocol_get_signed_cert_state (slave->background, request);
 			break;
 
 		case CERBERUS_PROTOCOL_GET_DEVICE_INFO:
-			status = cerberus_protocol_get_device_info (interface->cmd_device, request);
+			status = cerberus_protocol_get_device_info (slave->cmd_device, request);
 			break;
 
 		case CERBERUS_PROTOCOL_GET_DEVICE_ID:
-			status = cerberus_protocol_get_device_id (&interface->device_id, request);
+			status = cerberus_protocol_get_device_id (&slave->device_id, request);
 			break;
 
 		case CERBERUS_PROTOCOL_RESET_COUNTER:
-			status = cerberus_protocol_reset_counter (interface->cmd_device, request);
+			status = cerberus_protocol_reset_counter (slave->cmd_device, request);
 			break;
 
+#ifdef CMD_SUPPORT_ENCRYPTED_SESSIONS
 		case CERBERUS_PROTOCOL_EXCHANGE_KEYS:
-			status = cerberus_protocol_key_exchange (interface->base.session, request,
+			status = cerberus_protocol_key_exchange (slave->base.session, request,
 				intf->curr_txn_encrypted);
 			break;
 
 		case CERBERUS_PROTOCOL_SESSION_SYNC:
-			status = cerberus_protocol_session_sync (interface->base.session, request,
+			status = cerberus_protocol_session_sync (slave->base.session, request,
 				intf->curr_txn_encrypted);
 			break;
+#endif
 
 		default:
-			return CMD_HANDLER_UNKNOWN_COMMAND;
+			return CMD_HANDLER_UNKNOWN_REQUEST;
 	}
 
 	if (status == 0) {
-		status = cmd_interface_process_response (&interface->base, request);
+		status = cmd_interface_prepare_response (&slave->base, request);
 	}
 
 	return status;
 }
 
-int cmd_interface_slave_issue_request (struct cmd_interface *intf, uint8_t command_id,
-	void *request_params, uint8_t *buf, size_t buf_len)
+#ifdef CMD_ENABLE_ISSUE_REQUEST
+static int cmd_interface_slave_process_response (struct cmd_interface *intf,
+	struct cmd_interface_msg *response)
 {
 	return CMD_HANDLER_UNSUPPORTED_OPERATION;
 }
+#endif
 
 /**
  * Initialize System command interface instance
@@ -156,10 +151,14 @@ int cmd_interface_slave_init (struct cmd_interface_slave *intf,
 	intf->device_id.subsystem_id = subsystem_id;
 
 	intf->base.process_request = cmd_interface_slave_process_request;
-	intf->base.issue_request = cmd_interface_slave_issue_request;
+#ifdef CMD_ENABLE_ISSUE_REQUEST
+	intf->base.process_response = cmd_interface_slave_process_response;
+#endif
 	intf->base.generate_error_packet = cmd_interface_generate_error_packet;
 
+#ifdef CMD_SUPPORT_ENCRYPTED_SESSIONS
 	intf->base.session = session;
+#endif
 
 	return 0;
 }

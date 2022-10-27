@@ -78,6 +78,7 @@ int flash_store_write_common (struct flash_store *flash, int id, const uint8_t *
 		return status;
 	}
 
+#ifdef FLASH_STORE_SUPPORT_NO_PARTIAL_PAGE_WRITE
 	if (flash->page_buffer) {
 		/* It is necessary to ensure that no page is written more than once.  Internal buffering is
 		 * necessary in three cases:
@@ -195,7 +196,9 @@ int flash_store_write_common (struct flash_store *flash, int id, const uint8_t *
 			}
 		}
 	}
-	else {
+	else
+#endif
+	{
 		/* Each page can be written multiple times without erasing. */
 		if (flash->variable) {
 			if (!flash->old_header) {
@@ -299,10 +302,9 @@ static int flash_store_read_header (struct flash_store *flash, int offset,
 
 	if (header->marker != FLASH_STORE_HEADER_MARKER) {
 		/* If the header marker does not match, we need to check the older format for backwards
-			* compatibility.  If the first two bytes represent a valid length, assume the data is
-			* stored in the old way.  This is not a perfect check since it could be corrupt in way
-			* that looks valid.  At that point, we would count on the hash to catch this
-			* corruption. */
+		 * compatibility.  If the first two bytes represent a valid length, assume the data is
+		 * stored in the old way.  This is not a perfect check since it could be corrupt in a way
+		 * that looks valid.  At that point, we would count on the hash to catch this corruption. */
 		old_length = *((uint16_t*) header);
 		if (old_length > flash->max_size) {
 			return FLASH_STORE_NO_DATA;
@@ -579,7 +581,9 @@ int flash_store_init_storage_common (struct flash_store *store, struct flash *fl
 {
 	uint32_t sector_size;
 	uint32_t device_size;
+#ifdef FLASH_STORE_SUPPORT_NO_PARTIAL_PAGE_WRITE
 	uint32_t write_size;
+#endif
 	int status;
 
 	if ((store == NULL) || (flash == NULL)) {
@@ -647,6 +651,7 @@ int flash_store_init_storage_common (struct flash_store *store, struct flash *fl
 		}
 	}
 
+#ifdef FLASH_STORE_SUPPORT_NO_PARTIAL_PAGE_WRITE
 	status = flash->get_page_size (flash, &store->page_size);
 	if (status != 0) {
 		return status;
@@ -672,6 +677,7 @@ int flash_store_init_storage_common (struct flash_store *store, struct flash *fl
 		platform_free (store->page_buffer);
 		return status;
 	}
+#endif
 
 	store->erase = flash_store_erase;
 	store->erase_all = flash_store_erase_all;
@@ -820,14 +826,16 @@ int flash_store_init_variable_storage_decreasing (struct flash_store *store, str
 /**
  * Release the resources used for flash block storage.
  *
- * @param store The flash storage to relaese.
+ * @param store The flash storage to release.
  */
 void flash_store_release (struct flash_store *store)
 {
+#ifdef FLASH_STORE_SUPPORT_NO_PARTIAL_PAGE_WRITE
 	if (store) {
 		platform_free (store->page_buffer);
 		platform_mutex_free (&store->lock);
 	}
+#endif
 }
 
 /**
