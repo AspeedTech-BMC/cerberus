@@ -57,7 +57,11 @@ struct spi_flash_state {
 struct spi_flash {
 	struct flash base;									/**< Base flash instance. */
 	struct spi_flash_state *state;						/**< Variable context for the flash instance. */
+#if 0
 	const struct flash_master *spi;						/**< The SPI master connected to the flash device. */
+#else
+	struct flash_master *spi;                                         /**< The SPI master connected to the flash device. */
+#endif
 };
 
 /**

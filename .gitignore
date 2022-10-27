@@ -7,12 +7,8 @@ projects/*
 !projects/gcc
 !projects/keil
 !projects/linux
-<<<<<<< HEAD
 !projects/zephyr
-build
-=======
 build*
->>>>>>> upstream/master
 .vscode
 *~
 *.bin

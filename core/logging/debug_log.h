@@ -55,12 +55,6 @@ enum debug_log_component {
 };
 
 //State Machine log saving>
-enum debug_log_component_state_machine {
-	DEBUG_LOG_COMPONENT_VERIFY = 20,
-	DEBUG_LOG_COMPONENT_RECOVERY,
-	DEBUG_LOG_COMPONENT_UPDATE,
-};
-
 enum debug_log_msg_index_state_machine {
 	VERIFY_LOG_COMPONENT_ENTRY_START = 0,
 	VERIFY_LOG_COMPONENT_RUN_START,
