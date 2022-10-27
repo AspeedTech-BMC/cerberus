@@ -75,3 +75,13 @@ int platform_timer_create(platform_timer *timer, timer_callback callback, void *
 int platform_timer_arm_one_shot(platform_timer *timer, uint32_t ms_timeout);
 int platform_timer_disarm(platform_timer *timer);
 void platform_timer_delete(platform_timer *timer);
+
+/* Zephyr semaphore. */
+typedef struct k_sem platform_semaphore;
+int platform_semaphore_init(platform_semaphore *sem);
+void platform_semaphore_free(platform_semaphore *sem);
+int platform_semaphore_post(platform_semaphore *sem);
+int platform_semaphore_wait(platform_semaphore *sem, uint32_t ms_timeout);
+int platform_semaphore_try_wait(platform_semaphore *sem);
+int platform_semaphore_reset(platform_semaphore *sem);
+
