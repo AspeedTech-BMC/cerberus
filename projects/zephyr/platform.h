@@ -12,10 +12,10 @@
 #include <stdlib.h>
 #include <sys_clock.h>
 #include <kernel.h>
-#include "zephyr.h"
-// #include "semphr.h"
+#include <zephyr.h>
+#include "platform_compiler.h"
 
-// typedef void* SemaphoreHandle_t;
+
 typedef struct k_timer TimerHandle_t;
 typedef k_ticks_t TickType_t;
 
