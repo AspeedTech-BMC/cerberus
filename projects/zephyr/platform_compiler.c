@@ -23,9 +23,8 @@ char *strdup(const char *s)
 
 	if (s != NULL) {
 		str = platform_malloc(strlen(s) + 1);
-		if (str != NULL) {
+		if (str != NULL)
 			strcpy(str, s);
-		}
 	}
 
 	return str;
