@@ -8,6 +8,6 @@
 
 #include <stdio.h>
 
-#define platform_printf         printf
-#define NEWLINE                         "\n"
+#define platform_printf	printk
+#define NEWLINE		"\n"
 
