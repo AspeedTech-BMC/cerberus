@@ -80,6 +80,7 @@ XML_PORT_TAG = "Port"
 XML_PORTS_TAG = "Ports"
 XML_POWER_CONTROLLER_TAG = "PowerController"
 XML_PB_KEY_TAG = "PublicKey"
+XML_PRIVATE_KEY_TAG = "PrivateKey"
 XML_PULSEINTERVAL_TAG = "PulseInterval"
 XML_PWRCTRL_TAG = "PwrCtrl"
 XML_RW_TAG = "ReadWrite"
@@ -201,11 +202,7 @@ def xml_extract_single_value (root, requests, xml_file):
 
     return result
 
-<<<<<<< HEAD
-def process_pfm (root, hash_token, image_path):
-=======
-def process_pfm (root, xml_file):
->>>>>>> upstream/master
+def process_pfm (root, xml_file, hash_token, image_path):
     """
     Process PFM XML and generate list of element and attribute values.
 
@@ -285,30 +282,15 @@ def process_pfm (root, xml_file):
         image = {}
         image["regions"] = []
 
-<<<<<<< HEAD
-        if "fw_type" in xml:
-            image_prikey = img.findall("PrivateKey")
-            if (image_prikey):
-                if not image_prikey or len(image_prikey) > 1:
-                    print("Invalid number of Image private key tags in SignedImage, Firmware {0} - {1}".format(
-                        xml["version_id"], xml["fw_type"]))
-                    return None, None, False
-                image["prikey"] = image_prikey[0].text.strip()
-                image["hash"] = b""
-            img_hash = img.findall (XML_IMAGE_HASH_TAG)
-            if(img_hash):
-                if not img_hash or len (img_hash) > 1:
-                    print ("Invalid number of Image Hash tags in SignedImage, Firmware {0} - {1}".format (xml["version_id"], xml["fw_type"]))
-                    return None, None, False
-                image["hash"] = binascii.a2b_hex(re.sub("\s", "", img_hash[0].text.strip()))
-                image["prikey"] = ""
-
-            hash_type = img.findall (XML_IMAGE_HASH_TYPE_TAG)
-=======
         if pfm_version == manifest_types.VERSION_2:
-            img_hash = xml_find_single_tag (img, XML_HASH_TAG, xml_file)
-            image["hash"] = binascii.a2b_hex (re.sub ("\s", "", img_hash.text.strip ()))
->>>>>>> upstream/master
+            image_prikey = xml_find_single_tag(img, XML_PRIVATE_KEY_TAG, xml_file, False)
+            if image_prikey is not None:
+                image["prikey"] = image_prikey.text.strip()
+                image["hash"] = b""
+            img_hash = xml_find_single_tag (img, XML_HASH_TAG, xml_file, False)
+            if img_hash is not None:
+                image["hash"] = binascii.a2b_hex(re.sub("\s", "", img_hash.text.strip()))
+                image["prikey"] = ""
 
             hash_type = xml_find_single_tag (img, XML_HASH_TYPE_TAG, xml_file, False)
             if hash_type is None or hash_type.text.strip () == "SHA256":
@@ -321,34 +303,12 @@ def process_pfm (root, xml_file):
                 raise ValueError ("Unknown hash type '{0}' in signed image".format (
                     hash_type.text.strip ()))
         else:
-<<<<<<< HEAD
-            image_prikey = img.findall("PrivateKey")
-            if not image_prikey or len (image_prikey) > 1:
-                print ("Invalid number of Image private key tags in SignedImage, Firmware {0} - {1}".format (xml["version_id"], xml["fw_type"]))
-                return None, None, False
-            image["prikey"] = image_prikey[0].text.strip()
-            sig = b""
-            image["signature"] = sig
-            hash_type = img.findall(XML_IMAGE_HASH_TYPE_TAG)
-            if len(hash_type) > 1:
-                print("Invalid number of Image Hash Type tags in SignedImage, Firmware {0} - {1}".format(
-                    xml["version_id"], xml["fw_type"]))
-                return None, None, False
-
-            if hash_type and hash_type[0].text.strip() == "SHA512":
-                image["hash_type"] = "0x2"
-            elif hash_type and hash_type[0].text.strip() == "SHA384":
-                image["hash_type"] = "0x1"
-            else:
-                image["hash_type"] = "0x0"
-=======
             pbkey = xml_find_single_tag (img, XML_PB_KEY_TAG, xml_file)
             image["pbkey"] = pbkey.text.strip ()
 
             sig = xml_find_single_tag (img, XML_SIG_TAG, xml_file)
             image["signature"] = binascii.a2b_hex (re.sub ("\s", "", sig.text.strip ()))
 
->>>>>>> upstream/master
         for region in img.findall (XML_REGION_TAG):
             processed_region = process_region (region, xml["version_id"], xml_file)
             if processed_region is None:
@@ -367,13 +327,13 @@ def process_pfm (root, xml_file):
 
     if(hash_token == 1):
         if(os.path.exists(image_path)):
-            with open(image_path,"rb") as f:
+            with open(image_path, "rb") as f:
                 image_data = f.read()
         else:
             print("Provide image {0} not found ".format(image_path))
-            return None,None,False
+            return None, None, False
         for image in xml["signed_imgs"]:
-            startaddress,endaddress, data = [], [], b""
+            startaddress, endaddress, data = [], [], b""
             if(image["prikey"]):
                 key = RSA.importKey (open (image['prikey']).read())
             for regions in image["regions"]:
@@ -381,8 +341,8 @@ def process_pfm (root, xml_file):
                 endaddress.append(regions["end"])
             hashtag = image['hash_type']
             for start, end in zip(startaddress, endaddress):
-                data = data + image_data[int(start,16):int(end,16) + 1]
-            if(int(hashtag,16) == 0):
+                data = data + image_data[int(start, 16):int(end, 16) + 1]
+            if(int(hashtag, 16) == 0):
                 if(image["prikey"]):
                     hash1 = SHA256.new(data)
                     signer = PKCS1_v1_5.new(key)
@@ -416,7 +376,7 @@ def process_pfm (root, xml_file):
                     exponent = hex(key.e)[2:]
                     while(len(exponent) % 2 != 0):
                         exponent = '0' + exponent
-                    exponent=bytearray.fromhex(exponent)
+                    exponent = bytearray.fromhex(exponent)
                     m_length = hex(len(modulus))[2:]
                     while(len(m_length) != 4):
                         Mlength = "0" + m_length
@@ -1023,11 +983,7 @@ def process_pcd (root, xml_file):
 
     return xml, manifest_types.VERSION_2, False
 
-<<<<<<< HEAD
-def load_and_process_xml (xml_file, xml_type, hash_token, image_path):
-=======
-def load_and_process_xml (xml_file, xml_type, selection_list=None):
->>>>>>> upstream/master
+def load_and_process_xml (xml_file, xml_type, hash_token, image_path, selection_list=None):
     """
     Process XML and generate list of element and attribute values.
 
@@ -1042,11 +998,7 @@ def load_and_process_xml (xml_file, xml_type, selection_list=None):
     root = et.parse (xml_file).getroot ()
 
     if xml_type is manifest_types.PFM:
-<<<<<<< HEAD
-        return process_pfm (root, hash_token, image_path)
-=======
-        return process_pfm (root, xml_file)
->>>>>>> upstream/master
+        return process_pfm (root, xml_file, hash_token, image_path)
     elif xml_type is manifest_types.CFM:
         return process_cfm (root, xml_file, selection_list["selection"])
     elif xml_type is manifest_types.PCD:

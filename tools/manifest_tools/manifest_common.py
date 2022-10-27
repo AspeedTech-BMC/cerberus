@@ -115,14 +115,11 @@ def load_config (config_file):
     config["key_size"] = ""
     config["hash_type"] = ""
     config["key_type"] = ""
-<<<<<<< HEAD
-    config["gen_hash"]=""
-    config["input_image"]=""
-=======
     config["max_rw_sections"] = ""
     config["cfm"] = ""
+    config["gen_hash"] = ""
+    config["input_image"] = ""
 
->>>>>>> upstream/master
     with open (config_file, 'r') as fh:
         data = fh.readlines ()
 
@@ -145,17 +142,14 @@ def load_config (config_file):
             config["hash_type"] = string.split ("=")[-1].strip ()
         elif string.startswith ("Key"):
             config["prv_key_path"] = string.split ("=")[-1].strip ()
-<<<<<<< HEAD
-        elif string.startswith("GenHash"):
-            config["gen_hash"] = string.split("=")[-1].strip()
-        elif string.startswith("InputImage"):
-            config["input_image"] = string.split("=")[-1].strip()
-=======
         elif string.startswith ("MaxRWSections"):
             config["max_rw_sections"] = string.split ("=")[-1].strip ()
         elif string.startswith ("CFM"):
             config["cfm"] = string.split ("=")[-1].strip ()
->>>>>>> upstream/master
+        elif string.startswith("GenHash"):
+            config["gen_hash"] = string.split("=")[-1].strip()
+        elif string.startswith("InputImage"):
+            config["input_image"] = string.split("=")[-1].strip()
         else:
             config["xml_list"].append (string)
 
@@ -260,13 +254,10 @@ def load_xmls (config_filename, max_num_xmls, xml_type):
     hash_type = None
     sign = False
     empty = False
-<<<<<<< HEAD
-    hash_token = None
-    image_path = None
-=======
     max_rw_sections = 3
     selection_list = None
->>>>>>> upstream/master
+    hash_token = None
+    image_path = None
 
     if "key_type" in config and config["key_type"]:
         if config["key_type"] == "ECC":
@@ -318,12 +309,8 @@ def load_xmls (config_filename, max_num_xmls, xml_type):
     matching_xml_found = False
 
     for xml in config["xml_list"]:
-<<<<<<< HEAD
-        parsed_xml, curr_xml_version, empty = manifest_parser.load_and_process_xml (xml, xml_type, hash_token, image_path)
-=======
         parsed_xml, curr_xml_version, empty = manifest_parser.load_and_process_xml (xml, xml_type,
-            selection_list)
->>>>>>> upstream/master
+            hash_token, image_path, selection_list)
 
         if parsed_xml is None:
             continue
