@@ -19,7 +19,7 @@
 typedef struct k_timer TimerHandle_t;
 typedef k_ticks_t TickType_t;
 
-#define portMAX_DELAY           ( k_ticks_t ) 0xffffffffUL
+#define portMAX_DELAY	K_TICKS_FOREVER
 
 /* Zephyr memory management. */
 #define	platform_malloc		malloc
