@@ -382,10 +382,12 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 				debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 					MCTP_LOGGING_MCTP_CONTROL_RSP_FAIL, status, mctp->channel_id);
 			}
-			else {
+			else if (MCTP_BASE_PROTOCOL_IS_VENDOR_MSG (mctp->msg_type)) {
 				status = mctp->cmd_cerberus->process_response (mctp->cmd_cerberus,
 					&mctp->req_buffer);
 			}
+			else
+				return MCTP_BASE_PROTOCOL_UNSUPPORTED_MSG;
 
 			mctp->response_expected = false;
 			mctp->response_msg_tag = (mctp->response_msg_tag + 1) % 8;
