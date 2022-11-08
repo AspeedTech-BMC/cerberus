@@ -109,6 +109,21 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_add
 		packet_len = header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD;
 		*payload_len = mctp_protocol_payload_len (packet_len);
 	}
+#ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
+	else if (*msg_type == 0x85) {
+		// echo command for large message test
+		if ((header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD) == buf_len) {
+			packet_len = header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD;
+			*payload_len = mctp_protocol_payload_len (packet_len);
+			add_crc = true;
+		}
+		else {
+			packet_len = header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD_NO_PEC;
+			*payload_len = packet_len - sizeof (struct mctp_base_protocol_transport_header);
+			add_crc = false;
+		}
+	}
+#endif
 	else {
 		return MCTP_BASE_PROTOCOL_UNSUPPORTED_MSG;
 	}

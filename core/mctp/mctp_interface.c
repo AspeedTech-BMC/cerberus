@@ -386,6 +386,10 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 				status = mctp->cmd_cerberus->process_response (mctp->cmd_cerberus,
 					&mctp->req_buffer);
 			}
+#ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
+			else if (mctp->msg_type == 0x85) {
+			}
+#endif
 			else
 				return MCTP_BASE_PROTOCOL_UNSUPPORTED_MSG;
 
@@ -445,6 +449,19 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 					dest_eid, msg_tag, response_addr, rx_packet->dest_addr, cmd_set, tag_owner);
 			}
 		}
+#ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
+		else if (mctp->msg_type == 0x85) {
+			if (tag_owner == MCTP_BASE_PROTOCOL_TO_REQUEST) {
+				// echo command for large message test
+				// add one byte completion code
+				mctp->req_buffer.max_response = MCTP_BASE_PROTOCOL_MIN_TRANSMISSION_UNIT;
+				memmove(&mctp->req_buffer.data[4], &mctp->req_buffer.data[3], mctp->req_buffer.length - 3);
+				mctp->req_buffer.data[1] &= 0x7f;
+				mctp->req_buffer.data[3] = 0x00;
+				mctp->req_buffer.length = mctp->req_buffer.length + 1;
+			}
+		}
+#endif
 		else {
 			/* Handle other messages types, such as SPDM. */
 		}
