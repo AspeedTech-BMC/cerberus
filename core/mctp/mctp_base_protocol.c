@@ -80,9 +80,26 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_add
 			CRC. */
 		/* TODO: Change default behaviour to always check for CRC with an ifdef to disable checking
 			in control messages. */
+#if 0
 		packet_len = header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD_NO_PEC;
 		*payload_len = packet_len - sizeof (struct mctp_base_protocol_transport_header);
 		add_crc = false;
+#else
+		/* Does read data include pec?
+		 * buf_len = 1(mctp cmd code 0x0F) + 1(byte count) + N(byte count) + 1(*pec, if exist)
+		 * so if buf_len is equal N + 3, the pec is existing
+		 */
+		if ((header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD) == buf_len) {
+			packet_len = header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD;
+			*payload_len = mctp_protocol_payload_len (packet_len);
+			add_crc = true;
+		}
+		else {
+			packet_len = header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD_NO_PEC;
+			*payload_len = packet_len - sizeof (struct mctp_base_protocol_transport_header);
+			add_crc = false;
+		}
+#endif
 	}
 	else if (MCTP_BASE_PROTOCOL_IS_VENDOR_MSG (*msg_type)) {
 		if ((header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD) <=
