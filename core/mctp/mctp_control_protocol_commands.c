@@ -267,6 +267,7 @@ int mctp_control_protocol_get_message_type_support (struct cmd_interface_msg *re
 		return 0;
 	}
 
+	response->completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
 	response->message_type_count = 2;
 
 	message_type_list = mctp_control_get_message_type_response_get_entries (response);
