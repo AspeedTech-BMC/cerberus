@@ -386,6 +386,8 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 				status = mctp->cmd_cerberus->process_response (mctp->cmd_cerberus,
 					&mctp->req_buffer);
 			}
+			else if (MCTP_BASE_PROTOCOL_IS_SPDM_MSG (mctp->msg_type)) {
+			}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
 			else if (MCTP_BASE_PROTOCOL_IS_ECHO_TEST_MSG (mctp->msg_type)) {
 			}
@@ -447,6 +449,10 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 				return mctp_interface_generate_error_packet (mctp, cerberus_eid, tx_message,
 					CERBERUS_PROTOCOL_ERROR_UNSPECIFIED, MCTP_BASE_PROTOCOL_MSG_TOO_LARGE, src_eid,
 					dest_eid, msg_tag, response_addr, rx_packet->dest_addr, cmd_set, tag_owner);
+			}
+		}
+		else if (MCTP_BASE_PROTOCOL_IS_SPDM_MSG (mctp->msg_type)) {
+			if (tag_owner == MCTP_BASE_PROTOCOL_TO_REQUEST) {
 			}
 		}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
