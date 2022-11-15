@@ -387,7 +387,7 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 					&mctp->req_buffer);
 			}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
-			else if (mctp->msg_type == 0x85) {
+			else if (MCTP_BASE_PROTOCOL_IS_ECHO_TEST_MSG (mctp->msg_type)) {
 			}
 #endif
 			else
@@ -450,7 +450,7 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 			}
 		}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
-		else if (mctp->msg_type == 0x85) {
+		else if (MCTP_BASE_PROTOCOL_IS_ECHO_TEST_MSG (mctp->msg_type)) {
 			if (tag_owner == MCTP_BASE_PROTOCOL_TO_REQUEST) {
 				// echo command for large message test
 				// add one byte completion code

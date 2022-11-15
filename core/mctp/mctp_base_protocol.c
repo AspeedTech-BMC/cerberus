@@ -110,7 +110,7 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_add
 		*payload_len = mctp_protocol_payload_len (packet_len);
 	}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
-	else if (*msg_type == 0x85) {
+	else if (MCTP_BASE_PROTOCOL_IS_ECHO_TEST_MSG (*msg_type)) {
 		// echo command for large message test
 		if ((header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD) == buf_len) {
 			packet_len = header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD;
