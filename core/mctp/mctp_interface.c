@@ -460,6 +460,11 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 			if (tag_owner == MCTP_BASE_PROTOCOL_TO_REQUEST) {
 				// echo command for large message test
 				// add one byte completion code
+				if (mctp->req_buffer.length == MCTP_BASE_PROTOCOL_MAX_MESSAGE_BODY) {
+					return mctp_interface_generate_error_packet (mctp, cerberus_eid, tx_message,
+					CERBERUS_PROTOCOL_ERROR_UNSPECIFIED, MCTP_BASE_PROTOCOL_MSG_TOO_LARGE, src_eid,
+					dest_eid, msg_tag, response_addr, rx_packet->dest_addr, cmd_set, tag_owner);
+				}
 				mctp->req_buffer.max_response = MCTP_BASE_PROTOCOL_MIN_TRANSMISSION_UNIT;
 				memmove(&mctp->req_buffer.data[4], &mctp->req_buffer.data[3], mctp->req_buffer.length - 3);
 				mctp->req_buffer.data[1] &= 0x7f;
