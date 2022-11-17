@@ -453,6 +453,22 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 		}
 		else if (MCTP_BASE_PROTOCOL_IS_SPDM_MSG (mctp->msg_type)) {
 			if (tag_owner == MCTP_BASE_PROTOCOL_TO_REQUEST) {
+#if 0
+				printk("RECV SPDM[%d,%02x] REQUEST:", 0, src_eid);
+				for (uint16_t i=0; i<mctp->req_buffer.length; ++i) {
+					printk("%c%02x", i%16?' ':'\n', mctp->req_buffer.data[i]);
+				}
+				printk("\n");
+#endif
+				// Blocking call to SPDM Request Handler
+				handle_spdm_mctp_message(0, src_eid, mctp->req_buffer.data, &mctp->req_buffer.length);
+#if 0
+				printk("SEND SPDM[%d,%02x] RESPONSE:", 0, src_eid);
+				for (uint16_t i=0; i<mctp->req_buffer.length; ++i) {
+					printk("%c%02x", i%16?' ':'\n', mctp->req_buffer.data[i]);
+				}
+				printk("\n");
+#endif
 			}
 		}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
