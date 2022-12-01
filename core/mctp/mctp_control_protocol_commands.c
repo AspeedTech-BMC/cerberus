@@ -268,12 +268,13 @@ int mctp_control_protocol_get_message_type_support (struct cmd_interface_msg *re
 	}
 
 	response->completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
-	response->message_type_count = 2;
+	response->message_type_count = 3;
 
 	message_type_list = mctp_control_get_message_type_response_get_entries (response);
 
 	message_type_list[0] = MCTP_BASE_PROTOCOL_MSG_TYPE_CONTROL_MSG;
-	message_type_list[1] = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
+	message_type_list[1] = MCTP_BASE_PROTOCOL_MSG_TYPE_SPDM_MSG;
+	message_type_list[2] = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
 
 	request->length = mctp_control_get_message_type_response_length (response->message_type_count);
 
