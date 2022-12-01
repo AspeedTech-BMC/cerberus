@@ -45,6 +45,7 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 {
 	struct mctp_control_set_eid *rq;
 	struct mctp_control_set_eid_response *response;
+	uint8_t eid_original;
 	uint8_t eid_assigned;
 	int status;
 
@@ -69,6 +70,7 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 		response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_DATA;
 	}
 	else {
+		eid_original = device_manager_get_device_eid (device_mgr, DEVICE_MANAGER_SELF_DEVICE_NUM);
 		status = device_manager_update_device_eid (device_mgr, DEVICE_MANAGER_SELF_DEVICE_NUM,
 			rq->eid);
 		if (status != 0) {
@@ -78,6 +80,9 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 		status = device_manager_update_device_entry (device_mgr,
 			DEVICE_MANAGER_MCTP_BRIDGE_DEVICE_NUM, request->source_eid, request->source_addr);
 		if (status != 0) {
+			// restore self device eid
+			device_manager_update_device_eid (device_mgr, DEVICE_MANAGER_SELF_DEVICE_NUM,
+			eid_original);
 			goto update_device_mgr_fail;
 		}
 
