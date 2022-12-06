@@ -566,7 +566,6 @@ int mctp_interface_issue_request (struct mctp_interface *mctp, struct cmd_channe
 	int src_eid;
 	int src_addr;
 	int status;
-	int i;
 
 	if ((mctp == NULL) || (channel == NULL) || (request == NULL) || (msg_buffer == NULL) ||
 		(length == 0)) {
