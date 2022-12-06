@@ -314,7 +314,7 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 	}
 
 	if (tag_owner == MCTP_BASE_PROTOCOL_TO_RESPONSE) {
-		if (!mctp->response_expected || ((src_eid != mctp->response_eid) && (src_eid != MCTP_BASE_PROTOCOL_NULL_EID)) ||
+		if (!mctp->response_expected || ((src_eid != mctp->response_eid) && (mctp->response_eid != MCTP_BASE_PROTOCOL_NULL_EID)) ||
 			(msg_tag != mctp->response_msg_tag)) {
 			return MCTP_BASE_PROTOCOL_UNEXPECTED_PKT;
 		}
@@ -619,14 +619,6 @@ int mctp_interface_issue_request (struct mctp_interface *mctp, struct cmd_channe
 
 	mctp->response_expected = true;
 	mctp->response_eid = dest_eid;
-
-	// find device eid
-	if (dest_eid == MCTP_BASE_PROTOCOL_NULL_EID) {
-		for (i = 0; i < mctp->device_manager->num_devices; i++) {
-			if (dest_addr == device_manager_get_device_addr(mctp->device_manager, i))
-				mctp->response_eid = device_manager_get_device_eid(mctp->device_manager, i);
-		}
-	}
 
 	status = platform_semaphore_reset (&mctp->wait_for_response);
 	if (status != 0) {
