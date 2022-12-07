@@ -33,11 +33,7 @@ static int logging_flash_save_buffer (const struct logging_flash *logging)
 			FLASH_SECTOR_SIZE;
 
 		if (FLASH_SECTOR_OFFSET (logging->state->next_addr) == 0) {
-#if 0
 			status = spi_flash_sector_erase (logging->flash, logging->state->next_addr);
-#else
-			status = logging->flash->base.sector_erase (logging->flash, logging->state->next_addr);
-#endif
 			if (status != 0) {
 				return status;
 			}
@@ -51,13 +47,9 @@ static int logging_flash_save_buffer (const struct logging_flash *logging)
 				}
 			}
 		}
-#if 0
+
 		status = spi_flash_write (logging->flash, logging->state->next_addr,
 			logging->state->entry_buffer, write_len);
-#else
-		status = logging->flash->base.write (logging->flash, logging->state->next_addr,
-			logging->state->entry_buffer, write_len);
-#endif
 		if (ROT_IS_ERROR (status)) {
 			return status;
 		}
@@ -195,12 +187,7 @@ int logging_flash_clear (const struct logging *logging)
 
 	platform_mutex_lock (&flash_log->state->lock);
 
-#if 0
 	status = spi_flash_block_erase (flash_log->flash, flash_log->base_addr);
-#else
-	status = flash_log->flash->base.sector_erase (flash_log->flash, flash_log->base_addr);
-	status = flash_log->flash->base.sector_erase (flash_log->flash, flash_log->base_addr + FLASH_SECTOR_SIZE);
-#endif
 	if (status != 0) {
 		goto exit;
 	}
@@ -273,13 +260,8 @@ int logging_flash_read_contents (const struct logging *logging, uint32_t offset,
 			length : (flash_log->state->flash_used[i] - read_offset);
 
 		if (read_len != 0) {
-#if 0
 			status = spi_flash_read (flash_log->flash,
 				flash_log->base_addr + (FLASH_SECTOR_SIZE * i) + read_offset, contents, read_len);
-#else
-			status = flash_log->flash->base.read  (flash_log->flash,
-				flash_log->base_addr + (FLASH_SECTOR_SIZE * i) + read_offset, contents, read_len);
-#endif
 			if (status != 0) {
 				platform_mutex_unlock (&flash_log->state->lock);
 				return status;
@@ -315,13 +297,13 @@ int logging_flash_read_contents (const struct logging *logging, uint32_t offset,
  * Initialize a log that uses flash for persistent storage.  Log entries already on flash will be
  * detected and maintained.
  *
- * The log will consume an entire flash erase sector.
+ * The log will consume an entire flash erase block.
  *
  * @param logging The log to initialize.
  * @param state Variable context for the log.  This must be uninitialized.
  * @param flash The flash device where log entries are stored.
  * @param base_addr The starting address for log entries.  This must be aligned to the beginning of
- * an erase sector.
+ * an erase block.
  *
  * @return 0 if the log was successfully initialized or an error code.
  */
@@ -371,11 +353,8 @@ int logging_flash_init_state (const struct logging_flash *logging)
 	if ((logging == NULL) || (logging->state == NULL) || (logging->flash == NULL)) {
 		return LOGGING_INVALID_ARGUMENT;
 	}
-#if 0
+
 	if (FLASH_BLOCK_BASE (logging->base_addr) != logging->base_addr) {
-#else
-	if (FLASH_SECTOR_BASE (logging->base_addr) != logging->base_addr) {
-#endif
 		return LOGGING_STORAGE_NOT_ALIGNED;
 	}
 
@@ -385,15 +364,9 @@ int logging_flash_init_state (const struct logging_flash *logging)
 	end = logging->state->entry_buffer + sizeof (logging->state->entry_buffer);
 
 	for (curr_sector_num = 0; curr_sector_num < LOGGING_FLASH_SECTORS; ++curr_sector_num) {
-#if 0
 		status = spi_flash_read (logging->flash,
 			logging->base_addr + (FLASH_SECTOR_SIZE * curr_sector_num),
 			logging->state->entry_buffer, sizeof (logging->state->entry_buffer));
-#else
-		status = flash->base.read (logging->flash,
-			logging->base_addr + (FLASH_SECTOR_SIZE * curr_sector_num),
-			logging->state->entry_buffer, sizeof (logging->state->entry_buffer));
-#endif
 		if (status != 0) {
 			return status;
 		}

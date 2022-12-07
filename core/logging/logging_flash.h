@@ -15,13 +15,9 @@
 /**
  * The number of flash sectors available to the log for storing entries.
  */
-#if 0
 #define LOGGING_FLASH_AREA_LEN		FLASH_BLOCK_SIZE
 #define LOGGING_FLASH_SECTORS 		(LOGGING_FLASH_AREA_LEN / FLASH_SECTOR_SIZE)
-#else
-#define	LOGGING_FLASH_AREA_LEN		(8 * 1024) //FLASH_SECTOR_SIZE		//	(4 * 1024)
-#define LOGGING_FLASH_SECTORS 		(LOGGING_FLASH_AREA_LEN / FLASH_SECTOR_SIZE)	// (8 * 1024) / (4 * 1024) = 2
-#endif
+
 
 /**
  * Variable context for a log that stores entries in SPI flash.
