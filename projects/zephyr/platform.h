@@ -85,3 +85,6 @@ int platform_semaphore_wait(platform_semaphore *sem, uint32_t ms_timeout);
 int platform_semaphore_try_wait(platform_semaphore *sem);
 int platform_semaphore_reset(platform_semaphore *sem);
 
+/* Zephyr system uptime. */
+uint64_t platform_get_time(void);
+

@@ -554,3 +554,14 @@ int platform_semaphore_reset(platform_semaphore *sem)
 	return 0;
 }
 
+
+/**
+ * Get the current system time.
+ *
+ * @return The current time, in milliseconds.
+ */
+uint64_t platform_get_time(void)
+{
+	return k_uptime_get();
+}
+
