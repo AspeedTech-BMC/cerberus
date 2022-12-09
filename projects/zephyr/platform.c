@@ -4,16 +4,27 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
+#include <stdint.h>
+#include <kernel.h>
+#include <zephyr.h>
 #include "platform.h"
-#include "kernel.h"
 #include "status/rot_status.h"
 
 
 #define INVALID_ARGUMENT	0
 #define NO_MEMORY		1
+#define NO_INIT			2
+
+
+/**
+ * Sleep for a specified number of milliseconds.
+ *
+ * @param msec The number of milliseconds to sleep.
+ */
+void platform_msleep(uint32_t msec)
+{
+	k_sleep(K_MSEC(msec));
+}
 
 
 #define PLATFORM_TIMEOUT_ERROR(code)            ROT_ERROR(ROT_MODULE_PLATFORM_TIMEOUT, code)
@@ -28,13 +39,10 @@
  */
 int platform_init_timeout(uint32_t msec, platform_clock *timeout)
 {
-	TickType_t now = 0; // xTaskGetTickCount ();
-
 	if (timeout == NULL)
 		return PLATFORM_TIMEOUT_ERROR(INVALID_ARGUMENT);
 
-	timeout->ticks = now;
-	timeout->wrap = 0;
+	*timeout = k_uptime_get();
 
 	return platform_increase_timeout(msec, timeout);
 }
@@ -49,16 +57,10 @@ int platform_init_timeout(uint32_t msec, platform_clock *timeout)
  */
 int platform_increase_timeout(uint32_t msec, platform_clock *timeout)
 {
-	TickType_t curr;
-
 	if (timeout == NULL)
 		return PLATFORM_TIMEOUT_ERROR(INVALID_ARGUMENT);
 
-	curr = timeout->ticks;
-	timeout->ticks += msec / 1000;// portTICK_PERIOD_MS;
-
-	if ((timeout->wrap == 0) && (timeout->ticks < curr))
-		timeout->wrap = 1;
+	*timeout += msec;
 
 	return 0;
 }
@@ -72,13 +74,10 @@ int platform_increase_timeout(uint32_t msec, platform_clock *timeout)
  */
 int platform_init_current_tick(platform_clock *currtime)
 {
-	TickType_t now = 0;// xTaskGetTickCount ();
-
 	if (currtime == NULL)
 		return PLATFORM_TIMEOUT_ERROR(INVALID_ARGUMENT);
 
-	currtime->wrap = 0;
-	currtime->ticks = now;
+	*currtime = k_uptime_get();
 
 	return 0;
 }
@@ -92,32 +91,27 @@ int platform_init_current_tick(platform_clock *currtime)
  */
 int platform_has_timeout_expired(platform_clock *timeout)
 {
-	TickType_t now = 0; // xTaskGetTickCount ();
+	int64_t now;
 
 	if (timeout == NULL)
 		return PLATFORM_TIMEOUT_ERROR(INVALID_ARGUMENT);
 
-	if (!timeout->wrap) {
-		if (now < timeout->ticks)
-			return 0;
-		else
-			return 1;
-	} else {
-		if ((now < 0xf0000000) && (now >= timeout->ticks))
-			return 1;
-		else
-			return 0;
-	}
+	now = k_uptime_get();
+
+	if (now < *timeout)
+		return 0;
+	else
+		return 1;
 }
 
 /**
- * Get the elapsed time in milliseconds since last boot
+ * Get the current system time.
  *
- * @return elapsed time in milliseconds since last boot.
+ * @return The current time, in milliseconds.
  */
-uint64_t platform_get_time_since_boot(void)
+uint64_t platform_get_time(void)
 {
-	return (uint64_t) 1000; // xTaskGetTickCount () * portTICK_PERIOD_MS;
+	return k_uptime_get();
 }
 
 /**
@@ -137,11 +131,10 @@ uint32_t platform_get_duration(const platform_clock *start, const platform_clock
 	if ((end == NULL) || (start == NULL))
 		return 0;
 
-	if (start->ticks <= end->ticks)
-		return (end->ticks - start->ticks) * 1000; // portTICK_PERIOD_MS;
+	if (*start > *end)
+		return 0;
 
-	/* The ticks have wrapped. */
-	return ((portMAX_DELAY - start->ticks) + end->ticks) * 1000; // portTICK_PERIOD_MS;
+	return (*end - *start);
 }
 
 
@@ -156,11 +149,13 @@ uint32_t platform_get_duration(const platform_clock *start, const platform_clock
  */
 int platform_mutex_init(platform_mutex *mutex)
 {
+	int status;
+
 	if (mutex == NULL)
 		return PLATFORM_MUTEX_ERROR(INVALID_ARGUMENT);
 
-	k_sem_init(mutex, 1, 1);
-	if (mutex == NULL)
+	status = k_sem_init(mutex, 1, 1);
+	if (status != 0)
 		return PLATFORM_MUTEX_ERROR(NO_MEMORY);
 
 	return 0;
@@ -190,12 +185,10 @@ int platform_mutex_free(platform_mutex *mutex)
  */
 int platform_mutex_lock(platform_mutex *mutex)
 {
-	k_timeout_t timeout = { portMAX_DELAY };
-
 	if (mutex == NULL)
 		return PLATFORM_MUTEX_ERROR(INVALID_ARGUMENT);
 
-	k_sem_take(mutex, timeout);
+	k_sem_take(mutex, K_FOREVER);
 	return 0;
 }
 
@@ -215,96 +208,39 @@ int platform_mutex_unlock(platform_mutex *mutex)
 	return 0;
 }
 
-/**
- * Initialize a Zephyr recursive mutex.
- *
- * @param mutex The mutex to initialize.
- *
- * @return 0 if the mutex was successfully initialized or an error code.
- */
-int platform_recursive_mutex_init(platform_mutex *mutex)
-{
-	if (mutex == NULL)
-		return PLATFORM_MUTEX_ERROR(INVALID_ARGUMENT);
-
-	// *mutex = xSemaphoreCreateRecursiveMutex ();
-	// TODO no concept of Recursive Mutex
-	k_sem_init(mutex, 0, K_SEM_MAX_LIMIT);
-
-	if (mutex == NULL)
-		return PLATFORM_MUTEX_ERROR(NO_MEMORY);
-
-	return 0;
-}
-
-/**
- * Free a Zephyr recursive mutex.
- *
- * @param mutex The mutex to free.
- *
- * @return 0 if the mutex was freed or an error code.
- */
-int platform_recursive_mutex_free(platform_mutex *mutex)
-{
-	if (mutex)
-		platform_mutex_free(mutex);
-
-	return 0;
-}
-
-/**
- * Acquire the recursive mutex lock.
- *
- * @param mutex The mutex to lock.
- *
- * @return 0 if the mutex was successfully locked or an error code.
- */
-int platform_recursive_mutex_lock(platform_mutex *mutex)
-{
-	if (mutex == NULL)
-		return PLATFORM_MUTEX_ERROR(INVALID_ARGUMENT);
-
-	platform_mutex_lock(mutex);
-
-	return 0;
-}
-
-/**
- * Release the recursive mutex lock.
- *
- * @param mutex The mutex to unlock.
- *
- * @return 0 if the mutex was successfully unlocked or an error code.
- */
-int platform_recursive_mutex_unlock(platform_mutex *mutex)
-{
-	if (mutex == NULL)
-		return PLATFORM_MUTEX_ERROR(INVALID_ARGUMENT);
-
-	platform_mutex_unlock(mutex);
-
-	return 0;
-}
-
 
 #define PLATFORM_TIMER_ERROR(code)              ROT_ERROR(ROT_MODULE_PLATFORM_TIMER, code)
+
+
+/**
+ * Internal notification function for timer worker.
+ *
+ * @param work the work item that is to be submitted.
+ */
+static void platform_timer_worker(struct k_work *work)
+{
+	platform_timer *instance = CONTAINER_OF(work, platform_timer, timer_worker);
+
+	if (instance) {
+		platform_mutex_lock(&instance->disarm_lock);
+		if (!instance->disarm)
+			instance->callback(instance->context);
+		platform_mutex_unlock(&instance->disarm_lock);
+	}
+}
 
 /**
  * Internal notification function for timer expiration.
  *
  * @param timer The timer that expired.
  */
-static void platform_timer_notification(TimerHandle_t *timer)
+static void platform_timer_notification(struct k_timer *tmr)
 {
-	// TODO Need a Function to handle this
-	//platform_timer *instance = pvTimerGetTimerID(timer);
-	//
-	//if (instance) {
-	//	xSemaphoreTakeRecursive(instance->disarm_lock, portMAX_DELAY);
-	//	if (!instance->disarm)
-	//		instance->callback(instance->context);
-	//	xSemaphoreGiveRecursive(instance->disarm_lock);
-	//}
+	platform_timer *instance = CONTAINER_OF(tmr, platform_timer, timer);
+
+	/* Cannot use semaphore and mutex from ISR context, queue worker */
+	if (instance)
+		k_work_submit(&instance->timer_worker);
 }
 
 /**
@@ -321,21 +257,15 @@ int platform_timer_create(platform_timer *timer, timer_callback callback, void *
 	if ((timer == NULL) || (callback == NULL))
 		return PLATFORM_TIMER_ERROR(INVALID_ARGUMENT);
 
-	// timer->disarm_lock = xSemaphoreCreateRecursiveMutex ();
-	// if (timer->disarm_lock == NULL) {
-	if (platform_recursive_mutex_lock(&(timer->disarm_lock)))
+	if (platform_mutex_init(&timer->disarm_lock) != 0)
 		return PLATFORM_TIMER_ERROR(NO_MEMORY);
 
-	// timer->timer = xTimerCreate ("SWTimer", 1, pdFALSE, timer, platform_timer_notification);
-	k_timer_init(&(timer->timer), platform_timer_notification, NULL);
-	// if (timer->timer == NULL) {
-	// vSemaphoreDelete (timer->disarm_lock);
-	if (platform_recursive_mutex_unlock(&(timer->disarm_lock)))
-		return PLATFORM_TIMER_ERROR(NO_MEMORY);
-
+	k_work_init(&timer->timer_worker, platform_timer_worker);
+	k_timer_init(&timer->timer, platform_timer_notification, NULL);
 	timer->callback = callback;
 	timer->context = context;
 	timer->disarm = 1;
+	timer->init = 1;
 
 	return 0;
 }
@@ -354,21 +284,13 @@ int platform_timer_arm_one_shot(platform_timer *timer, uint32_t ms_timeout)
 	if ((timer == NULL) || (ms_timeout == 0))
 		return PLATFORM_TIMER_ERROR(INVALID_ARGUMENT);
 
-	// xSemaphoreTakeRecursive (timer->disarm_lock, portMAX_DELAY);
-	if (platform_recursive_mutex_lock(&(timer->disarm_lock)))
-		return PLATFORM_TIMER_ERROR(NO_MEMORY);
-
-	timer->disarm = 0;
-	// xTimerChangePeriod (timer->timer, pdMS_TO_TICKS (ms_timeout), portMAX_DELAY);
-	// xTimerReset (timer->timer, portMAX_DELAY);
-	k_timeout_t duration = { ms_timeout };
-	k_timeout_t period = { portMAX_DELAY };
-
-	k_timer_start(&(timer->timer), duration, period);
-
-	// xSemaphoreGiveRecursive (timer->disarm_lock);
-	if (platform_recursive_mutex_unlock(&(timer->disarm_lock)))
-		return PLATFORM_TIMER_ERROR(NO_MEMORY);
+	if (timer->init) {
+		platform_mutex_lock(&timer->disarm_lock);
+		timer->disarm = 0;
+		k_timer_start(&timer->timer, K_MSEC(ms_timeout), K_NO_WAIT);
+		platform_mutex_unlock(&timer->disarm_lock);
+	} else
+		return PLATFORM_TIMER_ERROR(NO_INIT);
 
 	return 0;
 }
@@ -385,17 +307,13 @@ int platform_timer_disarm(platform_timer *timer)
 	if (timer == NULL)
 		return PLATFORM_TIMER_ERROR(INVALID_ARGUMENT);
 
-	// xSemaphoreTakeRecursive (timer->disarm_lock, portMAX_DELAY);
-	if (platform_recursive_mutex_lock(&(timer->disarm_lock)))
-		return PLATFORM_TIMER_ERROR(NO_MEMORY);
-
-	timer->disarm = 1;
-	// xTimerStop (timer->timer, portMAX_DELAY);
-	k_timer_stop(&(timer->timer));
-
-	// xSemaphoreGiveRecursive (timer->disarm_lock);
-	if (platform_recursive_mutex_unlock(&(timer->disarm_lock)))
-		return PLATFORM_TIMER_ERROR(NO_MEMORY);
+	if (timer->init) {
+		platform_mutex_lock(&timer->disarm_lock);
+		timer->disarm = 1;
+		k_timer_stop(&timer->timer);
+		platform_mutex_unlock(&timer->disarm_lock);
+	} else
+		return PLATFORM_TIMER_ERROR(NO_INIT);
 
 	return 0;
 }
@@ -407,13 +325,12 @@ int platform_timer_disarm(platform_timer *timer)
  */
 void platform_timer_delete(platform_timer *timer)
 {
-	if (timer != NULL) {
+	if ((timer != NULL) && timer->init) {
 		platform_timer_disarm(timer);
-
-		platform_msleep(100);
-		// xTimerDelete (timer->timer, portMAX_DELAY);
-		// vSemaphoreDelete (timer->disarm_lock);
-		platform_mutex_free(&(timer->disarm_lock));
+		platform_mutex_lock(&timer->disarm_lock);
+		timer->init = 0;
+		platform_mutex_unlock(&timer->disarm_lock);
+		platform_mutex_free(&timer->disarm_lock);
 	}
 }
 
@@ -455,11 +372,13 @@ uint16_t platform_htons(uint16_t host_short)
  */
 int platform_semaphore_init(platform_semaphore *sem)
 {
+	int status;
+
 	if (sem == NULL)
 		return PLATFORM_SEMAPHORE_ERROR(INVALID_ARGUMENT);
 
-	k_sem_init(sem, 0, K_SEM_MAX_LIMIT);
-	if (sem == NULL)
+	status = k_sem_init(sem, 0, K_SEM_MAX_LIMIT);
+	if (status != 0)
 		return PLATFORM_MUTEX_ERROR(NO_MEMORY);
 
 	return 0;
@@ -505,17 +424,15 @@ int platform_semaphore_post(platform_semaphore *sem)
 int platform_semaphore_wait(platform_semaphore *sem, uint32_t ms_timeout)
 {
 	int status;
-	k_timeout_t timeout;
 
 	if (sem == NULL)
 		return PLATFORM_SEMAPHORE_ERROR(INVALID_ARGUMENT);
 
 	if (ms_timeout == 0)
-		timeout = (k_timeout_t) { portMAX_DELAY };
+		status = k_sem_take(sem, K_FOREVER);
 	else
-		timeout = Z_TIMEOUT_MS(ms_timeout);
+		status = k_sem_take(sem, K_MSEC(ms_timeout));
 
-	status = k_sem_take(sem, timeout);
 	return (status == 0) ? 0 : 1;
 }
 
@@ -552,16 +469,5 @@ int platform_semaphore_reset(platform_semaphore *sem)
 
 	k_sem_reset(sem);
 	return 0;
-}
-
-
-/**
- * Get the current system time.
- *
- * @return The current time, in milliseconds.
- */
-uint64_t platform_get_time(void)
-{
-	return k_uptime_get();
 }
 
