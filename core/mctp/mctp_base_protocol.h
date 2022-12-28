@@ -176,6 +176,19 @@ struct mctp_base_protocol_transport_header
 	uint8_t eom:1;											/**< MCTP end of message */
 	uint8_t som:1;											/**< MCTP start of message */
 };
+
+struct mctp_base_protocol_transport_i3c_header
+{
+	uint8_t header_version:4;								/**< MCTP header version */
+	uint8_t rsvd:4;											/**< Reserved, zero */
+	uint8_t destination_eid;								/**< MCTP destination EID */
+	uint8_t source_eid;										/**< MCTP source EID */
+	uint8_t msg_tag:3;										/**< MCTP message tag */
+	uint8_t tag_owner:1;									/**< MCTP tag owner */
+	uint8_t packet_seq:2;									/**< MCTP packet sequence */
+	uint8_t eom:1;											/**< MCTP end of message */
+	uint8_t som:1;											/**< MCTP start of message */
+};
 #pragma pack(pop)
 
 /**
@@ -197,10 +210,19 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t smbus_ad
 	uint8_t *source_addr, bool *som, bool *eom, uint8_t *src_eid, uint8_t *dest_eid,
 	uint8_t** payload, size_t* payload_len, uint8_t *msg_tag, uint8_t *packet_seq, uint8_t *crc,
 	uint8_t* msg_type, uint8_t *tag_owner);
+
+int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t smbus_addr,
+	uint8_t *source_addr, bool *som, bool *eom, uint8_t *src_eid, uint8_t *dest_eid,
+	uint8_t** payload, size_t* payload_len, uint8_t *msg_tag, uint8_t *packet_seq, uint8_t *crc,
+	uint8_t* msg_type, uint8_t *tag_owner);
+
 int mctp_base_protocol_construct (uint8_t *buf, size_t buf_len, uint8_t *out_buf,
 	size_t out_buf_len, uint8_t source_addr, uint8_t dest_eid, uint8_t source_eid, bool som,
 	bool eom, uint8_t packet_seq, uint8_t msg_tag, uint8_t tag_owner, uint8_t dest_addr);
 
+int mctp_base_protocol_construct_i3c (uint8_t *buf, size_t buf_len, uint8_t *out_buf,
+	size_t out_buf_len, uint8_t source_addr, uint8_t dest_eid, uint8_t source_eid, bool som,
+	bool eom, uint8_t packet_seq, uint8_t msg_tag, uint8_t tag_owner, uint8_t dest_addr);
 
 #define	MCTP_BASE_PROTOCOL_ERROR(code)						ROT_ERROR (ROT_MODULE_MCTP_BASE_PROTOCOL, code)
 

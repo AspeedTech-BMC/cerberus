@@ -100,7 +100,7 @@ int mctp_interface_set_channel_id (struct mctp_interface *mctp, int channel_id)
 /**
  * Generate packets for full MCTP message from payload
  *
- * @param device_mgr Device manager instance to utilize
+ * @param mctp MCTP interface instance
  * @param payload Buffer with payload bytes
  * @param payload_len Length of payload bytes
  * @param buf Buffer to fill with generated MCTP packets
@@ -115,7 +115,7 @@ int mctp_interface_set_channel_id (struct mctp_interface *mctp, int channel_id)
  *
  * @return Generated MCTP message length if success or an error code.
  */
-static int mctp_interface_generate_packets_from_payload (struct device_manager *device_mgr,
+static int mctp_interface_generate_packets_from_payload (struct mctp_interface *mctp,
 	uint8_t *payload, size_t payload_len, uint8_t *buf, size_t max_buf_len, uint8_t dest_eid,
 	uint8_t dest_addr, uint8_t src_eid, uint8_t src_addr, uint8_t msg_tag, uint8_t tag_owner,
 	size_t *max_packet_len)
@@ -131,16 +131,25 @@ static int mctp_interface_generate_packets_from_payload (struct device_manager *
 	bool eom;
 	int status;
 
-	max_packet_payload = device_manager_get_max_transmission_unit_by_eid (device_mgr, dest_eid);
+	max_packet_payload = device_manager_get_max_transmission_unit_by_eid (mctp->device_manager,
+			dest_eid);
 	num_packets = MCTP_BASE_PROTOCOL_PACKETS_IN_MESSAGE (payload_len, max_packet_payload);
 
 	for (i_packet = 0; i_packet < num_packets; ++i_packet) {
 		eom = (i_packet == (num_packets - 1));
 		packet_payload_len = (payload_len > max_packet_payload) ? max_packet_payload : payload_len;
+		if (mctp->channel_id & CMD_CHANNEL_I3C_BASE) {
+			status = mctp_base_protocol_construct_i3c (&payload[i_payload],
+					packet_payload_len, &buf[i_buf], max_buf_len - i_buf,
+					src_addr, dest_eid, src_eid, som, eom, packet_seq, msg_tag,
+					tag_owner, dest_addr);
+		} else {
+			status = mctp_base_protocol_construct (&payload[i_payload],
+					packet_payload_len, &buf[i_buf], max_buf_len - i_buf,
+					src_addr, dest_eid, src_eid, som, eom, packet_seq,
+					msg_tag, tag_owner, dest_addr);
+		}
 
-		status = mctp_base_protocol_construct (&payload[i_payload], packet_payload_len, &buf[i_buf],
-			max_buf_len - i_buf, src_addr, dest_eid, src_eid, som, eom, packet_seq, msg_tag,
-			tag_owner, dest_addr);
 		if (ROT_IS_ERROR (status)) {
 			return status;
 		}
@@ -210,9 +219,18 @@ static int mctp_interface_generate_error_packet (struct mctp_interface *mctp, in
 		return MCTP_BASE_PROTOCOL_MSG_TOO_LARGE;
 	}
 
-	status = mctp_base_protocol_construct (mctp->req_buffer.data, mctp->req_buffer.length,
-		mctp->resp_buffer.data, sizeof (mctp->msg_buffer), source_addr, src_eid, dest_eid, true,
-		true, 0, msg_tag, MCTP_BASE_PROTOCOL_TO_RESPONSE, response_addr);
+	if (mctp->channel_id & CMD_CHANNEL_I3C_BASE) {
+		status = mctp_base_protocol_construct_i3c (mctp->req_buffer.data,
+				mctp->req_buffer.length, mctp->resp_buffer.data,
+				sizeof (mctp->msg_buffer), source_addr, src_eid, dest_eid, true,
+				true, 0, msg_tag, MCTP_BASE_PROTOCOL_TO_RESPONSE, response_addr);
+	} else {
+		status = mctp_base_protocol_construct (mctp->req_buffer.data,
+				mctp->req_buffer.length, mctp->resp_buffer.data,
+				sizeof (mctp->msg_buffer), source_addr, src_eid, dest_eid, true,
+				true, 0, msg_tag, MCTP_BASE_PROTOCOL_TO_RESPONSE, response_addr);
+	}
+
 	if (ROT_IS_ERROR (status)) {
 		return status;
 	}
@@ -270,9 +288,17 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 
 	*tx_message = NULL;
 
-	status = mctp_base_protocol_interpret (rx_packet->data, rx_packet->pkt_size,
-		rx_packet->dest_addr, &source_addr, &som, &eom, &src_eid, &dest_eid, &payload, &payload_len,
-		&msg_tag, &packet_seq, &crc, &mctp->msg_type, &tag_owner);
+	if (mctp->channel_id & CMD_CHANNEL_I3C_BASE) {
+		status = mctp_base_protocol_i3c_interpret (rx_packet->data, rx_packet->pkt_size,
+				rx_packet->dest_addr, &source_addr, &som, &eom, &src_eid, &dest_eid,
+				&payload, &payload_len, &msg_tag, &packet_seq, &crc,
+				&mctp->msg_type, &tag_owner);
+	} else {
+		status = mctp_base_protocol_interpret (rx_packet->data, rx_packet->pkt_size,
+				rx_packet->dest_addr, &source_addr, &som, &eom, &src_eid, &dest_eid,
+				&payload, &payload_len, &msg_tag, &packet_seq, &crc,
+				&mctp->msg_type, &tag_owner);
+	}
 
 	response_addr = source_addr;
 
@@ -495,7 +521,7 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 		}
 
 		if (mctp->req_buffer.length > 0) {
-			status = mctp_interface_generate_packets_from_payload (mctp->device_manager,
+			status = mctp_interface_generate_packets_from_payload (mctp,
 				mctp->req_buffer.data, mctp->req_buffer.length, mctp->resp_buffer.data,
 				sizeof (mctp->msg_buffer), mctp->req_buffer.source_eid, response_addr,
 				mctp->req_buffer.target_eid, rx_packet->dest_addr, mctp->msg_tag,
@@ -604,7 +630,7 @@ int mctp_interface_issue_request (struct mctp_interface *mctp, struct cmd_channe
 		}
 	}
 
-	status = mctp_interface_generate_packets_from_payload (mctp->device_manager, request, length,
+	status = mctp_interface_generate_packets_from_payload (mctp, request, length,
 		msg_buffer, max_length, dest_eid, dest_addr, src_eid, src_addr, mctp->response_msg_tag,
 		MCTP_BASE_PROTOCOL_TO_REQUEST, &cmd_msg.pkt_size);
 	if (ROT_IS_ERROR (status)) {

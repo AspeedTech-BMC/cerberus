@@ -31,12 +31,12 @@
  *
  * @return Completion status, 0 if success or an error code.
  */
-int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_addr, 
-	uint8_t *source_addr, bool *som, bool *eom, uint8_t *src_eid, uint8_t *dest_eid, 
-	uint8_t **payload, size_t *payload_len, uint8_t *msg_tag, uint8_t *packet_seq, uint8_t *crc, 
+int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_addr,
+	uint8_t *source_addr, bool *som, bool *eom, uint8_t *src_eid, uint8_t *dest_eid,
+	uint8_t **payload, size_t *payload_len, uint8_t *msg_tag, uint8_t *packet_seq, uint8_t *crc,
 	uint8_t *msg_type, uint8_t *tag_owner)
 {
-	struct mctp_base_protocol_transport_header *header = 
+	struct mctp_base_protocol_transport_header *header =
 		(struct mctp_base_protocol_transport_header*) buf;
 	size_t packet_len;
 	bool add_crc = true;
@@ -53,7 +53,7 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_add
 	}
 
 	/* At this point, we do not know if the current packet is a control or vendor defined message.
-	 * Control message might not contain a PEC byte. So, here we check if the message length is at 
+	 * Control message might not contain a PEC byte. So, here we check if the message length is at
 	 * least the transport header size. */
 	if ((header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD_NO_PEC) <=
 			(uint8_t) sizeof (struct mctp_base_protocol_transport_header)) {
@@ -160,6 +160,66 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_add
 	return 0;
 }
 
+int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_addr,
+	uint8_t *source_addr, bool *som, bool *eom, uint8_t *src_eid, uint8_t *dest_eid,
+	uint8_t **payload, size_t *payload_len, uint8_t *msg_tag, uint8_t *packet_seq,
+	uint8_t *crc, uint8_t *msg_type, uint8_t *tag_owner)
+{
+	struct mctp_base_protocol_transport_i3c_header *header =
+		(struct mctp_base_protocol_transport_i3c_header*) buf;
+	size_t packet_len;
+	bool add_crc = true;
+
+	if ((buf == NULL) || (source_addr == NULL) || (som == NULL) || (eom == NULL) ||
+		(src_eid == NULL) || (dest_eid == NULL) || (payload == NULL) || (payload_len == NULL) ||
+		(msg_tag == NULL) || (packet_seq == NULL) || (crc == NULL) || (msg_type == NULL) ||
+		(tag_owner == NULL)) {
+		return MCTP_BASE_PROTOCOL_INVALID_ARGUMENT;
+	}
+
+	if (buf_len <= sizeof (struct mctp_base_protocol_transport_i3c_header)) {
+		return MCTP_BASE_PROTOCOL_MSG_TOO_SHORT;
+	}
+
+	*dest_eid = header->destination_eid;
+	*src_eid = header->source_eid;
+	*som = header->som;
+	*eom = header->eom;
+	*packet_seq = header->packet_seq;
+	*msg_tag = header->msg_tag;
+	*tag_owner = header->tag_owner;
+	*payload = &buf[sizeof (struct mctp_base_protocol_transport_i3c_header)];
+
+	if (header->som) {
+		*msg_type = (*payload)[0];
+	}
+
+	packet_len = buf_len - 1;
+	*payload_len = packet_len - sizeof(struct mctp_base_protocol_transport_i3c_header);
+	add_crc = true;
+	if (!MCTP_BASE_PROTOCOL_IS_CONTROL_MSG(*msg_type) &&
+			!MCTP_BASE_PROTOCOL_IS_SPDM_MSG(*msg_type) &&
+			!MCTP_BASE_PROTOCOL_IS_VENDOR_MSG(*msg_type)) {
+		return MCTP_BASE_PROTOCOL_UNSUPPORTED_MSG;
+	}
+
+	if ((header->rsvd != 0) || (*dest_eid == *src_eid)) {
+		return MCTP_BASE_PROTOCOL_INVALID_MSG;
+	}
+
+	if (header->header_version != MCTP_BASE_PROTOCOL_SUPPORTED_HDR_VERSION) {
+		return MCTP_BASE_PROTOCOL_UNSUPPORTED_MSG;
+	}
+
+	if (add_crc) {
+		*crc = checksum_crc8 ((dest_addr << 1), buf, packet_len);
+		if (*crc != buf[packet_len]) {
+			return MCTP_BASE_PROTOCOL_BAD_CHECKSUM;
+		}
+	}
+
+	return 0;
+}
 /**
  * Construct an MCTP packet.
  *
@@ -180,8 +240,8 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_add
  *
  * @return Packet length if completed successfully or an error code.
  */
-int mctp_base_protocol_construct (uint8_t *buf, size_t buf_len, uint8_t *out_buf, 
-	size_t out_buf_len, uint8_t source_addr, uint8_t dest_eid, uint8_t source_eid, bool som, 
+int mctp_base_protocol_construct (uint8_t *buf, size_t buf_len, uint8_t *out_buf,
+	size_t out_buf_len, uint8_t source_addr, uint8_t dest_eid, uint8_t source_eid, bool som,
 	bool eom, uint8_t packet_seq, uint8_t msg_tag, uint8_t tag_owner, uint8_t dest_addr)
 {
 	struct mctp_base_protocol_transport_header *header =
@@ -220,6 +280,46 @@ int mctp_base_protocol_construct (uint8_t *buf, size_t buf_len, uint8_t *out_buf
 
 	out_buf[msg_offset + buf_len] = checksum_crc8 ((dest_addr << 1), out_buf,
 		out_len - MCTP_BASE_PROTOCOL_PEC_SIZE);
+
+	return out_len;
+}
+
+int mctp_base_protocol_construct_i3c (uint8_t *buf, size_t buf_len, uint8_t *out_buf,
+	size_t out_buf_len, uint8_t source_addr, uint8_t dest_eid, uint8_t source_eid, bool som,
+	bool eom, uint8_t packet_seq, uint8_t msg_tag, uint8_t tag_owner, uint8_t dest_addr)
+{
+	struct mctp_base_protocol_transport_i3c_header *header =
+		(struct mctp_base_protocol_transport_i3c_header*) out_buf;
+	size_t msg_offset = sizeof (struct mctp_base_protocol_transport_i3c_header);
+	size_t out_len;
+
+	if ((buf == NULL) || (out_buf == NULL)) {
+		return MCTP_BASE_PROTOCOL_INVALID_ARGUMENT;
+	}
+
+	if ((buf_len == 0) || (buf_len > MCTP_BASE_PROTOCOL_MAX_TRANSMISSION_UNIT)) {
+		return MCTP_BASE_PROTOCOL_BAD_BUFFER_LENGTH;
+	}
+
+	out_len = sizeof(struct mctp_base_protocol_transport_i3c_header) + buf_len;
+
+	if (out_buf_len < out_len) {
+		return MCTP_BASE_PROTOCOL_BUF_TOO_SMALL;
+	}
+
+	memmove (&out_buf[msg_offset], buf, buf_len);
+	memset (header, 0, sizeof (struct mctp_base_protocol_transport_i3c_header));
+
+	header->header_version = MCTP_BASE_PROTOCOL_SUPPORTED_HDR_VERSION;
+	header->destination_eid = dest_eid;
+	header->source_eid = source_eid;
+	header->som = (som ? 1 : 0);
+	header->eom = (eom ? 1 : 0);
+	header->packet_seq = packet_seq;
+	header->msg_tag = msg_tag;
+	header->tag_owner = tag_owner;
+
+	// Skip pec calculation, i3c pec calculation is handled in driver layer.
 
 	return out_len;
 }
