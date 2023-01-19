@@ -432,6 +432,53 @@ def generate_flash_device_buf (hash_engine, unused_byte, fw_count):
 
     return flash_device, flash_device_toc_entry, flash_device_hash
 
+# i2c_filter_rule struct
+#
+# struct device_filter {
+#     uint8_t enable
+#     uint8_t slave_addr
+#     uint8_t whitelist[32]
+# }
+#
+# struct filter {
+#     uint8_t filter_id
+#     uint8_t device_count
+#     struct device_filter device[device_count]
+# }
+#
+# struct i2c_filter_rule {
+#         uint32_t magic_num
+#         uint8_t filter_count
+#         struct filter i2c_filter[filter_count]
+#     }
+# }
+def generate_i2c_filter_buf(xml_list):
+    for filename, xml in xml_list.items ():
+        if "i2c_filter_rule" not in xml:
+            raise KeyError ("Failed to generate manifest: XML has no i2c filter rule - {0}".format (
+                filename))
+
+        i2c_filter_rule = xml["i2c_filter_rule"]
+        break
+
+    if xml['i2c_filter_rule'] is None:
+        return None
+
+    i2c_filter_rule = xml["i2c_filter_rule"]
+    i2c_filter_buf = bytearray()
+    i2c_filter_buf += i2c_filter_rule["magic_num"]
+    i2c_filter_buf += i2c_filter_rule["filter_count"]
+    for filter in i2c_filter_rule["filters"]:
+        i2c_filter_buf += filter["filter_id"]
+        i2c_filter_buf += filter["device_count"]
+        for device in filter["devices"]:
+            i2c_filter_buf += device["enable"]
+            i2c_filter_buf += device["slave_addr"]
+            i2c_filter_buf += device["whitelist"]
+    i2c_filter_buf_arr = (ctypes.c_ubyte * len (i2c_filter_buf)).from_buffer_copy(i2c_filter_buf)
+    print(i2c_filter_buf_arr)
+    return i2c_filter_buf_arr
+
 #*************************************** Start of Script ***************************************
 
 default_config = os.path.join (os.path.dirname (os.path.abspath (__file__)), PFM_CONFIG_FILENAME)
@@ -478,9 +525,10 @@ if xml_version == manifest_types.VERSION_2:
         toc_list.extend (fw_toc_entries)
         hash_list.extend (fw_hashes)
 
-    manifest_common.generate_manifest (hash_engine, hash_type, pfm_id, manifest_types.PFM,
+    i2c_filter_buf = generate_i2c_filter_buf(processed_xml)
+    manifest_common.generate_manifest_ex (hash_engine, hash_type, pfm_id, manifest_types.PFM,
         xml_version, sign, key, key_size, key_type, toc_list, hash_list, elements_list, pfm_len,
-        output)
+        i2c_filter_buf, output)
 
 else:
     pfm_generator_v1.generate_v1_pfm (pfm_id, key_size, hash_type, key_type, processed_xml,

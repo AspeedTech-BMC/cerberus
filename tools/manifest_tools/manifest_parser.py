@@ -105,6 +105,16 @@ XML_VENDOR_ID_TAG = "VendorID"
 XML_VERSION_TAG = "Version"
 XML_VERSION_ADDR_TAG = "VersionAddr"
 
+# I2C Filter
+XML_I2C_FILTER_RULE_TAG = "I2cFilterRule"
+XML_I2C_FILTER_TAG = "Filter"
+XML_I2C_FILTER_ID_TAG = "FilterId"
+XML_I2C_DEVICE_TAG = "Device"
+XML_I2C_FILTER_EN_TAG = "Enable"
+XML_I2C_FILTER_ADDR_TAG = "SlaveAddr"
+XML_I2C_WHITELIST_TAG = "WhiteListCmd"
+XML_I2C_WLCMD_TAG = "Value"
+
 PCD_ROT_TYPE_PA_ROT = "PA-RoT"
 PCD_ROT_TYPE_AC_ROT = "AC-RoT"
 PCD_FLASH_MODE_SINGLE = "Single"
@@ -414,6 +424,60 @@ def process_pfm (root, xml_file, hash_token, image_path):
     if not xml["signed_imgs"]:
         raise ValueError ("No signed images found for firmware: {0}".format (xml["version_id"]))
 
+    filters = []
+    xml["i2c_filter_rule"] = {}
+    xml["i2c_filter_rule"]["filters"] = filters
+    # magic number : 0x69326366(i2cf)
+    xml["i2c_filter_rule"]["magic_num"] = b"\x66\x63\x32\x69"
+    filter_cnt = 0
+    device_cnt = 0
+
+    i2c_filter_rule = xml_find_single_tag (root, XML_I2C_FILTER_RULE_TAG, xml_file)
+    for filter in i2c_filter_rule.findall (XML_I2C_FILTER_TAG):
+        filter_obj = {}
+        filter_cnt += 1
+        filter_id = xml_find_single_tag(filter, XML_I2C_FILTER_ID_TAG, xml_file)
+        int_filter_id = int(filter_id.text.strip ())
+        if (int_filter_id < 0 or int_filter_id > 3):
+            raise ValueError ("Invalid filter id, valid range: 0-3")
+
+        filter_obj["filter_id"] = int_filter_id.to_bytes(1, 'little')
+        filter_obj["devices"] = []
+
+        for device in filter.findall(XML_I2C_DEVICE_TAG):
+            device_obj = {}
+            device_cnt += 1
+            enable = xml_find_single_tag(device, XML_I2C_FILTER_EN_TAG, xml_file)
+            int_en = int(enable.text.strip ())
+            if (int_en < 0 or int_en > 1):
+                raise ValueError ("Invalid i2c filter enable value; Valid range: 0 - 1")
+
+            device_obj["enable"] = int_en.to_bytes(1, 'little')
+            slave_addr = xml_find_single_tag(device, XML_I2C_FILTER_ADDR_TAG, xml_file)
+            int_slave_addr = int(slave_addr.text.strip (), 16)
+            if (int_slave_addr < 16  or int_slave_addr > 238 or int_slave_addr % 2):
+                raise ValueError ("Invalid i2c slave address, should be 8 bit format; Valid range: 0x10 - 0xee")
+
+            device_obj["slave_addr"] = int_slave_addr.to_bytes(1, 'little')
+            wcmds = bytearray(32)
+            device_obj["whitelist"] = wcmds
+            whitelist = xml_find_single_tag(device, XML_I2C_WHITELIST_TAG, xml_file)
+            filter_obj["devices"].append(device_obj)
+            for cmd in whitelist.findall(XML_I2C_WLCMD_TAG):
+                int_cmd = int(cmd.text.strip (), 16)
+                id = int_cmd // 8
+                shift = int_cmd % 8
+                wcmds[id] |= (1 << shift)
+
+        if (device_cnt > 16):
+            raise ValueError ("Too many device filters; Maximum: 16")
+
+        filter_obj["device_count"] = device_cnt.to_bytes(1, 'little')
+        device_cnt = 0
+        filters.append(filter_obj)
+
+    xml["i2c_filter_rule"]["filter_count"] = filter_cnt.to_bytes(1, 'little')
+    #print(xml["i2c_filter_rule"])
     return xml, pfm_version, False
 
 def process_cfm_check (root, manifest_name, component_type, xml_file):

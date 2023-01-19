@@ -693,6 +693,67 @@ def generate_manifest (hash_engine, hash_type, manifest_id, manifest_type, xml_v
     write_manifest (xml_version, sign, manifest_buf, key, key_size, key_type, output,
         manifest_header.length - manifest_header.sig_length, manifest_header.sig_length)
 
+def generate_manifest_ex (hash_engine, hash_type, manifest_id, manifest_type, xml_version, sign, key,
+    key_size, key_type, toc_list, hash_list, elements_list, elements_len, i2c_filter_buf, output):
+    """
+    Generate manifest from element, hash, toc entries list, and i2c filtering rule
+
+    :param hash_engine: Hashing engine
+    :param hash_type: Hashing algorithm
+    :param manifest_id: Manifest id
+    :param manifest_type: Manifest type
+    :param xml_version: Manifest XML version
+    :param sign: Boolean indicating whether to sign manifest or not
+    :param key: Key to use for signing
+    :param key_size: Size of signing key, optional
+    :param key_type: Signing key algorithm, optional
+    :param toc_list: List of TOC entries to be included in the TOC
+    :param hash_list: List of hashes for all elements in manifest. Hash list ordering must match
+        toc_list's
+    :param elements_list: List of elements to be included in manifest
+    :param elements_len: Length of all elements' buffers
+    :param i2c_filter_buf: I2c filtering rule
+    :param output: Output filename
+    """
+    manifest_len = elements_len
+
+    manifest_header = generate_manifest_header (manifest_id, key_size, manifest_type, hash_type,
+        key_type, xml_version)
+    manifest_header_len = ctypes.sizeof (manifest_header)
+    manifest_len += manifest_header_len
+
+    toc = generate_toc (hash_engine, hash_type, toc_list, hash_list)
+    toc_len = ctypes.sizeof (toc)
+    manifest_len += toc_len
+
+    i2c_filter_buf_len = ctypes.sizeof (i2c_filter_buf)
+    manifest_len += i2c_filter_buf_len
+
+    manifest_header.length = manifest_len + manifest_header.sig_length
+
+    manifest_buf = (ctypes.c_ubyte * manifest_len) ()
+    offset = 0
+
+    ctypes.memmove (ctypes.addressof (manifest_buf) + offset, ctypes.addressof (manifest_header),
+        manifest_header_len)
+    offset += manifest_header_len
+
+    ctypes.memmove (ctypes.addressof (manifest_buf) + offset, ctypes.addressof (toc), toc_len)
+    offset += toc_len
+
+    for element in elements_list:
+        element_len = ctypes.sizeof (element)
+        ctypes.memmove (ctypes.addressof (manifest_buf) + offset, ctypes.addressof (element),
+            element_len)
+
+        offset += element_len
+
+    ctypes.memmove (ctypes.addressof (manifest_buf) + offset, ctypes.addressof (i2c_filter_buf),
+            i2c_filter_buf_len)
+
+    write_manifest (xml_version, sign, manifest_buf, key, key_size, key_type, output,
+        manifest_header.length - manifest_header.sig_length, manifest_header.sig_length)
+
 def check_maximum (value, maximum, value_name):
     """
     Compare value to maximum and raise exception beyond limit
