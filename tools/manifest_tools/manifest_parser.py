@@ -101,6 +101,7 @@ XML_SUB_VENDOR_ID_TAG = "SubsystemVendorID"
 XML_UNUSED_BYTE_TAG = "UnusedByte"
 XML_WATCHDOGMONITORING_TAG = "WatchdogMonitoring"
 XML_VALIDATE_TAG = "ValidateOnBoot"
+XML_KEY_ID_TAG = "KeyId"
 XML_VENDOR_ID_TAG = "VendorID"
 XML_VERSION_TAG = "Version"
 XML_VERSION_ADDR_TAG = "VersionAddr"
@@ -332,6 +333,9 @@ def process_pfm (root, xml_file, hash_token, image_path):
 
         prop = xml_find_single_tag (img, XML_VALIDATE_TAG, xml_file)
         image["validate"] = prop.text.strip ()
+
+        key_id = xml_find_single_tag (img, XML_KEY_ID_TAG, xml_file)
+        image["key_id"] = key_id.text.strip()
 
         xml["signed_imgs"].append (image)
 

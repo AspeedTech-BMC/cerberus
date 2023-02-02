@@ -80,7 +80,7 @@ def generate_signed_imgs_buf (xml_signed_imgs):
         _fields_ = [('hash_type', ctypes.c_ubyte),
                     ('region_count', ctypes.c_ubyte),
                     ('image_flags', ctypes.c_ubyte),
-                    ('reserved', ctypes.c_ubyte)]
+                    ('key_id', ctypes.c_ubyte)]
 
     class pfm_signed_image_region (ctypes.LittleEndianStructure):
         _pack_ = 1
@@ -103,6 +103,7 @@ def generate_signed_imgs_buf (xml_signed_imgs):
         signed_img_hash_arr_len = ctypes.sizeof (signed_img_hash_arr)
 
         img_flags = 1 if validate == "true" else 0
+        key_id = manifest_common.get_key_from_dict (signed_img, "key_id", "Validate region")
 
         num_signed_regions = 0
         signed_regions_len = 0
@@ -127,7 +128,7 @@ def generate_signed_imgs_buf (xml_signed_imgs):
 
         signed_img_buf = (ctypes.c_ubyte * (ctypes.sizeof (pfm_signed_image_header) + \
             signed_regions_len + signed_img_hash_arr_len)) ()
-        signed_img_header = pfm_signed_image_header (hash_type, num_signed_regions, img_flags, 0)
+        signed_img_header = pfm_signed_image_header (hash_type, num_signed_regions, img_flags, int (key_id))
 
         signed_img_len = manifest_common.move_list_to_buffer (signed_img_buf, 0, [signed_img_header,
             signed_img_hash_arr, signed_regions_buf])
