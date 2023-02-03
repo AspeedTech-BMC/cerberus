@@ -785,20 +785,20 @@ def generate_4byte_padding_buf (length):
 def check_region_address_validity (start_addr, end_addr, check_alignment=True):
     """
     Ensure end address comes after start address and optionally start and end address of a region
-    are 64kB aligned
+    are 16kB aligned
 
     :param start_addr: Region start address
     :param end_addr: Region end address
-    :param check_alignment: Check if addresses are 64kB aligned
+    :param check_alignment: Check if addresses are 16kB aligned
     """
 
     if check_alignment:
-        if (start_addr & 0xFFFF) != 0:
-            raise ValueError ("Region start address (0x{0}) is not 64kB aligned".format (
+        if (start_addr & 0x3FFF) != 0:
+            raise ValueError ("Region start address (0x{0}) is not 16kB aligned".format (
                 format (start_addr, '08x')))
 
-        if (end_addr & 0xFFFF) != 0xFFFF:
-            raise ValueError ("Region end address (0x{0}) is not 64kB aligned".format (
+        if (end_addr & 0x3FFF) != 0x3FFF:
+            raise ValueError ("Region end address (0x{0}) is not 16kB aligned".format (
                 format (end_addr, '08x')))
 
     if end_addr <= start_addr:
