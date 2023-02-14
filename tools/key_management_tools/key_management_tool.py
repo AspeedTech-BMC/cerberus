@@ -7,56 +7,77 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import os
 import sys
-import base64
 import traceback
 import xml.etree.ElementTree as et
 import binascii
-import re
 import ctypes
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA256
+from Crypto.Hash import SHA384
+from Crypto.Hash import SHA512
 
 IMAGE_CONFIG_FILENAME = "decommission_image_generator.config"
 
 KEY_CANCELLATION_IMAGE_TYPE = int(4)
 DECOMMISSION_IMAGE_TYPE = int(5)
+KEY_MANIFEST_IMAGE_TYPE = int(6)
 
 XML_VERSION_ATTRIB = "version"
 XML_PLATFORM_ATTRIB = "platform"
 XML_TYPE_ATTRIB = "type"
-
-XML_REGION_TAG = "Region"
-XML_WRITE_ADDRESS_TAG = "WriteAddress"
-XML_ENCODED_IMAGE_TAG = "EncodedImage"
-XML_START_ADDR_TAG = "StartAddr"
-XML_END_ADDR_TAG = "EndAddr"
-
+XML_HASH_TYPE_TAG = "HashType"
+XML_KEY_TAG = "Key"
 XML_CANCELLATION_SECTION_TAG = "CancellationSection"
-XML_DECOMMISSION_IMAGE_TAG = "DecommissionImage"
+XML_CANCELLATION_POLICY_TAG = "CancellationPolicy"
+XML_MANIFEST_SECTION_TAG = "KeyManifestSection"
 
 IMAGE_MAGIC_NUM = int("0xb6eafd19", 16)
 IMAGE_SECTION_MAGIC_NUM = int("0xf27f28d7", 16)
 IMAGE_SECTION_FORMAT_NUM = 0
-KEY_CANCELLATION_IMAGE_SECTION_HEADER_LENGTH = 18
-DECOMMISSION_IMAGE_SECTION_HEADER_LENGTH = 0
 IMAGE_MAX_SIZE = 134217728
 IMAGE_MAX_VERSION_ID_SIZE = 32
 
-# BMC PFM CANCELLATION
-CANCELLATION_IMAGE_KEY_TYPE = int("0x0103", 16)
 
+KEY_CANCEL_MAGIC_NUM = int("0x4b455943", 16)
+KEY_PROV_MAGIC_NUM = int("0x6b65796d", 16)
+
+SHA256_HASH_LEN = 32
+SHA384_HASH_LEN = 48
+SHA512_HASH_LEN = 64
+SHA_MAX_HASH_LEN = SHA512_HASH_LEN
+
+PUB_KEY_HASH_FILE_SUFFIX = ".hash.bin"
+MAX_SIGNING_KEYS = 8
+
+RSA2048_SIG_LEN = 256
+RSA3072_SIG_LEN = 384
+RSA4096_SIG_LEN = 512
+RSA_MAX_SIG_LEN = RSA4096_SIG_LEN
+
+# KEY CANCELLATION POLICY
+PCH_CANCELLATION = 0x101
+BMC_CANCELLATION = 0x103
+
+class rsa_pub_key_struct(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [('modulus', ctypes.c_ubyte * RSA_MAX_SIG_LEN),
+                ('mod_length', ctypes.c_uint),
+                ('exponent', ctypes.c_uint)]
+    def __init__(self, modulus, m_length, exponent):
+        self.mod_length = m_length
+        self.exponent = exponent
+        ctypes.memset(ctypes.byref(self.modulus), 0xff, ctypes.sizeof(self.modulus))
+        ctypes.memmove(ctypes.byref(self.modulus), modulus, self.mod_length)
 
 class image_header(ctypes.LittleEndianStructure):
     _pack_ = 1
     _fields_ = [('header_length', ctypes.c_ushort),
                 ('type', ctypes.c_ushort),
                 ('marker', ctypes.c_uint),
+                ('version_id', ctypes.c_ubyte * 32),
                 ('image_length', ctypes.c_uint),
-                ('sig_length', ctypes.c_uint),
-                ('platform_id_length', ctypes.c_ubyte),
-                ('pubkey_length', ctypes.c_uint)]
-
+                ('sig_length', ctypes.c_uint)]
 
 class image_section_header(ctypes.LittleEndianStructure):
     _pack_ = 1
@@ -64,9 +85,162 @@ class image_section_header(ctypes.LittleEndianStructure):
                 ('format', ctypes.c_ushort),
                 ('marker', ctypes.c_uint),
                 ('addr', ctypes.c_uint),
-                ('image_length', ctypes.c_uint),
-                ('key_type', ctypes.c_ushort)]
+                ('section_length', ctypes.c_uint)]
 
+class key_cancel_info(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [('key_id', ctypes.c_ubyte),
+                ('key_hash', ctypes.c_ubyte * SHA_MAX_HASH_LEN)]
+
+class key_cancellation_struct(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [('marker', ctypes.c_uint),
+                ('key_policy', ctypes.c_ushort),
+                ('hash_type', ctypes.c_ubyte),
+                ('key_count', ctypes.c_ubyte),
+                ('key_can_list', key_cancel_info * MAX_SIGNING_KEYS)]
+
+    def __init__(self, marker, key_policy, hash_type, key_count):
+        self.marker = marker
+        self.key_policy = key_policy
+        self.hash_type = hash_type
+        self.key_count = key_count
+        ctypes.memset(ctypes.byref(self.key_can_list), 0xff, ctypes.sizeof(self.key_can_list))
+
+class key_provision_info(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [('key_hash', ctypes.c_ubyte * SHA_MAX_HASH_LEN)]
+
+class key_manifest_struct(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [('marker', ctypes.c_uint),
+                ('hash_type', ctypes.c_ubyte),
+                ('key_count', ctypes.c_ubyte),
+                ('key_list', key_provision_info * MAX_SIGNING_KEYS)]
+
+    def __init__(self, marker, hash_type, key_count):
+        self.marker = marker
+        self.hash_type = hash_type
+        self.key_count = key_count
+        ctypes.memset(ctypes.byref(self.key_list), 0xff, ctypes.sizeof(self.key_list))
+
+def xml_find_single_tag (root, tag_name):
+    """
+    Fetch an XML tag from XML.
+
+    :param root: XML to utilize
+    :param tag_name: Name of tag to fetch
+
+    :return Tag if found
+    """
+
+    tag = root.findall (tag_name)
+    if len(tag) != 1:
+        raise ValueError ("Too many {0} tags in manifest {1} or tag not found".format (tag_name, root))
+
+    return tag[0]
+
+def get_key_hash_type(section):
+    hash_alg = xml_find_single_tag(section, XML_HASH_TYPE_TAG).text.strip()
+    if (hash_alg == "SHA256"):
+        hash_type = 0
+        hash_len = SHA256_HASH_LEN
+    elif (hash_alg == "SHA384"):
+        hash_type = 1
+        hash_len = SHA384_HASH_LEN
+    elif (hash_alg == "SHA512"):
+        hash_type = 2
+        hash_len = SHA512_HASH_LEN
+    else:
+        raise ValueError ("Unknown hash type '{0}'".format (hash_alg))
+
+    return hash_type, hash_len
+
+def process_key_cancellation(root, xml):
+    """
+    Parse key cancellation related attributes.
+
+    :param root: XML to utilize
+    :param xml: List of parsed XML image data
+    """
+
+    section = xml_find_single_tag(root, XML_CANCELLATION_SECTION_TAG)
+    key_policy_tag = xml_find_single_tag(section, XML_CANCELLATION_POLICY_TAG).text.strip()
+    if (key_policy_tag == "BMC"):
+        key_policy = BMC_CANCELLATION
+    elif (key_policy_tag == "PCH"):
+        key_policy = PCH_CANCELLATION
+    else:
+        raise ValueError ("Unknown key cancellation policy '{0}'".format (key_policy_tag))
+
+    hash_type, hash_len = get_key_hash_type(section)
+
+    keys = section.findall(XML_KEY_TAG)
+    key_count = len(keys)
+    if key_count > 8:
+        raise ValueError ("Key count: '{0}' exceed the maximum count: 8".format (key_count))
+    elif key_count <= 0:
+        raise ValueError ("Key is not found, key_count is '{0}'".format(key_count))
+
+    key_cancellation_inst = key_cancellation_struct(KEY_CANCEL_MAGIC_NUM,
+            key_policy, hash_type, key_count)
+    key_list_idx = 0
+
+    if "cancel_key" in G_Config and G_Config["cancel_key"]:
+        for cancel_key_path in G_Config["cancel_key"]:
+            generate_public_key_hash(cancel_key_path, hash_type)
+
+    for key in keys:
+        key_id = xml_find_single_tag(key, "KeyId").text.strip()
+        key_cancellation_inst.key_can_list[key_list_idx].key_id = int(key_id)
+
+        pubkey_hash_file = xml_find_single_tag(key, "PublicKey").text.strip()
+        pubkey_hash_file += PUB_KEY_HASH_FILE_SUFFIX
+        with open(pubkey_hash_file, "rb") as f:
+            pubkey_hash = f.read()
+            ctypes.memmove(key_cancellation_inst.key_can_list[key_list_idx].key_hash,
+                           pubkey_hash,
+                           hash_len)
+        key_list_idx += 1
+
+    xml["key_cancellation"] = key_cancellation_inst
+
+def process_key_manifest(root, xml):
+    """
+    Parse key manifest related attributes.
+
+    :param root: XML to utilize
+    :param xml: List of parsed XML image data
+    """
+
+    section = xml_find_single_tag(root, XML_MANIFEST_SECTION_TAG)
+    hash_type, hash_len = get_key_hash_type(section)
+
+    keys = section.findall(XML_KEY_TAG)
+    key_count = len(keys)
+    if key_count > 8:
+        raise ValueError ("Key count: '{0}' exceed the maximum count: 8".format (key_count))
+    elif key_count <= 0:
+        raise ValueError ("Key is not found, key_count is '{0}'".format(key_count))
+
+    key_manifest_inst = key_manifest_struct(KEY_PROV_MAGIC_NUM, hash_type, key_count)
+    key_list_idx = 0
+
+    if "signing_key" in G_Config and G_Config["signing_key"]:
+        for signing_key_path in G_Config["signing_key"]:
+            generate_public_key_hash(signing_key_path, hash_type)
+
+    for key in keys:
+        pubkey_hash_file = xml_find_single_tag(key, "PublicKey").text.strip()
+        pubkey_hash_file += PUB_KEY_HASH_FILE_SUFFIX
+        with open(pubkey_hash_file, "rb") as f:
+            pubkey_hash = f.read()
+            ctypes.memmove(key_manifest_inst.key_list[key_list_idx].key_hash,
+                           pubkey_hash,
+                           hash_len)
+        key_list_idx += 1
+
+    xml["key_manifest"] = key_manifest_inst
 
 def process_image(root):
     """
@@ -90,43 +264,19 @@ def process_image(root):
     if platform_id in (None, ""):
         raise ValueError("No Platform ID provided")
 
+    padding = b'\x00'
     xml["version_id"] = version_id.strip().encode("utf8")
+    xml["version_id"] += padding * (32 - len(xml["version_id"]))
     xml["platform_id"] = platform_id.strip().encode("utf8")
     xml["type"] = int(type_xml)
 
-    if xml["type"] != KEY_CANCELLATION_IMAGE_TYPE and xml["type"] != DECOMMISSION_IMAGE_TYPE:
+    if xml["type"] < KEY_CANCELLATION_IMAGE_TYPE or xml["type"] > KEY_MANIFEST_IMAGE_TYPE:
         raise ValueError("Invalid number of type in the image: {0}".format(xml["type"]))
 
     if xml["type"] == KEY_CANCELLATION_IMAGE_TYPE:
-        sections = root.findall(XML_CANCELLATION_SECTION_TAG)
-
-        if not sections:
-            raise ValueError("Invalid number of Sections tags in the image: {0}".format(xml["version_id"]))
-
-        xml["sections"] = []
-        with open(input_bin_path, "rb") as f:
-            imagedata = f.read()
-        for s in sections:
-            sectiondata = b""
-            image_section = {}
-            write_addr = s.findall(XML_WRITE_ADDRESS_TAG)
-
-            if not write_addr or len(write_addr) > 1:
-                raise ValueError("Invalid number of WriteAddress tags in the image: {0}".format(
-                    xml["version_id"]))
-
-            image_section["addr"] = write_addr[0].text.strip()
-            regions = s.findall(XML_REGION_TAG)
-            for region in regions:
-                startaddress = region.findall(XML_START_ADDR_TAG)[0].text.strip()
-                endaddress = region.findall(XML_END_ADDR_TAG)[0].text.strip()
-                sectiondata = sectiondata + imagedata[int(startaddress, 16):int(endaddress, 16) + 1]
-
-            image_section["image"] = sectiondata
-            xml["sections"].append(image_section)
-
-        if not xml["sections"]:
-            raise ValueError("No sections found for image: {0}".format(xml["version_id"]))
+        process_key_cancellation(root, xml)
+    elif xml["type"] == KEY_MANIFEST_IMAGE_TYPE:
+        process_key_manifest(root, xml)
 
     return xml
 
@@ -145,8 +295,8 @@ def load_config(config_file):
     config["output"] = ""
     config["input"] = ""
     config["prv_key_path"] = ""
-    config["key_size"] = ""
-    config["cancel_key"] = ""
+    config["cancel_key"] = []
+    config["signing_key"] = []
 
     with open(config_file, 'r') as fh:
         data = fh.readlines()
@@ -161,16 +311,14 @@ def load_config(config_file):
 
         if string.startswith("Output"):
             config["output"] = string.split("=")[-1].strip()
-        elif string.startswith("InputImage"):
-            config["input"] = string.split("=")[-1].strip()
-        elif string.startswith("KeySize"):
-            config["key_size"] = string.split("=")[-1].strip()
         elif string.startswith("Key"):
             config["prv_key_path"] = string.split("=")[-1].strip()
         elif string.startswith("Xml"):
             config["xml"] = string.split("=")[-1].strip()
         elif string.startswith("Cancel_Key"):
-            config["cancel_key"] = string.split("=")[-1].strip()
+            config["cancel_key"].append(string.split("=")[-1].strip())
+        elif string.startswith("Signing_Key"):
+            config["signing_key"].append(string.split("=")[-1].strip())
 
     return config
 
@@ -188,193 +336,191 @@ def load_and_process_xml(xml_file):
     return process_image(root)
 
 
-def get_image_len(xml, sig_len):
+def get_image_len(img_type, sig_len):
     """
     Calculate the image length from the processed image data. The total includes
     the headers, image(s), and signature.
 
-    :param xml: The processed image data
+    :param img_type: The type of generated image
     :param sig_len: The image signature length
 
     :return the total length of the image
     """
 
-    header_len = 49 + len(xml["platform_id"])
+    header_len = ctypes.sizeof(full_image_header)
+    image_sec_header_len = ctypes.sizeof(image_section_header)
 
-    image_lens = 0
-    if xml["type"] == KEY_CANCELLATION_IMAGE_TYPE:
-        for section in xml["sections"]:
-            image_lens += len(section["image"]) + KEY_CANCELLATION_IMAGE_SECTION_HEADER_LENGTH
+    if img_type == KEY_CANCELLATION_IMAGE_TYPE:
+        section_len = ctypes.sizeof(key_cancellation_struct)
+    elif img_type == KEY_MANIFEST_IMAGE_TYPE:
+        section_len = ctypes.sizeof(key_manifest_struct)
+    elif img_type == DECOMMISSION_IMAGE_TYPE:
+        section_len = 0
+    else:
+        raise ValueError ("Unknown image type {0}".format (img_type))
 
-    return header_len + image_lens + sig_len
+    return header_len + image_sec_header_len + section_len + sig_len
 
-
-def generate_image_section_instance(section):
+def generate_key_cancellation_image(xml, image_header_inst):
     """
-    Create a image section
-
-    :param section: The image section data
-
-    :return instance of a image section
-    """
-
-    addr = int(section["addr"], 16)
-    section_header = image_section_header(KEY_CANCELLATION_IMAGE_SECTION_HEADER_LENGTH,
-                                          IMAGE_SECTION_FORMAT_NUM,
-                                          IMAGE_SECTION_MAGIC_NUM,
-                                          addr,
-                                          len(section["image"]),
-                                          CANCELLATION_IMAGE_KEY_TYPE)
-
-    img_array = (ctypes.c_ubyte * len(section["image"])).from_buffer_copy(section["image"])
-
-    class _image_section(ctypes.LittleEndianStructure):
-        _pack_ = 1
-        _fields_ = [('header', image_section_header),
-                    ('img', ctypes.c_ubyte * len(section["image"]))]
-
-    return _image_section(section_header, img_array)
-
-
-def generate_image_section_list(xml):
-    """
-    Create a list of image sections from the parsed XML list
+    Generate key cancellation image.
 
     :param xml: List of parsed XML image data
+    :param image_header_inst: Image header
 
-    :return list of image section instances
+    :return Key cancellation image instance
     """
 
-    section_list = []
-    min_addr = -1
+    image_sections_inst = image_section_header(ctypes.sizeof(image_section_header),
+            IMAGE_SECTION_FORMAT_NUM,
+            IMAGE_SECTION_MAGIC_NUM,
+            0, ctypes.sizeof(key_cancellation_struct))
 
-    for s in xml["sections"]:
-        sec_addr = int(s["addr"], 16)
-        if sec_addr <= min_addr:
-            raise ValueError("Invalid WriteAddress in image section: {0}".format(
-                s["addr"]))
-        section = generate_image_section_instance(s)
-        section_list.append(section)
-        min_addr = sec_addr + len(s["image"]) - 1
+    class key_cancellation_img(ctypes.LittleEndianStructure):
+        _pack_ = 1
+        _fields_ = [('full_image_header', full_image_header),
+                    ('image_section_header', image_section_header),
+                    ('key_cancellation_image', key_cancellation_struct)]
 
-    return section_list
+    return key_cancellation_img(fuill_image_header_inst, image_sections_inst,
+            xml["key_cancellation"])
 
+def generate_key_manifest_image(xml, image_header_inst):
+    """
+    Generate key manifest image.
 
-def generate_image(xml, image_header_instance, image_sections_list):
+    :param xml: List of parsed XML image data
+    :param image_header_inst: Image header
+
+    :return Key manifest image instance
+    """
+
+    image_sections_inst = image_section_header(ctypes.sizeof(image_section_header),
+            IMAGE_SECTION_FORMAT_NUM,
+            IMAGE_SECTION_MAGIC_NUM,
+            0, ctypes.sizeof(key_manifest_struct))
+
+    class key_manifest_img(ctypes.LittleEndianStructure):
+        _pack_ = 1
+        _fields_ = [('full_image_header', full_image_header),
+                    ('image_section_header', image_section_header),
+                    ('key_manifest', key_manifest_struct)]
+
+    return key_manifest_img(fuill_image_header_inst, image_sections_inst,
+            xml["key_manifest"])
+
+def generate_decommission_image(xml, image_header_inst):
+    """
+    Generate decommission image.
+
+    :param xml: List of parsed XML image data
+    :param image_header_inst: Image header
+
+    :return decommission image instance
+    """
+
+    image_sections_inst = image_section_header(ctypes.sizeof(image_section_header),
+            IMAGE_SECTION_FORMAT_NUM,
+            IMAGE_SECTION_MAGIC_NUM,
+            0, 0)
+
+    class decommission_img(ctypes.LittleEndianStructure):
+        _pack_ = 1
+        _fields_ = [('full_image_header', full_image_header),
+                    ('image_section_header', image_section_header)]
+
+    return decommission_img(fuill_image_header_inst, image_sections_inst)
+
+def generate_image(xml, img_type, image_header_inst, root_pub_key, root_priv_key):
     """
     Create a image object from all the different image components
 
     :param xml: List of parsed XML image data
-    :param image_header_instance: Instance of a image header
-    :param image_sections_list: List of image sections to be included in the image
+    :param img_type: Image type
+    :param image_header_inst: Instance of a image header
+    :param root_pub_key: Root public key in struct rsa_pub_key{} format
+    :param root_priv_key: Root private key for signing image
 
-    :return Instance of a image object
+    :return Instance of a signed image bytearray
     """
 
-    sections_size = 0
-
-    for section in image_sections_list:
-        sections_size += section.header.header_length + section.header.image_length
-
-    version_len = len(xml["version_id"])
-    xml["version_id"] = xml["version_id"].decode() + ''.join('\x00' for i in range(version_len, 32))
-    version_id_str_buf = ctypes.create_string_buffer(xml["version_id"].encode('utf-8'), 32)
-    version_id_buf = (ctypes.c_ubyte * 32)()
-    ctypes.memmove(ctypes.addressof(version_id_buf), ctypes.addressof(version_id_str_buf), 32)
-
-    xml["platform_id"] = xml["platform_id"].decode() + '\x00'
-    platform_id_str_buf = ctypes.create_string_buffer(xml["platform_id"].encode('utf-8'), len(xml["platform_id"]))
-    platform_id_buf = (ctypes.c_ubyte * len(xml["platform_id"]))()
-    ctypes.memmove(ctypes.addressof(platform_id_buf),
-                   ctypes.addressof(platform_id_str_buf),
-                   len(xml["platform_id"]))
-
-    class complete_header(ctypes.LittleEndianStructure):
-        _pack_ = 1
-        _fields_ = [('header_length', ctypes.c_ushort),
-                    ('format', ctypes.c_ushort),
-                    ('marker', ctypes.c_uint),
-                    ('version_id', ctypes.c_ubyte * 32),
-                    ('image_length', ctypes.c_uint),
-                    ('sig_length', ctypes.c_uint),
-                    ('platform_id_length', ctypes.c_ubyte),
-                    ('platform_id', ctypes.c_ubyte * len(xml["platform_id"]))]
-
-    class generated_image(ctypes.LittleEndianStructure):
-        _pack_ = 1
-        _fields_ = [('image_header', ctypes.c_ubyte *
-                     image_header_instance.header_length),
-                    ('image_sections', ctypes.c_ubyte * sections_size)]
-
-    complete_header_instance = complete_header(image_header_instance.header_length,
-                                               image_header_instance.type,
-                                               image_header_instance.marker,
-                                               version_id_buf,
-                                               image_header_instance.image_length,
-                                               image_header_instance.sig_length,
-                                               image_header_instance.platform_id_length,
-                                               platform_id_buf)
-
-    header_buf = (ctypes.c_ubyte * image_header_instance.header_length)()
-    ctypes.memmove(ctypes.addressof(header_buf),
-                   ctypes.addressof(complete_header_instance),
-                   image_header_instance.header_length)
-
-    offset = 0
-    sections_buf = (ctypes.c_ubyte * sections_size)()
-
-    for section in image_sections_list:
-        ctypes.memmove(ctypes.addressof(sections_buf) + offset,
-                       ctypes.addressof(section),
-                       section.header.header_length + section.header.image_length)
-        offset += section.header.header_length + section.header.image_length
-
-    return generated_image(header_buf, sections_buf)
-
-
-def write_final_image(sign, generated_image, key, output_file_name, image_header):
-    """
-    Write image generated to provided path.
-
-    :param sign: Boolean indicating whether to sign the image or not
-    :param generated_image: Generated image to write
-    :param key: Key to use for signing
-    :param output_filename: Name to use for output file
-    :param image_header: The image header instance
-
-    """
-    image_length = image_header.image_length - image_header.sig_length
-    if ctypes.sizeof(generated_image) > (IMAGE_MAX_SIZE - image_header.sig_length):
-        raise ValueError("Generated image is too large - {0}".format(ctypes.sizeof(generated_image)))
-
-    if sign:
-        hash_buf = (ctypes.c_ubyte * ctypes.sizeof(generated_image))()
-        ctypes.memmove(ctypes.addressof(hash_buf), ctypes.addressof(generated_image), ctypes.sizeof(generated_image))
-        h = SHA256.new(hash_buf)
-        signer = PKCS1_v1_5.new(key)
-        signature = signer.sign(h)
-        signature = (ctypes.c_ubyte * image_header.sig_length).from_buffer_copy(signature)
-        image_buf = (ctypes.c_char * (image_header.image_length))()
-        ctypes.memmove(ctypes.byref(image_buf, image_length),
-                       ctypes.addressof(signature),
-                       image_header.sig_length)
+    if img_type == KEY_CANCELLATION_IMAGE_TYPE:
+        # struct key_cancellation_manifest {
+        #     struct recovery_header image_header;
+        #     struct recovery_section image_section;
+        #     struct key_cancellation{
+        #             uint32_t magic_number;   // 0x4b455943   'KEYC'
+        #             uint16_t key_policy;     // 0x0101 = PCH, 0x0103 = BMC
+        #             uint8_t hash_type;       // 0: 256(default); 1: 384; 2: 512
+        #             uint8_t key_count;       // 8(maximum)
+        #             struct key_cancel_list {
+        #                     uint8_t key_id;
+        #                     uint8_t key_hash[64];
+        #             } key_cancel_list[key_count]
+        #     }
+        #     uint8_t signature[];              // rsa2048: 256 bytes;
+        #     struct rsa_public_key {
+        #             uint8_t modulus[RSA_MAX_KEY_LENGTH]; // 512 bytes
+        #             size_t mod_length;
+        #             uint32_t exponent;
+        #     } root_pub_key;
+        # };
+        generated_image = generate_key_cancellation_image(xml, image_header_inst)
+        image_name = "key_cancellation_signed.bin"
+    elif img_type == KEY_MANIFEST_IMAGE_TYPE:
+        # struct key_provision_manifest {
+        #     struct recovery_header image_header;
+        #     struct recovery_section image_section;
+        #     struct key_cancellation{
+        #             uint32_t magic_number;   // 0x6b65796d   'keym'
+        #             uint8_t hash_type;       // 0: 256(default); 1: 384; 2: 512
+        #             uint8_t key_count;       // 8(maximum)
+        #             struct key_list {
+        #                     uint8_t key_hash[64];
+        #             } key_list[key_count]
+        #     }
+        #     uint8_t signature[];              // rsa2048: 256 bytes;
+        #     struct rsa_public_key {
+        #             uint8_t modulus[RSA_MAX_KEY_LENGTH]; // 512 bytes
+        #             size_t mod_length;
+        #             uint32_t exponent;
+        #     } root_pub_key;
+        # };
+        generated_image = generate_key_manifest_image(xml, image_header_inst)
+    elif img_type == DECOMMISSION_IMAGE_TYPE:
+        # struct decommission {
+        #     struct recovery_header image_header;
+        #     struct recovery_section image_section;
+        #     uint8_t signature[];              // rsa2048: 256 bytes;
+        #     struct rsa_public_key {
+        #             uint8_t modulus[RSA_MAX_KEY_LENGTH]; // 512 bytes
+        #             size_t mod_length;
+        #             uint32_t exponent;
+        #     } root_pub_key;
+        # };
+        generated_image = generate_decommission_image(xml, image_header_inst)
     else:
-        image_buf = (ctypes.c_char * (image_length))()
-    with open(output_file_name, 'wb') as fh:
-        ctypes.memmove(ctypes.byref(image_buf), ctypes.addressof(generated_image), image_length)
-        fh.write(image_buf)
-        fh.write(PubKey)
+        raise ValueError ("Unknown image type {0}".format (img_type))
 
+    generated_image_bytes = bytearray(generated_image)
+    h = SHA256.new(generated_image_bytes)
+    signer = PKCS1_v1_5.new(root_priv_key)
+    signature = signer.sign(h)
+    signed_image = generated_image_bytes + signature + bytearray(root_pub_key)
 
-def load_key(key_size, prv_key_path):
+    if (len(signed_image) > IMAGE_MAX_SIZE):
+        raise ValueError ("Generated image is too large - {0}".format (len(signed_image)))
+
+    return signed_image
+
+def load_key(prv_key_path):
     """
     Load private RSA key to sign the image from the provided path. If no valid key can be
     imported, key size will be what is provided. Otherwise, key size will be size of key imported.
 
-    :param key_size: Provided key_size
     :param prv_key_path: Provided private key path
 
-    :return <Sign image or not> <key_size> <Key to use for signing>
+    :return <Sign image or not> <Key to use for signing>
     """
 
     if prv_key_path:
@@ -383,97 +529,98 @@ def load_key(key_size, prv_key_path):
         except Exception:
             print("Unsigned image will be generated, provided RSA key could not be imported: {0}".format(prv_key_path))
             traceback.print_exc()
-            return False, key_size, None
+            return False, None
 
         return True, int(key.n.bit_length() / 8), key
     else:
         print("No RSA private key provided in config, unsigned image will be generated.")
-        return False, key_size, None
+        return False, None, None
 
+def generate_public_key_hash(key_path, hash_type):
+    """
+    Generate hash of cerberus rsa_pub_key struct and stored in a file.
 
-def generate_cancel_public_key(cancel_key_path, input_bin_path):
-    retval = True
+    :param key_path: Provided public key path
+    """
 
     try:
-        key_load, key_size, key = load_key(None, cancel_key_path)
-        if key_load:
-            mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
-            modulus = binascii.a2b_hex(mod_fmt % key.n)
-            with open(input_bin_path, 'wb+') as fh:
-                fh.write(modulus)
-        else:
-            print("Failed to load the cancel key..")
-            retval = False
-    except Exception as err:
-        print("Error in creating the cancel public key: ", err)
-        retval = False
-    return retval
+        key_hash_path = key_path + PUB_KEY_HASH_FILE_SUFFIX
+        key = RSA.importKey(open(key_path).read())
+        mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
+        modulus = binascii.a2b_hex(mod_fmt % key.n)
+        exponent = int(key.e)
+        mod_length = len(modulus)
+        rsa_pub_key_inst = rsa_pub_key_struct(modulus, mod_length, exponent)
+
+        if hash_type == 0:
+            h = SHA256.new(bytearray(rsa_pub_key_inst))
+        if hash_type == 1:
+            h = SHA384.new(bytearray(rsa_pub_key_inst))
+        if hash_type == 2:
+            h = SHA512.new(bytearray(rsa_pub_key_inst))
+        with open(key_hash_path, 'wb+') as fh:
+            fh.write(h.digest())
+
+    except Exception:
+        print(exception)
 
 # *************************************** Start of Script ***************************************
-
 
 if len(sys.argv) < 2:
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), IMAGE_CONFIG_FILENAME)
 else:
     path = os.path.abspath(sys.argv[1])
 
-config = load_config(path)
-key_size = None
+G_Config = load_config(path)
 prv_key_path = None
-input_bin_path = None
-cancel_key_path = None
 
-if "key_size" in config and config["key_size"]:
-    key_size = int(config["key_size"])
+if "prv_key_path" in G_Config and G_Config["prv_key_path"]:
+    prv_key_path = G_Config["prv_key_path"]
 
-if "prv_key_path" in config and config["prv_key_path"]:
-    prv_key_path = config["prv_key_path"]
+sign, key_size, key = load_key(prv_key_path)
 
-if "input" in config and config["input"]:
-    input_bin_path = config["input"]
-
-if "cancel_key" in config and config["cancel_key"]:
-    cancel_key_path = config["cancel_key"]
-    generate_cancel_public_key(cancel_key_path, input_bin_path)
-
-sign, key_size, key = load_key(key_size, prv_key_path)
+if (key_size is None):
+    print("invalid root key")
+    os._exit(1)
 
 if sign is True:
     mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
     modulus = binascii.a2b_hex(mod_fmt % key.n)
-    exponent = hex(key.e)[2:]
-    while (len(exponent) % 2 != 0):
-        exponent = '0' + exponent
-    exponent = bytearray.fromhex(exponent)
-    m_length = hex(len(modulus))[2:]
-    while (len(m_length) != 4):
-        m_length = "0" + m_length
-    e_length = hex(len(exponent))[2:]
-    while (len(e_length) != 2):
-        e_length = "0" + e_length
-    PubKey = (bytearray.fromhex(m_length)[::-1] + modulus
-              + bytearray.fromhex(e_length) + exponent)
+    exponent = int(key.e)
+    mod_length = len(modulus)
+    RootPubKey = rsa_pub_key_struct(modulus, mod_length, exponent)
 
-sig_len = 0 if key_size is None else key_size
-
-processed_xml = load_and_process_xml(config["xml"])
-
+sig_len = key_size
+processed_xml = load_and_process_xml(G_Config["xml"])
+img_type = processed_xml['type']
 platform_id_len = len(processed_xml["platform_id"])
-header_len = 49 + platform_id_len
-image_len = get_image_len(processed_xml, sig_len)
-type_in_xml = processed_xml['type']
-image_header_instance = image_header(header_len,
-                                     type_in_xml,
-                                     IMAGE_MAGIC_NUM,
-                                     image_len,
-                                     sig_len,
-                                     platform_id_len)
 
-image_sections_list = []
-if type_in_xml == KEY_CANCELLATION_IMAGE_TYPE:
-    image_sections_list = generate_image_section_list(processed_xml)
+class full_image_header(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [('image_header', image_header),
+                ('platform_id_length', ctypes.c_ubyte),
+                ('platform_id', ctypes.c_ubyte * platform_id_len)]
 
-_image = generate_image(processed_xml, image_header_instance, image_sections_list)
-write_final_image(sign, _image, key, config["output"], image_header_instance)
+header_len = ctypes.sizeof(full_image_header)
+image_len = get_image_len(img_type, sig_len)
+version_id_buf = (ctypes.c_ubyte * len(processed_xml["version_id"])).from_buffer_copy(processed_xml["version_id"])
 
-print("Completed image generation: {0}".format(config["output"]))
+image_header_inst = image_header(header_len,
+                                 img_type,
+                                 IMAGE_MAGIC_NUM,
+                                 version_id_buf,
+                                 image_len,
+                                 sig_len)
+
+platform_id_buf = (ctypes.c_ubyte * len(processed_xml["platform_id"])).from_buffer_copy(processed_xml["platform_id"])
+
+fuill_image_header_inst = full_image_header(image_header_inst,
+                                            platform_id_len,
+                                            platform_id_buf)
+
+signed_image = generate_image(processed_xml, img_type, fuill_image_header_inst, RootPubKey, key)
+
+with open(G_Config["output"], 'wb') as fs:
+    fs.write(signed_image)
+
+print("Completed image generation: {0}".format(G_Config["output"]))
