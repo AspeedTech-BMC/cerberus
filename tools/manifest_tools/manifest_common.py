@@ -9,7 +9,6 @@ import binascii
 import ctypes
 import sys
 import os
-import base64
 import traceback
 from Crypto.PublicKey import RSA
 from Crypto.PublicKey import ECC
@@ -403,30 +402,9 @@ def write_manifest (xml_version, sign, manifest, key, key_size, key_type, output
     if not os.path.exists (out_dir):
         os.makedirs (out_dir)
 
-    if key_type == 0:
-        mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
-        modulus = binascii.a2b_hex(mod_fmt % key.n)
-        exponent = hex(key.e)[2:]
-        while(len(exponent) % 2 != 0):
-            exponent = '0' + exponent
-        exponent = bytearray.fromhex(exponent)
-        m_length = hex(len(modulus))[2:]
-        while(len(m_length) != 4):
-            m_length = "0" + m_length
-        e_length = hex(len(exponent))[2:]
-        while (len(e_length) != 2):
-            e_length = "0" + e_length
-        pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
-                  + bytearray.fromhex(e_length) + exponent)
-    else:
-        pubkey = b""
-
-    #manifest.manifest_header.length = manifest.manifest_header.length + len(pubkey)
-
     with open (output_filename, 'wb') as fh:
         ctypes.memmove (ctypes.byref (manifest_buf), ctypes.addressof (manifest), manifest_length)
         fh.write (manifest_buf)
-        #fh.write(pubkey)
 
 def generate_manifest_toc_header (fw_id_list, hash_type, empty):
     """

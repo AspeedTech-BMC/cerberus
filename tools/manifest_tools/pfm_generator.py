@@ -477,7 +477,7 @@ def generate_i2c_filter_buf(xml_list):
             i2c_filter_buf += device["slave_addr"]
             i2c_filter_buf += device["whitelist"]
     i2c_filter_buf_arr = (ctypes.c_ubyte * len (i2c_filter_buf)).from_buffer_copy(i2c_filter_buf)
-    print(i2c_filter_buf_arr)
+    # print(i2c_filter_buf_arr)
     return i2c_filter_buf_arr
 
 #*************************************** Start of Script ***************************************

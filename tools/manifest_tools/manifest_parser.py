@@ -12,6 +12,7 @@ import xml.etree.ElementTree as et
 import manifest_types
 import hashlib
 import os
+import ctypes
 from Crypto.PublicKey import RSA
 from Crypto.PublicKey import ECC
 from Crypto.Signature import PKCS1_v1_5
@@ -223,6 +224,17 @@ def process_pfm (root, xml_file, hash_token, image_path):
     :return List of PFM values, manifest version, a boolean False since PFM XMLs are never empty
     """
 
+    class rsa_pub_key_struct(ctypes.LittleEndianStructure):
+        _pack_ = 1
+        _fields_ = [('modulus', ctypes.c_ubyte * 512),
+                    ('mod_length', ctypes.c_uint),
+                    ('exponent', ctypes.c_uint)]
+        def __init__(self, modulus, m_length, exponent):
+            self.mod_length = m_length
+            self.exponent = exponent
+            ctypes.memset(ctypes.byref(self.modulus), 0xff, ctypes.sizeof(self.modulus))
+            ctypes.memmove(ctypes.byref(self.modulus), modulus, self.mod_length)
+
     def process_region (root, version_id, xml_file):
         region = {}
 
@@ -361,21 +373,13 @@ def process_pfm (root, xml_file, hash_token, image_path):
                     hash1 = SHA256.new(data)
                     signer = PKCS1_v1_5.new(key)
                     image["hash"] = signer.sign(hash1)
-                    #pubkey = key.publickey().export_key('PEM')
                     mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
                     modulus = binascii.a2b_hex(mod_fmt % key.n)
-                    exponent = hex(key.e)[2:]
-                    while(len(exponent) % 2 != 0):
-                        exponent = '0' + exponent
-                    exponent = bytearray.fromhex(exponent)
-                    m_length = hex(len(modulus))[2:]
-                    while(len(m_length) != 4):
-                        m_length = "0" + m_length
-                    e_length = hex(len(exponent))[2:]
-                    while (len(e_length) != 2):
-                        e_length = "0" + e_length
-                    pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
-                              + bytearray.fromhex(e_length) + exponent)
+                    exponent = int(key.e)
+                    mod_length = len(modulus)
+                    rsa_pub_key_inst = rsa_pub_key_struct(modulus, mod_length, exponent)
+                    pubkey = bytearray(rsa_pub_key_inst)
+                    # print(binascii.hexlify(pubkey))
                     image["hash"] = image["hash"] + pubkey
                 else:
                     image["hash"] = hashlib.sha256(data).digest()
@@ -384,21 +388,13 @@ def process_pfm (root, xml_file, hash_token, image_path):
                     hash1 = SHA384.new(data)
                     signer = PKCS1_v1_5.new(key)
                     image["hash"] = signer.sign(hash1)
-                    #pubkey = key.publickey().export_key('PEM')
                     mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
                     modulus = binascii.a2b_hex(mod_fmt % key.n)
-                    exponent = hex(key.e)[2:]
-                    while(len(exponent) % 2 != 0):
-                        exponent = '0' + exponent
-                    exponent = bytearray.fromhex(exponent)
-                    m_length = hex(len(modulus))[2:]
-                    while(len(m_length) != 4):
-                        Mlength = "0" + m_length
-                    e_length = hex(len(exponent))[2:]
-                    while (len(e_length) != 2):
-                        e_length = "0" + e_length
-                    pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
-                              + bytearray.fromhex(e_length) + exponent)
+                    exponent = int(key.e)
+                    mod_length = len(modulus)
+                    rsa_pub_key_inst = rsa_pub_key_struct(modulus, mod_length, exponent)
+                    pubkey = bytearray(rsa_pub_key_inst)
+                    # print(binascii.hexlify(pubkey))
                     image["hash"] = image["hash"] + pubkey
                 else:
                     image["hash"] = hashlib.sha384(data).digest()
@@ -407,21 +403,13 @@ def process_pfm (root, xml_file, hash_token, image_path):
                     hash1 = SHA512.new(data)
                     signer = PKCS1_v1_5.new(key)
                     image["hash"] = signer.sign(hash1)
-                    #pubkey = key.publickey().export_key('PEM')
                     mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
                     modulus = binascii.a2b_hex(mod_fmt % key.n)
-                    exponent = hex(key.e)[2:]
-                    while(len(exponent) % 2 != 0):
-                        exponent = '0' + exponent
-                    exponent = bytearray.fromhex(exponent)
-                    m_length = hex(len(modulus))[2:]
-                    while(len(m_length) != 4):
-                        m_length = "0" + m_length
-                    e_length = hex(len(exponent))[2:]
-                    while (len(e_length) != 2):
-                        e_length = "0" + e_length
-                    pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
-                              + bytearray.fromhex(e_length) + exponent)
+                    exponent = int(key.e)
+                    mod_length = len(modulus)
+                    rsa_pub_key_inst = rsa_pub_key_struct(modulus, mod_length, exponent)
+                    pubkey = bytearray(rsa_pub_key_inst)
+                    # print(binascii.hexlify(pubkey))
                     image["hash"] = image["hash"] + pubkey
                 else:
                     image["hash"] = hashlib.sha512(data).digest()
@@ -481,7 +469,7 @@ def process_pfm (root, xml_file, hash_token, image_path):
         filters.append(filter_obj)
 
     xml["i2c_filter_rule"]["filter_count"] = filter_cnt.to_bytes(1, 'little')
-    #print(xml["i2c_filter_rule"])
+    # print(xml["i2c_filter_rule"])
     return xml, pfm_version, False
 
 def process_cfm_check (root, manifest_name, component_type, xml_file):
