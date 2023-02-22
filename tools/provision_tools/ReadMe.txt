@@ -31,11 +31,17 @@ PchRecoveryOffset  - 4 bytes - 0x30
 PchRecoverySize  - 4 bytes - 0x34
 PchStagingOffset  - 4 bytes- 0x38
 PchStagingSize  - 4 bytes - 0x3c
-Public key of the root key - 262 bytes - 0x40
-Signature that signs the above data - 256 bytes - 0x146
+Public key of the root key - 520 bytes - 0x40
+    rsa public key structure:
+    struct rsa_public_key {
+        uint8_t modulus[RSA_MAX_KEY_LENGTH]; // 512 bytes
+        size_t mod_length;
+        uint32_t exponent;
+    } root_pub_key;
+Signature that signs the above data - 256 bytes - 0x248
 
 
-Provision OTP Key
+Provision OTP Key (Not support yet)
 
 Image Length - 2 bytes - 0x00 - Length of the whole imgae
 Image Type  - 2 bytes - 0x02 - value(0x02)
@@ -69,9 +75,9 @@ PchRecoveryOffset  - 4 bytes - 0x30
 PchRecoverySize  - 4 bytes - 0x34
 PchStagingOffset  - 4 bytes- 0x38
 PchStagingSize  - 4 bytes - 0x3C
-Public key of the root key - 262 bytes - 0x40
-Public key of the OTP key - 262 bytes - 0x146
-Signature that signs the above data - 256 bytes - 0x24C
+Public key of the root key - 520 bytes - 0x40
+Public key of the OTP key - 520 bytes - 0x248
+Signature that signs the above data - 256 bytes - 0x450
 Zephyr Image Length - 4 bytes
 Zephyr binary data
 
@@ -111,5 +117,6 @@ Requires Python3
     "OTP_Image":"otp_zephyr.bin"    - zephyr data to append in the provisioning Image
 
 3. Please run the provisioning tool using the below command.
-    python3 provisioning_image_generator.py
+  3.a generate the provision root key image
+    python3 provisioning_image_generator.py provisioning_image_generator_rootkey.ini
 

@@ -18,6 +18,11 @@ MAGIC_NUM = int("0x8A147C29", 16)
 RESERVED_VALUE = int("0x0000", 16)
 PROVISION_OTP = False
 
+RSA2048_SIG_LEN = 256
+RSA3072_SIG_LEN = 384
+RSA4096_SIG_LEN = 512
+RSA_MAX_SIG_LEN = RSA4096_SIG_LEN
+
 
 class provision_header(ctypes.LittleEndianStructure):
     _pack_ = 1
@@ -48,6 +53,18 @@ class provision_data(ctypes.LittleEndianStructure):
                 ('PCHRecoverySize', ctypes.c_int),
                 ('PCHStagingOffset', ctypes.c_int),
                 ('PCHStageSize', ctypes.c_int)]
+
+
+class rsa_pub_key_struct(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [('modulus', ctypes.c_ubyte * RSA_MAX_SIG_LEN),
+                ('mod_length', ctypes.c_uint),
+                ('exponent', ctypes.c_uint)]
+    def __init__(self, modulus, m_length, exponent):
+        self.mod_length = m_length
+        self.exponent = exponent
+        ctypes.memset(ctypes.byref(self.modulus), 0xff, ctypes.sizeof(self.modulus))
+        ctypes.memmove(ctypes.byref(self.modulus), modulus, self.mod_length)
 
 
 def validate_json_content(json_data):
@@ -205,18 +222,11 @@ def generate_root_public_key(key_type, public_key_file):
             if key_type == 0:
                 mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
                 modulus = binascii.a2b_hex(mod_fmt % key.n)
-                exponent = hex(key.e)[2:]
-                while(len(exponent) % 2 != 0):
-                    exponent = '0' + exponent
-                exponent = bytearray.fromhex(exponent)
-                m_length = hex(len(modulus))[2:]
-                while (len(m_length) != 4):
-                    m_length = "0" + m_length
-                e_length = hex(len(exponent))[2:]
-                while (len(e_length) != 2):
-                    e_length = "0" + e_length
-                pubkey = (bytearray.fromhex(m_length)[::-1] + modulus
-                          + bytearray.fromhex(e_length) + exponent)
+                exponent = int(key.e)
+                mod_length = len(modulus)
+                rsa_pub_key_inst = rsa_pub_key_struct(modulus, mod_length, exponent)
+                pubkey = bytearray(rsa_pub_key_inst)
+                # print(binascii.hexlify(pubkey))
             else:
                 pubkey = b""
         else:
