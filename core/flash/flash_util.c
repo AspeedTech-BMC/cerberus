@@ -524,6 +524,12 @@ int flash_hash_update_noncontiguous_contents_at_offset (const struct flash *flas
 			buf_id = flash_msgq_data.buf_id;
 			status = flash->read (flash, current_addr, (uint8_t *)&hash_buffer[buf_id], next_read);
 			if (status != 0) {
+				/* Make sure the hash->update() finish */
+				hash_msgq_data.buf_id = buf_id;
+				hash_msgq_data.next_read = next_read;
+				hash_msgq_data.last_req = true;
+				k_msgq_put(&hash_msgq, &hash_msgq_data, K_FOREVER);
+				k_sem_take(&hash_done_sem, K_FOREVER);
 				return status;
 			}
 			hash_msgq_data.buf_id = buf_id;
