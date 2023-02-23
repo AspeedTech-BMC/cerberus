@@ -408,7 +408,7 @@ int flash_hash_update_noncontiguous_contents (const struct flash *flash,
 
 #define FLASH_VERIFICATION_SIZE 16384
 
-#ifdef ASYNC_HASH_OPERATION
+#if ASYNC_HASH_OPERATION
 #define HASH_FIFO_SIZE          1024
 #define HASH_BUFFER_COUNT       2
 
@@ -563,7 +563,7 @@ uint8_t hash_buffer[FLASH_VERIFICATION_SIZE];
  *
  * @return 0 if the hash was updated successfully or an error code.
  */
-int flash_hash_update_noncontiguous_contents_at_offset (struct flash *flash, uint32_t offset,
+int flash_hash_update_noncontiguous_contents_at_offset (const struct flash *flash, uint32_t offset,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash)
 {
 	//uint8_t data[FLASH_VERIFICATION_BLOCK];
