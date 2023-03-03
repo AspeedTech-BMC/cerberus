@@ -13,8 +13,8 @@
             struct recovery_section image_section;
             struct key_cancellation{
                     uint32_t magic_number;   // 0x4b455943   'KEYC'
-                    uint16_t key_policy;     // 0x0101 = PCH, 0x0103 = BMC
-                    uint8_t hash_type;       // 0: 256(default); 1: 384; 2: 512
+                    uint16_t key_policy;     // 0x0100 = ROT, 0x0101 = PCH, 0x0103 = BMC
+                    uint8_t hash_type;       // 1: 256(default); 2: 384; 3: 512
                     uint8_t key_count;       // 8(maximum)
                     struct key_cancel_list {
                             uint8_t key_id;
@@ -37,7 +37,7 @@
             struct recovery_section image_section;
             struct key_cancellation{
                     uint32_t magic_number;   // 0x6b65796d   'keym'
-                    uint8_t hash_type;       // 0: 256(default); 1: 384; 2: 512
+                    uint8_t hash_type;       // 1: 256(default); 2: 384; 3: 512
                     uint8_t key_count;       // 8(maximum)
                     struct key_list {
                             uint8_t key_hash[64];

@@ -48,6 +48,7 @@ SHA512_HASH_LEN = 64
 SHA_MAX_HASH_LEN = SHA512_HASH_LEN
 
 PUB_KEY_HASH_FILE_SUFFIX = ".hash.bin"
+PUB_KEY_RAW_FILE_SUFFIX = ".raw.bin"
 MAX_SIGNING_KEYS = 8
 
 RSA2048_SIG_LEN = 256
@@ -56,6 +57,7 @@ RSA4096_SIG_LEN = 512
 RSA_MAX_SIG_LEN = RSA4096_SIG_LEN
 
 # KEY CANCELLATION POLICY
+ROT_CANCELLATION = 0x100
 PCH_CANCELLATION = 0x101
 BMC_CANCELLATION = 0x103
 
@@ -143,13 +145,13 @@ def xml_find_single_tag (root, tag_name):
 def get_key_hash_type(section):
     hash_alg = xml_find_single_tag(section, XML_HASH_TYPE_TAG).text.strip()
     if (hash_alg == "SHA256"):
-        hash_type = 0
+        hash_type = 1
         hash_len = SHA256_HASH_LEN
     elif (hash_alg == "SHA384"):
-        hash_type = 1
+        hash_type = 2
         hash_len = SHA384_HASH_LEN
     elif (hash_alg == "SHA512"):
-        hash_type = 2
+        hash_type = 3
         hash_len = SHA512_HASH_LEN
     else:
         raise ValueError ("Unknown hash type '{0}'".format (hash_alg))
@@ -170,6 +172,8 @@ def process_key_cancellation(root, xml):
         key_policy = BMC_CANCELLATION
     elif (key_policy_tag == "PCH"):
         key_policy = PCH_CANCELLATION
+    elif (key_policy_tag == "ROT"):
+        key_policy = ROT_CANCELLATION
     else:
         raise ValueError ("Unknown key cancellation policy '{0}'".format (key_policy_tag))
 
@@ -450,8 +454,8 @@ def generate_image(xml, img_type, image_header_inst, root_pub_key, root_priv_key
         #     struct recovery_section image_section;
         #     struct key_cancellation{
         #             uint32_t magic_number;   // 0x4b455943   'KEYC'
-        #             uint16_t key_policy;     // 0x0101 = PCH, 0x0103 = BMC
-        #             uint8_t hash_type;       // 0: 256(default); 1: 384; 2: 512
+        #             uint16_t key_policy;     // 0x0100 = ROT, 0x0101 = PCH, 0x0103 = BMC
+        #             uint8_t hash_type;       // 1: 256(default); 2: 384; 3: 512
         #             uint8_t key_count;       // 8(maximum)
         #             struct key_cancel_list {
         #                     uint8_t key_id;
@@ -473,7 +477,7 @@ def generate_image(xml, img_type, image_header_inst, root_pub_key, root_priv_key
         #     struct recovery_section image_section;
         #     struct key_cancellation{
         #             uint32_t magic_number;   // 0x6b65796d   'keym'
-        #             uint8_t hash_type;       // 0: 256(default); 1: 384; 2: 512
+        #             uint8_t hash_type;       // 1: 256(default); 2: 384; 3: 512
         #             uint8_t key_count;       // 8(maximum)
         #             struct key_list {
         #                     uint8_t key_hash[64];
@@ -545,18 +549,21 @@ def generate_public_key_hash(key_path, hash_type):
 
     try:
         key_hash_path = key_path + PUB_KEY_HASH_FILE_SUFFIX
+        key_raw_path = key_path + PUB_KEY_RAW_FILE_SUFFIX
         key = RSA.importKey(open(key_path).read())
         mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
         modulus = binascii.a2b_hex(mod_fmt % key.n)
         exponent = int(key.e)
         mod_length = len(modulus)
         rsa_pub_key_inst = rsa_pub_key_struct(modulus, mod_length, exponent)
+        with open(key_raw_path, 'wb+') as fh:
+            fh.write(rsa_pub_key_inst)
 
-        if hash_type == 0:
-            h = SHA256.new(bytearray(rsa_pub_key_inst))
         if hash_type == 1:
-            h = SHA384.new(bytearray(rsa_pub_key_inst))
+            h = SHA256.new(bytearray(rsa_pub_key_inst))
         if hash_type == 2:
+            h = SHA384.new(bytearray(rsa_pub_key_inst))
+        if hash_type == 3:
             h = SHA512.new(bytearray(rsa_pub_key_inst))
         with open(key_hash_path, 'wb+') as fh:
             fh.write(h.digest())
