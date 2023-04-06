@@ -54,8 +54,10 @@ int manifest_flash_v2_init (struct manifest_flash *manifest, struct flash *flash
 	uint8_t *signature_cache, size_t max_signature, uint8_t *platform_id_cache,
 	size_t max_platform_id)
 {
+#if 0
 	uint32_t block;
 	int status;
+#endif
 
 	if ((manifest == NULL) || (flash == NULL)) {
 		return MANIFEST_INVALID_ARGUMENT;
@@ -65,7 +67,7 @@ int manifest_flash_v2_init (struct manifest_flash *manifest, struct flash *flash
 		((hash == NULL) || (platform_id_cache == NULL) || (signature_cache == NULL))) {
 		return MANIFEST_INVALID_ARGUMENT;
 	}
-
+#if 0
 	status = flash->get_block_size (flash, &block);
 	if (status != 0) {
 		return status;
@@ -74,7 +76,7 @@ int manifest_flash_v2_init (struct manifest_flash *manifest, struct flash *flash
 	if (FLASH_REGION_OFFSET (base_addr, block) != 0) {
 		return MANIFEST_STORAGE_NOT_ALIGNED;
 	}
-
+#endif
 	memset (manifest, 0, sizeof (struct manifest_flash));
 
 	if (signature_cache == NULL) {
