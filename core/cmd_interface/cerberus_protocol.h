@@ -11,6 +11,10 @@
 #define CERBERUS_PROTOCOL_MIN_MSG_LEN						(sizeof (struct cerberus_protocol_header))
 #define CERBERUS_PROTOCOL_MAX_PAYLOAD_PER_MSG				(MCTP_BASE_PROTOCOL_MAX_MESSAGE_BODY - CERBERUS_PROTOCOL_MIN_MSG_LEN)
 
+#if defined(CONFIG_INTEL_PFR)
+#define CERBERUS_PROTOCOL_INTEL_PFR_PCI_VID					0x8680
+#define CERBERUS_PROTOCOL_INTEL_PFR_MIN_DOE_MSG_LEN                      (sizeof(struct intel_pfr_doe_header))
+#endif
 #define CERBERUS_PROTOCOL_MSFT_PCI_VID						0x1414
 #define CERBERUS_PROTOCOL_PROTOCOL_VERSION					4
 
@@ -111,6 +115,28 @@ enum {
 /**
  * Cerberus portion of packet header
  */
+#if defined(CONFIG_INTEL_PFR)
+struct cerberus_protocol_header {
+	uint8_t msg_type:7;										/**< MCTP message type */
+	uint8_t integrity_check:1;								/**< MCTP message integrity check */
+	uint16_t pci_vendor_id;									/**< PCI vendor ID */
+	uint8_t instance_id:5;									/**< Instance ID */
+	uint8_t rsvd:1;										/**< Reserved */
+	uint8_t dbit:1;									/**< Dbit */
+	uint8_t rq:1;											/**< Request bit */
+	uint8_t command;										/**< Command ID */
+};
+
+struct intel_pfr_doe_header {
+	struct cerberus_protocol_header header;
+	uint32_t seq_num;
+	uint8_t command;
+	uint8_t status;
+	uint8_t address;
+	uint8_t length;
+};
+
+#else
 struct cerberus_protocol_header {
 	uint8_t msg_type:7;										/**< MCTP message type */
 	uint8_t integrity_check:1;								/**< MCTP message integrity check */
@@ -121,6 +147,7 @@ struct cerberus_protocol_header {
 	uint8_t rq:1;											/**< Request bit */
 	uint8_t command;										/**< Command ID */
 };
+#endif
 
 /**
  * Structure of a Cerberus error message.

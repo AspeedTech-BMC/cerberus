@@ -103,7 +103,11 @@ int cmd_interface_process_cerberus_protocol_message (struct cmd_interface *intf,
 int cmd_interface_prepare_response (struct cmd_interface *intf, struct cmd_interface_msg *response);
 int cmd_interface_generate_error_packet (struct cmd_interface *intf,
 	struct cmd_interface_msg *request, uint8_t error_code, uint32_t error_data, uint8_t cmd_set);
-
+#if defined(CONFIG_INTEL_PFR)
+int cmd_interface_process_intel_pfr_protocol_message (struct cmd_interface *intf,
+	struct cmd_interface_msg *message, uint8_t *command_id, uint8_t *command_set, bool decrypt,
+	bool rsvd_zero);
+#endif
 
 #define	CMD_HANDLER_ERROR(code)		ROT_ERROR (ROT_MODULE_CMD_HANDLER, code)
 

@@ -42,6 +42,62 @@ static int cmd_interface_is_request_encrypted (struct cmd_interface *intf,
 }
 #endif
 
+#if defined(CONFIG_INTEL_PFR)
+/**
+ * Pre-process received Intel PFR protocol message.
+ *
+ * @param intf The command interface that will process the message.
+ * @param message The message being processed.
+ * @param command_id Pointer to hold command ID of incoming message.
+ * @param command_set Pointer to hold command set of incoming message.
+ * @param decrypt Flag indicating whether to decrypt incoming message if encrypted.
+ * @param rsvd_zero Flag indicating if the reserved bits must be set to zero.
+ *
+ * @return 0 if the message was successfully processed or an error code.
+ */
+int cmd_interface_process_intel_pfr_protocol_message (struct cmd_interface *intf,
+	struct cmd_interface_msg *message, uint8_t *command_id, uint8_t *command_set, bool decrypt,
+	bool rsvd_zero)
+{
+	struct intel_pfr_doe_header *doe_header;
+	struct cerberus_protocol_header *header;
+	uint32_t data_size;
+
+	if (message == NULL) {
+		return CMD_HANDLER_INVALID_ARGUMENT;
+	}
+
+	message->crypto_timeout = false;
+
+	if ((intf == NULL) || (command_id == NULL) || (command_set == NULL)) {
+		return CMD_HANDLER_INVALID_ARGUMENT;
+	}
+
+	intf->curr_txn_encrypted = false;
+
+	doe_header = (struct intel_pfr_doe_header *)message->data;
+	data_size = doe_header->length;
+	if ((data_size == 0) || (data_size > SHA384_HASH_LENGTH)) {
+		return CMD_HANDLER_UNSUPPORTED_LEN;
+	}
+
+	header = &doe_header->header;
+
+	if (message->length < CERBERUS_PROTOCOL_INTEL_PFR_MIN_DOE_MSG_LEN) {
+		return CMD_HANDLER_PAYLOAD_TOO_SHORT;
+	}
+
+	if ((header->msg_type != (MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF)) ||
+		(header->pci_vendor_id != CERBERUS_PROTOCOL_INTEL_PFR_PCI_VID)) {
+		return CMD_HANDLER_UNSUPPORTED_MSG;
+	}
+
+	*command_id = header->command;
+	*command_set = header->rq;
+
+	return 0;
+}
+#else
 /**
  * Pre-process received Cerberus protocol message.
  *
@@ -112,6 +168,7 @@ int cmd_interface_process_cerberus_protocol_message (struct cmd_interface *intf,
 
 	return 0;
 }
+#endif
 
 /**
  * Process generated response.
