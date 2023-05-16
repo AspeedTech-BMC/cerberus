@@ -250,6 +250,10 @@ def process_pfm (root, xml_file, hash_token, image_path):
     pfm_version = manifest_types.VERSION_1
 
     result = xml_extract_attrib (root, XML_VERSION_ATTRIB, True, xml_file)
+    pattern = r'^([0-5]{1}[0-9]{1}|6[0-4]{1})\.(\d{2})\.(\d{2})$'
+    if not re.match(pattern, result):
+        raise ValueError ("Invalid version format: {0}, Expected version format: SVN(XX).Major(XX).Minor(XX) decimal digit and SVN valid range: 00-64".format (result))
+
     xml.update ({"version_id":result})
 
     result = xml_extract_attrib (root, XML_PLATFORM_ATTRIB, True, xml_file)

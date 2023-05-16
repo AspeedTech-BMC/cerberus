@@ -12,6 +12,7 @@ import argparse
 import manifest_types
 import manifest_common
 import pfm_generator_v1
+import re
 
 
 PFM_CONFIG_FILENAME = "pfm_generator.config"
@@ -280,7 +281,12 @@ def generate_fw_versions_list (xml_list, hash_engine, max_rw_sections):
             "Version Address"), 16)
 
         version_id = manifest_common.get_key_from_dict (xml, "version_id", "Version ID")
-        version_id_len = len (version_id)
+        pattern = r'^([0-5]{1}[0-9]{1}|6[0-4]{1})\.(\d{2})\.(\d{2})$'
+        matches = re.match(pattern, version_id)
+        svn = int(matches.group(1))
+        major = int(matches.group(2))
+        minor = int(matches.group(3))
+        version_id_len = (len (version_id)) - 2
         manifest_common.check_maximum (version_id_len, 255, "Version ID {0} length".format (
             version_id))
         padding, padding_len = manifest_common.generate_4byte_padding_buf (version_id_len)
@@ -305,15 +311,20 @@ def generate_fw_versions_list (xml_list, hash_engine, max_rw_sections):
             _fields_ = [('image_count', ctypes.c_ubyte),
                         ('rw_count', ctypes.c_ubyte),
                         ('version_length', ctypes.c_ubyte),
-                        ('reserved', ctypes.c_ubyte),
+                        ('reserved1', ctypes.c_ubyte),
                         ('version_addr', ctypes.c_uint),
-                        ('version_id', ctypes.c_char * version_id_len),
+                        ('svn', ctypes.c_ubyte),
+                        ('reserved2', ctypes.c_ubyte),
+                        ('major', ctypes.c_ubyte),
+                        ('reserved3', ctypes.c_ubyte),
+                        ('minor', ctypes.c_ubyte),
+                        ('reserved4', ctypes.c_ubyte),
                         ('version_id_padding', ctypes.c_ubyte * padding_len),
                         ('rw_regions', ctypes.c_ubyte * rw_regions_len),
                         ('signed_imgs', ctypes.c_ubyte * signed_imgs_len)]
 
         fw_version = pfm_fw_version (num_signed_imgs, num_rw_regions, version_id_len, 0,
-            version_addr, version_id.encode ('utf-8'), padding, rw_regions_buf, signed_imgs_buf)
+            version_addr, svn, 0, major, 0, minor, 0, padding, rw_regions_buf, signed_imgs_buf)
 
         for prev_version_id, prev_fw_version in fw_version_list[fw_type].items ():
             if prev_version_id == version_id:
