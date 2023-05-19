@@ -37,6 +37,7 @@ RECOVERY_IMAGE_SECTION_FORMAT_NUM = 0
 RECOVERY_IMAGE_SECTION_HEADER_LENGTH = 16
 RECOVERY_IMAGE_MAX_SIZE = 134217728
 RECOVERY_IMAGE_MAX_VERSION_ID_SIZE = 32
+RECOVERY_IMAGE_ROT_TYPE = 2
 
 RSA2048_SIG_LEN = 256
 RSA3072_SIG_LEN = 384
@@ -75,6 +76,27 @@ class rsa_pub_key_struct(ctypes.LittleEndianStructure):
         ctypes.memmove(ctypes.byref(self.modulus), modulus, self.mod_length)
 
 
+# This version format only used for rot not including bmc and pch
+# Both bmc and pch svn, major and minor version are set in pfm
+# Version Format SVN(XX).Major(XX).Minor(XX)
+# SVN should be between 00-64
+class rot_version_struct(ctypes.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [('svn', ctypes.c_ubyte),
+                ('reserved1', ctypes.c_ubyte),
+                ('major', ctypes.c_ubyte),
+                ('reserved2', ctypes.c_ubyte),
+                ('minor', ctypes.c_ubyte),
+                ('reserved3', ctypes.c_ubyte)]
+    def __init__(self, svn, major, minor):
+        self.svn = svn
+        self.major = major
+        self.minor = minor
+        self.reserved1 = 0
+        self.reserved2 = 0
+        self.reserved3 = 0
+
+
 def process_recovery_image(root):
     """
     Process the tree storing the recovery image data starting with the root element
@@ -91,6 +113,12 @@ def process_recovery_image(root):
 
     if (version_id in (None, "") or (len(version_id) > (RECOVERY_IMAGE_MAX_VERSION_ID_SIZE - 1))):
         raise ValueError("Invalid or no recovery image version ID provided")
+
+    if (int(type_xml) == RECOVERY_IMAGE_ROT_TYPE):
+        pattern = r'^([0-5]{1}[0-9]{1}|6[0-4]{1})\.(\d{2})\.(\d{2})$'
+        if not re.match(pattern, version_id):
+            raise ValueError ("Invalid version format: {0}, Expected version format: SVN(XX).Major(XX).Minor(XX) decimal digit and SVN valid range: 00-64".format (
+                version_id))
 
     platform_id = root.attrib.get(XML_PLATFORM_ATTRIB)
 
@@ -293,11 +321,23 @@ def generate_recovery_image(xml, recovery_image_header_instance, recovery_image_
     for section in recovery_image_sections_list:
         sections_size += section.header.header_length + section.header.image_length
 
-    version_len = len(xml["version_id"])
-    xml["version_id"] = xml["version_id"].decode() + ''.join('\x00' for i in range(version_len, 32))
-    version_id_str_buf = ctypes.create_string_buffer(xml["version_id"].encode('utf-8'), 32)
-    version_id_buf = (ctypes.c_ubyte * 32)()
-    ctypes.memmove(ctypes.addressof(version_id_buf), ctypes.addressof(version_id_str_buf), 32)
+    if (xml["type"] == RECOVERY_IMAGE_ROT_TYPE):
+        pattern = r'^([0-5]{1}[0-9]{1}|6[0-4]{1})\.(\d{2})\.(\d{2})$'
+        matches = re.match(pattern, xml["version_id"].decode())
+        svn = int(matches.group(1))
+        major = int(matches.group(2))
+        minor = int(matches.group(3))
+        rot_version_instance = rot_version_struct(svn, major, minor)
+        version_id_buf = (ctypes.c_ubyte * 32)()
+        version_len = ctypes.sizeof(rot_version_instance)
+        ctypes.memset(ctypes.addressof(version_id_buf), 0, ctypes.sizeof(version_id_buf))
+        ctypes.memmove(ctypes.addressof(version_id_buf), ctypes.addressof(rot_version_instance), version_len)
+    else:
+        version_len = len(xml["version_id"])
+        xml["version_id"] = xml["version_id"].decode() + ''.join('\x00' for i in range(version_len, 32))
+        version_id_str_buf = ctypes.create_string_buffer(xml["version_id"].encode('utf-8'), 32)
+        version_id_buf = (ctypes.c_ubyte * 32)()
+        ctypes.memmove(ctypes.addressof(version_id_buf), ctypes.addressof(version_id_str_buf), 32)
 
     xml["platform_id"] = xml["platform_id"].decode() + '\x00'
     platform_id_str_buf = ctypes.create_string_buffer(xml["platform_id"].encode('utf-8'), len(xml["platform_id"]))

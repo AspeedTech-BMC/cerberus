@@ -42,6 +42,23 @@
             } csk_pub_key;
         }
         ```
-
-6. To generate the recovery image, please run the python script as follows,
+6. Use the version attribute of the XML to emulate the SVN only for ROT type. Please note, both bmc and pch svn, major and minor version are set in pfm.
+   The version attribute as below.
+   Version is 00.01.06 (SVN:00, Major: 01, Minor:06)
+   ```
+   <RecoveryImage version="00.01.06" platform="rot" type="2">
+   ```
+   By default, the version string is in ASCII code data, changes the data format to hex data. SVN should be between 00-64 and the version length is 6.
+   6.1 rot version structure:
+       ```
+       struct rot_version {
+           uint8_t svn;
+           uint8_t reserved1;
+           uint8_t major;
+           uint8_t reserved2;
+           uint8_t minor;
+           uint8_t reserved3;
+       }
+       ```
+7. To generate the recovery image, please run the python script as follows,
         python3 recovery_image_generator.py
