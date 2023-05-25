@@ -13,6 +13,9 @@
 #include "mctp_control_protocol.h"
 #include "mctp_control_protocol_commands.h"
 
+// aspped-pfr
+#include "src/mctp/mctp.h"
+
 
 /**
  * Populate the protocol header segment of a MCTP control request
@@ -98,6 +101,16 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 		response->eid_allocation_status = MCTP_CONTROL_SET_EID_ALLOCATION_STATUS_NO_EID_POOL;
 		response->eid_pool_size = 0;
 	}
+
+#if defined(CONFIG_PFR_MCTP_I3C)
+#if !defined(CONFIG_I3C_SLAVE)
+	int bus_role = device_mgr->entries[0].info.capabilities.request.bus_role;
+
+	if (bus_role == DEVICE_MANAGER_I3C_SLAVE_BUS_ROLE) {
+		mctp_i3c_stop_discovery_notify(device_mgr);
+	}
+#endif
+#endif
 
 	return 0;
 

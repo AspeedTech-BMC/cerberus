@@ -410,8 +410,10 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 				}
 			}
 			else if (MCTP_BASE_PROTOCOL_IS_VENDOR_MSG (mctp->msg_type)) {
-				status = mctp->cmd_cerberus->process_response (mctp->cmd_cerberus,
-					&mctp->req_buffer);
+				if (mctp->cmd_cerberus->process_response != NULL) {
+					status = mctp->cmd_cerberus->process_response (mctp->cmd_cerberus,
+							&mctp->req_buffer);
+				}
 			}
 			else if (MCTP_BASE_PROTOCOL_IS_SPDM_MSG (mctp->msg_type)) {
 			}

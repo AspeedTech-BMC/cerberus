@@ -29,6 +29,11 @@ enum {
 	DEVICE_MANAGER_NOT_READY = 0,						/**< Communication with device not established */
 	DEVICE_MANAGER_AVAILABLE,							/**< Device ready for communication, but unauthenticated */
 	DEVICE_MANAGER_AUTHENTICATED,						/**< Authenticated state */
+	DEVICE_MANAGER_SEND_DISCOVERY_NOTIFY,
+	DEVICE_MANAGER_EID_ANNOUNCEMENT,
+	DEVICE_MANAGER_CHECK_AFM,
+	DEVICE_MANAGER_PRE_ATTESTATION,
+	DEVICE_MANAGER_ATTESTATION,
 	NUM_DEVICE_MANAGER_STATES							/**< Number of device states */
 };
 
@@ -49,6 +54,8 @@ enum {
 	DEVICE_MANAGER_MASTER_BUS_ROLE,						/**< Device acting as bus master */
 	DEVICE_MANAGER_SLAVE_BUS_ROLE,						/**< Device acting as bus slave */
 	DEVICE_MANAGER_MASTER_AND_SLAVE_BUS_ROLE,			/**< Device acting as both master and slave on bus */
+	DEVICE_MANAGER_I3C_MASTER_BUS_ROLE,
+	DEVICE_MANAGER_I3C_SLAVE_BUS_ROLE,
 	NUM_BUS_ROLES										/**< Number of bus roles */
 };
 
@@ -100,8 +107,7 @@ struct device_manager_capabilities {
 	uint16_t max_message_size;							/**< Maximum message payload the device can accept */
 	uint16_t max_packet_size;							/**< Maximum packet payload the device can accept */
 	uint8_t security_mode:3;							/**< Security mode */
-	uint8_t reserved1:1;								/**< Reserved */
-	uint8_t bus_role:2;									/**< Master/Slave role enabled */
+	uint8_t bus_role:3;									/**< Master/Slave role enabled */
 	uint8_t hierarchy_role:2;							/**< AC-RoT or PA-RoT */
 	uint8_t reserved2:5;								/**< Reserved */
 	uint8_t fw_protection:1;							/**< FW protection enabled */

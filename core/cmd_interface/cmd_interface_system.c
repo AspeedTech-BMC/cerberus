@@ -22,10 +22,10 @@ enum {
 
 enum {
 	INTEL_PFR_CMD_UNUSED = 0,
-	INTEL_PFR_CMD_DATA_WRITE_REQ,
-	INTEL_PFR_CMD_DATA_READ_REQ,
-	INTEL_PFR_CMD_DISCOVERY_REQ,
-	INTEL_PFR_CMD_REGISTER_REQ,
+	INTEL_PFR_CMD_DATA_WRITE,
+	INTEL_PFR_CMD_DATA_READ,
+	INTEL_PFR_CMD_DISCOVERY,
+	INTEL_PFR_CMD_REGISTER,
 };
 
 int intel_pfr_handle_write_req(struct cmd_interface_msg *request)
@@ -79,8 +79,10 @@ done:
 
 	return status;
 }
-int intel_pfr_handle_discover_req(struct cmd_interface_msg *request)
+
+int intel_pfr_handle_register_res(struct cmd_interface_msg *request)
 {
+	printk("PFR EID is registered\n");
 	return 0;
 }
 
@@ -89,20 +91,34 @@ int intel_pfr_handle_vendor_req(struct cmd_interface_msg *request)
 	struct intel_pfr_doe_header *doe_header = (struct intel_pfr_doe_header *)request->data;
 	uint8_t command = doe_header->command;
 	switch (command) {
-		case INTEL_PFR_CMD_DATA_WRITE_REQ:
+		case INTEL_PFR_CMD_DATA_WRITE:
 			intel_pfr_handle_write_req(request);
 			break;
-		case INTEL_PFR_CMD_DATA_READ_REQ:
+		case INTEL_PFR_CMD_DATA_READ:
 			intel_pfr_handle_read_req(request);
-			break;
-		case INTEL_PFR_CMD_DISCOVERY_REQ:
-			intel_pfr_handle_discover_req(request);
 			break;
 		default:
 			return CMD_HANDLER_UNKNOWN_REQUEST;
 	}
 
 	return 0;
+}
+
+int intel_pfr_handle_vendor_res(struct cmd_interface_msg *response)
+{
+	struct intel_pfr_doe_header *doe_header = (struct intel_pfr_doe_header *)response->data;
+	uint8_t command = doe_header->command;
+	int status;
+
+	switch (command) {
+		case INTEL_PFR_CMD_REGISTER:
+			status = intel_pfr_handle_register_res(response);
+			break;
+		default:
+			return CMD_HANDLER_UNKNOWN_REQUEST;
+	}
+
+	return status;
 }
 
 int cmd_interface_system_process_request (struct cmd_interface *intf,
@@ -129,6 +145,31 @@ int cmd_interface_system_process_request (struct cmd_interface *intf,
 
 	if (status == 0) {
 		status = cmd_interface_prepare_response (&interface->base, request);
+	}
+
+	return status;
+}
+
+int cmd_interface_system_process_response (struct cmd_interface *intf,
+	struct cmd_interface_msg *response)
+{
+	struct cmd_interface_system *interface = (struct cmd_interface_system*) intf;
+	uint8_t command_id;
+	uint8_t command_set;
+	int status;
+
+	status = cmd_interface_process_intel_pfr_protocol_message (&interface->base, response,
+		&command_id, &command_set, true, true);
+	if (status != 0) {
+		return status;
+	}
+
+	switch (command_id) {
+		case INTEL_MESSAGE_OP_CODE:
+			status = intel_pfr_handle_vendor_res (response);
+			break;
+		default:
+			return CMD_HANDLER_UNKNOWN_RESPONSE;
 	}
 
 	return status;
@@ -376,7 +417,6 @@ int cmd_interface_system_process_request (struct cmd_interface *intf,
 
 	return status;
 }
-#endif
 
 int cmd_interface_system_process_response (struct cmd_interface *intf,
 	struct cmd_interface_msg *response)
@@ -433,6 +473,7 @@ int cmd_interface_system_process_response (struct cmd_interface *intf,
 			return CMD_HANDLER_UNKNOWN_RESPONSE;
 	}
 }
+#endif
 
 /**
  * Initialize System command interface instance
