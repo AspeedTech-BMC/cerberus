@@ -96,17 +96,17 @@ Requires Python3
     {
     "Flag": "0x01",             - Represents whethter the tool generates the image for provisioning root key(0x01) or provisioning OTP key(0x0F)
     "BMCPFMOffset":"0x000E0000",        - BMC Active Offset with 4 bytes of Size
-    "BMCActiveSize":"0x00020000",       - BMC Active Size with 4 bytes of size
+    "BMCActiveSize":"0x04000000",       - BMC Active Size with 4 bytes of size
     "BMCRecoveryOffset":"0x04000000",   - BMc Recovery Offset with 4 bytes of size
     "BMCRecoverySize":"0x04000000",     - BMC Recovery Size with 4 bytes of size
     "BMCStagingOffset":"0x08000000",    - BMC Staging Offset with 4 bytes of size
     "BMCStageSize":"0x04000000",        - BMC Stage size with 4 bytes of size
     "PCHPFMOffset":"0x00000000",        - PCH Active Offset with 4 bytes of Size
     "PCHActiveSize":"0x02000000",       - PCH Active Size with 4 bytes of size
-    "PCHRecoveryOffset":"0x00000000",   - PCH Recovery Offset with 4 bytes of size
-    "PCHRecoverySize":"0x03FFFFFF",     - PCH Recovery Size with 4 bytes of size
+    "PCHRecoveryOffset":"0x02000000",   - PCH Recovery Offset with 4 bytes of size
+    "PCHRecoverySize":"0x02000000",     - PCH Recovery Size with 4 bytes of size
     "PCHStagingOffset":"0x00010000",    - PCH Staging Offset with 4 bytes of size
-    "PCHStageSize":"0x00F0FFFF",        - PCH Stage size with 4 bytes of size
+    "PCHStageSize":"0x00F00000",        - PCH Stage size with 4 bytes of size
     "RootKey":"pubkey_2048.pem",        - Public key file of the Root key
     "OTPSignKey":"prikey_2048.pem"   - Private key to sign the whole key image.
     }
