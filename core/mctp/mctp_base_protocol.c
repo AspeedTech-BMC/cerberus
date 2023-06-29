@@ -212,7 +212,7 @@ int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t dest
 	}
 
 	if (add_crc) {
-		*crc = checksum_crc8 ((dest_addr << 1), buf, packet_len);
+		*crc = checksum_crc8 (((dest_addr << 1) | 0x01), buf, packet_len);
 		if (*crc != buf[packet_len]) {
 			return MCTP_BASE_PROTOCOL_BAD_CHECKSUM;
 		}
