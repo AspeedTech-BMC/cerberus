@@ -470,7 +470,6 @@ def generate_image(xml, img_type, image_header_inst, root_pub_key, root_priv_key
         #     } root_pub_key;
         # };
         generated_image = generate_key_cancellation_image(xml, image_header_inst)
-        image_name = "key_cancellation_signed.bin"
     elif img_type == KEY_MANIFEST_IMAGE_TYPE:
         # struct key_provision_manifest {
         #     struct recovery_header image_header;
@@ -533,7 +532,7 @@ def load_key(prv_key_path):
         except Exception:
             print("Unsigned image will be generated, provided RSA key could not be imported: {0}".format(prv_key_path))
             traceback.print_exc()
-            return False, None
+            return False, None, None
 
         return True, int(key.n.bit_length() / 8), key
     else:
@@ -561,15 +560,17 @@ def generate_public_key_hash(key_path, hash_type):
 
         if hash_type == 1:
             h = SHA256.new(bytearray(rsa_pub_key_inst))
-        if hash_type == 2:
+        elif hash_type == 2:
             h = SHA384.new(bytearray(rsa_pub_key_inst))
-        if hash_type == 3:
+        elif hash_type == 3:
             h = SHA512.new(bytearray(rsa_pub_key_inst))
+        else:
+            h = SHA256.new(bytearray(rsa_pub_key_inst))
         with open(key_hash_path, 'wb+') as fh:
             fh.write(h.digest())
 
-    except Exception:
-        print(exception)
+    except Exception as e:
+        print(e)
 
 # *************************************** Start of Script ***************************************
 
@@ -590,12 +591,19 @@ if (key_size is None):
     print("invalid root key")
     os._exit(1)
 
+if (key is None):
+    print("invalid root key")
+    os._exit(1)
+
 if sign is True:
     mod_fmt = "%%0%dx" % (key.n.bit_length() // 4)
     modulus = binascii.a2b_hex(mod_fmt % key.n)
     exponent = int(key.e)
     mod_length = len(modulus)
     RootPubKey = rsa_pub_key_struct(modulus, mod_length, exponent)
+else:
+    print("generating unsigned image is not supported")
+    os._exit(1)
 
 sig_len = key_size
 processed_xml = load_and_process_xml(G_Config["xml"])
