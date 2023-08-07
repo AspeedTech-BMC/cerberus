@@ -380,7 +380,7 @@ def write_manifest (xml_version, sign, manifest, key, key_size, key_type, output
         manifest_hash_buf = (ctypes.c_ubyte * manifest_length) ()
         ctypes.memmove (ctypes.addressof (manifest_hash_buf), ctypes.addressof (manifest),
             manifest_length)
-        h = sha_algo.new (manifest_hash_buf)
+        h = sha_algo.new (bytearray(manifest_hash_buf))
 
         if key_type == 1:
             signer = DSS.new (key, 'fips-186-3', 'der')
@@ -447,7 +447,7 @@ def generate_hash (element, hash_engine):
 
     ctypes.memmove (ctypes.addressof (element_buf), ctypes.addressof (element), element_size)
 
-    hash_object = hash_engine.new (element_buf)
+    hash_object = hash_engine.new (bytearray(element_buf))
     hash_buf = (ctypes.c_ubyte * hash_object.digest_size).from_buffer_copy (hash_object.digest ())
 
     return hash_buf

@@ -410,7 +410,7 @@ def write_recovery_image(sign, recovery_image, key, output_file_name, recovery_i
         rsa_pub_key_len = ctypes.sizeof(rsa_pub_key_struct)
         recovery_hash_buf = (ctypes.c_ubyte * ctypes.sizeof(recovery_image))()
         ctypes.memmove(ctypes.addressof(recovery_hash_buf), ctypes.addressof(recovery_image), ctypes.sizeof(recovery_image))
-        h = SHA256.new(recovery_hash_buf)
+        h = SHA256.new(bytearray(recovery_hash_buf))
         signer = PKCS1_v1_5.new(key)
         signature = signer.sign(h)
         signature = (ctypes.c_ubyte * recovery_image_header.sig_length).from_buffer_copy(signature)

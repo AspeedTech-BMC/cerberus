@@ -293,7 +293,7 @@ def main():
 
             key_load, key_size, key = load_key(key_type, json_data["OTPSignKey"])
             sha_algo = SHA512 if key_size == 512 else SHA384 if key_size == 384 else SHA256
-            h = sha_algo.new(manifest_hash_buf)
+            h = sha_algo.new(bytearray(manifest_hash_buf))
 
             if key_type == 1:
                 signer = DSS.new(key, 'fips-186-3', 'der')
