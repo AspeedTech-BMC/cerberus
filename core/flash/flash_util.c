@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 #include <stdbool.h>
-#include <kernel.h>
+#include <zephyr/kernel.h>
 #include <soc.h>
 #include "platform_api.h"
 #include "flash_util.h"

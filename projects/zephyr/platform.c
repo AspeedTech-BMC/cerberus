@@ -5,8 +5,7 @@
  */
 
 #include <stdint.h>
-#include <kernel.h>
-#include <zephyr.h>
+#include <zephyr/kernel.h>
 #include "platform.h"
 #include "status/rot_status.h"
 

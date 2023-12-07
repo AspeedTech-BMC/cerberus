@@ -7,8 +7,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <kernel.h>
-#include <zephyr.h>
+#include <zephyr/kernel.h>
 #include "platform_compiler.h"
 
 

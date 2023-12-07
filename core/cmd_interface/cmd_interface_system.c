@@ -17,6 +17,9 @@
 #include "cmd_interface_system.h"
 #include "common/unused.h"
 
+extern int swmbx_mctp_i3c_doe_msg_write_handler(uint8_t addr, uint8_t data_len, uint8_t *swmbx_data);
+extern int swmbx_mctp_i3c_doe_msg_read_handler(uint8_t addr, uint8_t data_len, uint8_t *swmbx_data);
+
 #if defined(CONFIG_INTEL_PFR)
 enum {
 	INTEL_MESSAGE_OP_CODE = 0x0a,
