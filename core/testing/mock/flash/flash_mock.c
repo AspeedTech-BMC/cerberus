@@ -17,7 +17,7 @@ static int flash_mock_get_device_size (const struct flash *flash, uint32_t *byte
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, flash_mock_get_device_size, flash, MOCK_ARG_CALL (bytes));
+	MOCK_RETURN (&mock->mock, flash_mock_get_device_size, flash, MOCK_ARG_PTR_CALL (bytes));
 }
 
 static int flash_mock_read (const struct flash *flash, uint32_t address, uint8_t *data,
@@ -29,8 +29,8 @@ static int flash_mock_read (const struct flash *flash, uint32_t address, uint8_t
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, flash_mock_read, flash, MOCK_ARG_CALL (address), MOCK_ARG_CALL (data),
-		MOCK_ARG_CALL (length));
+	MOCK_RETURN (&mock->mock, flash_mock_read, flash, MOCK_ARG_CALL (address),
+		MOCK_ARG_PTR_CALL (data), MOCK_ARG_CALL (length));
 }
 
 static int flash_mock_get_page_size (const struct flash *flash, uint32_t *bytes)
@@ -41,7 +41,7 @@ static int flash_mock_get_page_size (const struct flash *flash, uint32_t *bytes)
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, flash_mock_get_page_size, flash, MOCK_ARG_CALL (bytes));
+	MOCK_RETURN (&mock->mock, flash_mock_get_page_size, flash, MOCK_ARG_PTR_CALL (bytes));
 }
 
 static int flash_mock_minimum_write_per_page (const struct flash *flash, uint32_t *bytes)
@@ -52,7 +52,7 @@ static int flash_mock_minimum_write_per_page (const struct flash *flash, uint32_
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, flash_mock_minimum_write_per_page, flash, MOCK_ARG_CALL (bytes));
+	MOCK_RETURN (&mock->mock, flash_mock_minimum_write_per_page, flash, MOCK_ARG_PTR_CALL (bytes));
 }
 
 static int flash_mock_write (const struct flash *flash, uint32_t address, const uint8_t *data,
@@ -65,7 +65,7 @@ static int flash_mock_write (const struct flash *flash, uint32_t address, const 
 	}
 
 	MOCK_RETURN (&mock->mock, flash_mock_write, flash, MOCK_ARG_CALL (address),
-		MOCK_ARG_CALL (data), MOCK_ARG_CALL (length));
+		MOCK_ARG_PTR_CALL (data), MOCK_ARG_CALL (length));
 }
 
 static int flash_mock_get_sector_size (const struct flash *flash, uint32_t *bytes)
@@ -76,7 +76,7 @@ static int flash_mock_get_sector_size (const struct flash *flash, uint32_t *byte
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, flash_mock_get_sector_size, flash, MOCK_ARG_CALL (bytes));
+	MOCK_RETURN (&mock->mock, flash_mock_get_sector_size, flash, MOCK_ARG_PTR_CALL (bytes));
 }
 
 static int flash_mock_sector_erase (const struct flash *flash, uint32_t sector_addr)
@@ -98,7 +98,7 @@ static int flash_mock_get_block_size (const struct flash *flash, uint32_t *bytes
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, flash_mock_get_block_size, flash, MOCK_ARG_CALL (bytes));
+	MOCK_RETURN (&mock->mock, flash_mock_get_block_size, flash, MOCK_ARG_PTR_CALL (bytes));
 }
 
 static int flash_mock_block_erase (const struct flash *flash, uint32_t block_addr)
@@ -555,15 +555,15 @@ static int flash_mock_expect_copy_flash_ext (struct flash_mock *mock_dest,
 
 		status |= mock_expect (&mock_src->mock, mock_src->base.read, mock_src, 0,
 			MOCK_ARG (src_addr), MOCK_ARG_NOT_NULL, MOCK_ARG (page_len));
-		status |= mock_expect_output (&mock_src->mock, 1, data, length, 2);
+		status |= mock_expect_output_tmp (&mock_src->mock, 1, data, length, 2);
 
 		status |= mock_expect (&mock_dest->mock, mock_dest->base.write, mock_dest, page_len,
-			MOCK_ARG (dest_addr), MOCK_ARG_PTR_CONTAINS (data, page_len), MOCK_ARG (page_len));
+			MOCK_ARG (dest_addr), MOCK_ARG_PTR_CONTAINS_TMP (data, page_len), MOCK_ARG (page_len));
 
 		if (verify) {
 			status |= mock_expect (&mock_dest->mock, mock_dest->base.read, mock_dest, 0,
 				MOCK_ARG (dest_addr), MOCK_ARG_NOT_NULL, MOCK_ARG (page_len));
-			status |= mock_expect_output (&mock_dest->mock, 1, data, length, 2);
+			status |= mock_expect_output_tmp (&mock_dest->mock, 1, data, length, 2);
 		}
 
 		length -= page_len;
@@ -663,7 +663,7 @@ int flash_mock_expect_verify_flash (struct flash_mock *mock, uint32_t start, con
 }
 
 /**
- * Set up expectations for successfully reading chunks of flash for verification.  The flash chucks
+ * Set up expectations for successfully reading chunks of flash for verification.  The flash chunks
  * will optionally be hashed.
  *
  * @param mock The mock for the flash being verified.
@@ -685,11 +685,11 @@ int flash_mock_expect_verify_flash_and_hash (struct flash_mock *mock, struct has
 
 		status |= mock_expect (&mock->mock, mock->base.read, mock, 0, MOCK_ARG (start),
 			MOCK_ARG_NOT_NULL, MOCK_ARG (read_len));
-		status |= mock_expect_output (&mock->mock, 1, data, length, 2);
+		status |= mock_expect_output_tmp (&mock->mock, 1, data, length, 2);
 
 		if (hash) {
 			status |= mock_expect (&hash->mock, hash->base.update, hash, 0,
-				MOCK_ARG_PTR_CONTAINS (data, read_len), MOCK_ARG (read_len));
+				MOCK_ARG_PTR_CONTAINS_TMP (data, read_len), MOCK_ARG (read_len));
 		}
 
 		start += read_len;
@@ -724,11 +724,11 @@ int flash_mock_expect_verify_copy (struct flash_mock *mock1, uint32_t start1, co
 
 		status |= mock_expect (&mock1->mock, mock1->base.read, mock1, 0, MOCK_ARG (start1),
 			MOCK_ARG_NOT_NULL, MOCK_ARG (page_len));
-		status |= mock_expect_output (&mock1->mock, 1, data1, length, 2);
+		status |= mock_expect_output_tmp (&mock1->mock, 1, data1, length, 2);
 
 		status |= mock_expect (&mock2->mock, mock2->base.read, mock2, 0, MOCK_ARG (start2),
 			MOCK_ARG_NOT_NULL, MOCK_ARG (page_len));
-		status |= mock_expect_output (&mock2->mock, 1, data2, length, 2);
+		status |= mock_expect_output_tmp (&mock2->mock, 1, data2, length, 2);
 
 		length -= page_len;
 		start1 += page_len;

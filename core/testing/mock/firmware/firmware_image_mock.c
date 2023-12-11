@@ -7,7 +7,7 @@
 #include "firmware_image_mock.h"
 
 
-static int firmware_image_mock_load (struct firmware_image *fw, struct flash *flash,
+static int firmware_image_mock_load (const struct firmware_image *fw, const struct flash *flash,
 	uint32_t base_addr)
 {
 	struct firmware_image_mock *mock = (struct firmware_image_mock*) fw;
@@ -16,12 +16,11 @@ static int firmware_image_mock_load (struct firmware_image *fw, struct flash *fl
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, firmware_image_mock_load, fw, MOCK_ARG_CALL (flash),
+	MOCK_RETURN (&mock->mock, firmware_image_mock_load, fw, MOCK_ARG_PTR_CALL (flash),
 		MOCK_ARG_CALL (base_addr));
 }
 
-static int firmware_image_mock_verify (struct firmware_image *fw, struct hash_engine *hash,
-	struct rsa_engine *rsa)
+static int firmware_image_mock_verify (const struct firmware_image *fw, struct hash_engine *hash)
 {
 	struct firmware_image_mock *mock = (struct firmware_image_mock*) fw;
 
@@ -29,11 +28,10 @@ static int firmware_image_mock_verify (struct firmware_image *fw, struct hash_en
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, firmware_image_mock_verify, fw, MOCK_ARG_CALL (hash),
-		MOCK_ARG_CALL (rsa));
+	MOCK_RETURN (&mock->mock, firmware_image_mock_verify, fw, MOCK_ARG_PTR_CALL (hash));
 }
 
-static int firmware_image_mock_get_image_size (struct firmware_image *fw)
+static int firmware_image_mock_get_image_size (const struct firmware_image *fw)
 {
 	struct firmware_image_mock *mock = (struct firmware_image_mock*) fw;
 
@@ -44,7 +42,8 @@ static int firmware_image_mock_get_image_size (struct firmware_image *fw)
 	MOCK_RETURN_NO_ARGS (&mock->mock, firmware_image_mock_get_image_size, fw);
 }
 
-static struct key_manifest* firmware_image_mock_get_key_manifest (struct firmware_image *fw)
+static const struct key_manifest* firmware_image_mock_get_key_manifest (
+	const struct firmware_image *fw)
 {
 	struct firmware_image_mock *mock = (struct firmware_image_mock*) fw;
 
@@ -52,11 +51,12 @@ static struct key_manifest* firmware_image_mock_get_key_manifest (struct firmwar
 		return NULL;
 	}
 
-	MOCK_RETURN_NO_ARGS_CAST (&mock->mock, struct key_manifest*,
+	MOCK_RETURN_NO_ARGS_CAST_PTR (&mock->mock, struct key_manifest*,
 		firmware_image_mock_get_key_manifest, fw);
 }
 
-static struct firmware_header* firmware_image_mock_get_firmware_header (struct firmware_image *fw)
+static const struct firmware_header* firmware_image_mock_get_firmware_header (
+	const struct firmware_image *fw)
 {
 	struct firmware_image_mock *mock = (struct firmware_image_mock*) fw;
 
@@ -64,14 +64,17 @@ static struct firmware_header* firmware_image_mock_get_firmware_header (struct f
 		return NULL;
 	}
 
-	MOCK_RETURN_NO_ARGS_CAST (&mock->mock, struct firmware_header*,
+	MOCK_RETURN_NO_ARGS_CAST_PTR (&mock->mock, struct firmware_header*,
 		firmware_image_mock_get_firmware_header, fw);
 }
 
 static int firmware_image_mock_func_arg_count (void *func)
 {
-	if ((func == firmware_image_mock_load) || (func == firmware_image_mock_verify)) {
+	if (func == firmware_image_mock_load) {
 		return 2;
+	}
+	else if (func == firmware_image_mock_verify) {
+		return 1;
 	}
 	else {
 		return 0;
@@ -115,9 +118,6 @@ static const char* firmware_image_mock_arg_name_map (void *func, int arg)
 		switch (arg) {
 			case 0:
 				return "hash";
-
-			case 1:
-				return "rsa";
 		}
 	}
 

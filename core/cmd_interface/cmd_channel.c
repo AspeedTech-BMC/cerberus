@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "cmd_channel.h"
 #include "cmd_logging.h"
 #include "common/common_math.h"
@@ -69,8 +69,30 @@ int cmd_channel_get_id (struct cmd_channel *channel)
 }
 
 /**
+ * Validates the fields of a command packet being used for packet transmission.  This is a useful
+ * utility for command channel implementations to validate the provided packet parameter intended
+ * to be sent.
+ *
+ * @param packet The packet being used for transmission.
+ *
+ * @return 0 if the packet is valid, else an error code.
+ */
+int cmd_channel_validate_packet_for_send (const struct cmd_packet *packet)
+{
+	if (packet == NULL) {
+		return CMD_CHANNEL_INVALID_ARGUMENT;
+	}
+
+	if ((packet->pkt_size == 0) || (packet->pkt_size > sizeof (packet->data))) {
+		return CMD_CHANNEL_INVALID_PKT_SIZE;
+	}
+
+	return 0;
+}
+
+/**
  * Send a sequence of packets over a command channel.  Packets will be sequentially sent until all
- * packets have been successfully trasmitted or there is an error sending a packet.  Sending cannot
+ * packets have been successfully transmitted or there is an error sending a packet.  Sending cannot
  * be interrupted by a different sequence of packets.  This ensures no interleaving of different
  * messages over the channel.
  *
@@ -178,6 +200,7 @@ int cmd_channel_receive_and_process (struct cmd_channel *channel, struct mctp_in
 			if (status != 0) {
 				if (status == CMD_CHANNEL_PKT_EXPIRED) {
 					platform_clock now;
+
 					platform_init_current_tick (&now);
 					debug_log_create_entry (DEBUG_LOG_SEVERITY_WARNING,
 						DEBUG_LOG_COMPONENT_CMD_INTERFACE, CMD_LOGGING_COMMAND_TIMEOUT, channel->id,

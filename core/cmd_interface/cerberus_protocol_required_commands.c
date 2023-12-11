@@ -6,7 +6,7 @@
 #include <string.h>
 #include "common/certificate.h"
 #include "common/common_math.h"
-#include "attestation/attestation_slave.h"
+#include "attestation/attestation_responder.h"
 #include "mctp/mctp_logging.h"
 #include "cerberus_protocol.h"
 #include "cmd_interface.h"
@@ -25,7 +25,7 @@
  *
  * @return 0 if request processed successfully or an error code.
  */
-int cerberus_protocol_get_fw_version (struct cmd_interface_fw_version *fw_version,
+int cerberus_protocol_get_fw_version (const struct cmd_interface_fw_version *fw_version,
 	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_fw_version *rq =
@@ -56,13 +56,13 @@ int cerberus_protocol_get_fw_version (struct cmd_interface_fw_version *fw_versio
 /**
  * Process get certificate digest request
  *
- * @param attestation Attestation manager instance to utilize
+ * @param attestation Attestation responder instance to utilize
  * @param session Session manager instance to utilize
  * @param request Get certificate digest request to process
  *
  * @return 0 if input processed successfully or an error code.
  */
-int cerberus_protocol_get_certificate_digest (struct attestation_slave *attestation,
+int cerberus_protocol_get_certificate_digest (struct attestation_responder *attestation,
 	struct session_manager *session, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_certificate_digest *rq =
@@ -104,14 +104,14 @@ int cerberus_protocol_get_certificate_digest (struct attestation_slave *attestat
 	if (!ROT_IS_ERROR (status)) {
 		rsp->capabilities = 1;
 		rsp->num_digests = num_cert;
-		request->length = cerberus_protocol_get_certificate_digest_response_length (status);
+		request->length = cerberus_protocol_get_certificate_digest_response_length (rsp);
 		status = 0;
 	}
 	else if ((status == ATTESTATION_INVALID_SLOT_NUM) ||
 		(status == ATTESTATION_CERT_NOT_AVAILABLE)) {
 		rsp->capabilities = 1;
 		rsp->num_digests = 0;
-		request->length = cerberus_protocol_get_certificate_digest_response_length (0);
+		request->length = cerberus_protocol_get_certificate_digest_response_length (rsp);
 		status = 0;
 	}
 
@@ -121,12 +121,12 @@ int cerberus_protocol_get_certificate_digest (struct attestation_slave *attestat
 /**
  * Process get certificate request
  *
- * @param attestation Attestation manager instance to utilize
+ * @param attestation Attestation responder instance to utilize
  * @param request Get certificate request to process
  *
  * @return 0 if request processed successfully or an error code.
  */
-int cerberus_protocol_get_certificate (struct attestation_slave *attestation,
+int cerberus_protocol_get_certificate (struct attestation_responder *attestation,
 	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_certificate *rq =
@@ -195,7 +195,7 @@ int cerberus_protocol_get_certificate (struct attestation_slave *attestation,
  *
  * @return 0 if request completed successfully or an error code.
  */
-int cerberus_protocol_get_challenge_response (struct attestation_slave *attestation,
+int cerberus_protocol_get_challenge_response (struct attestation_responder *attestation,
 	struct session_manager *session, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_challenge *rq = (struct cerberus_protocol_challenge*) request->data;
@@ -284,7 +284,7 @@ exit:
  * @return 0 if processing completed successfully or an error code.
  */
 int cerberus_protocol_import_ca_signed_cert (struct riot_key_manager *riot,
-	struct cmd_background *background, struct cmd_interface_msg *request)
+	const struct cmd_background *background, struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_import_certificate *rq =
 		(struct cerberus_protocol_import_certificate*) request->data;
@@ -342,7 +342,7 @@ int cerberus_protocol_import_ca_signed_cert (struct riot_key_manager *riot,
  *
  * @return 0 if processing completed successfully or an error code.
  */
-int cerberus_protocol_get_signed_cert_state (struct cmd_background *background,
+int cerberus_protocol_get_signed_cert_state (const struct cmd_background *background,
 	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_certificate_state_response *rsp =
@@ -409,7 +409,7 @@ int cerberus_protocol_get_device_capabilities (struct device_manager *device_mgr
  *
  * @return 0 if request processed successfully or an error code.
  */
-int cerberus_protocol_get_device_info (struct cmd_device *device,
+int cerberus_protocol_get_device_info (const struct cmd_device *device,
 	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_get_device_info *rq =
@@ -470,7 +470,7 @@ int cerberus_protocol_get_device_id (struct cmd_interface_device_id *id,
  *
  * @return 0 if request completed successfully or an error code.
  */
-int cerberus_protocol_reset_counter (struct cmd_device *device,
+int cerberus_protocol_reset_counter (const struct cmd_device *device,
 	struct cmd_interface_msg *request)
 {
 	struct cerberus_protocol_reset_counter *rq =
@@ -514,5 +514,5 @@ int cerberus_protocol_process_error_response (struct cmd_interface_msg *response
 		return CMD_HANDLER_INVALID_ERROR_MSG;
 	}
 
-	return 0;
+	return CMD_HANDLER_ERROR_MESSAGE;
 }

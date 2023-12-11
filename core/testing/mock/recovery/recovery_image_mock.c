@@ -7,7 +7,7 @@
 
 
 static int recovery_image_mock_verify (struct recovery_image *img, struct hash_engine *hash,
-	struct signature_verification *verification, uint8_t *hash_out, size_t hash_length,
+	const struct signature_verification *verification, uint8_t *hash_out, size_t hash_length,
 	struct pfm_manager *pfm)
 {
 	struct recovery_image_mock *mock = (struct recovery_image_mock*) img;
@@ -16,9 +16,9 @@ static int recovery_image_mock_verify (struct recovery_image *img, struct hash_e
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, recovery_image_mock_verify, img, MOCK_ARG_CALL (hash),
-		MOCK_ARG_CALL (verification), MOCK_ARG_CALL (hash_out), MOCK_ARG_CALL (hash_length),
-		MOCK_ARG_CALL (pfm));
+	MOCK_RETURN (&mock->mock, recovery_image_mock_verify, img, MOCK_ARG_PTR_CALL (hash),
+		MOCK_ARG_PTR_CALL (verification), MOCK_ARG_PTR_CALL (hash_out), MOCK_ARG_CALL (hash_length),
+		MOCK_ARG_PTR_CALL (pfm));
 }
 
 static int recovery_image_mock_get_hash (struct recovery_image *img, struct hash_engine *hash,
@@ -30,8 +30,8 @@ static int recovery_image_mock_get_hash (struct recovery_image *img, struct hash
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, recovery_image_mock_get_hash, img, MOCK_ARG_CALL (hash),
-		MOCK_ARG_CALL (hash_out), MOCK_ARG_CALL (hash_length));
+	MOCK_RETURN (&mock->mock, recovery_image_mock_get_hash, img, MOCK_ARG_PTR_CALL (hash),
+		MOCK_ARG_PTR_CALL (hash_out), MOCK_ARG_CALL (hash_length));
 }
 
 static int recovery_image_mock_get_version (struct recovery_image *img, char *version, size_t len)
@@ -42,11 +42,12 @@ static int recovery_image_mock_get_version (struct recovery_image *img, char *ve
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, recovery_image_mock_get_version, img, MOCK_ARG_CALL (version),
+	MOCK_RETURN (&mock->mock, recovery_image_mock_get_version, img, MOCK_ARG_PTR_CALL (version),
 		MOCK_ARG_CALL (len));
 }
 
-static int recovery_image_mock_apply_to_flash (struct recovery_image *img, struct spi_flash *flash)
+static int recovery_image_mock_apply_to_flash (struct recovery_image *img,
+	const struct spi_flash *flash)
 {
 	struct recovery_image_mock *mock = (struct recovery_image_mock*) img;
 
@@ -54,7 +55,7 @@ static int recovery_image_mock_apply_to_flash (struct recovery_image *img, struc
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, recovery_image_mock_apply_to_flash, img, MOCK_ARG_CALL (flash));
+	MOCK_RETURN (&mock->mock, recovery_image_mock_apply_to_flash, img, MOCK_ARG_PTR_CALL (flash));
 }
 
 static int recovery_image_mock_func_arg_count (void *func)
@@ -132,7 +133,7 @@ static const char* recovery_image_mock_arg_name_map (void *func, int arg)
 			case 0:
 				return "version";
 			case 1:
-				return "len";	
+				return "len";
 		}
 	}
 	else if (func == recovery_image_mock_apply_to_flash) {

@@ -4,10 +4,10 @@
 #ifndef RECOVERY_IMAGE_MANAGER_H_
 #define RECOVERY_IMAGE_MANAGER_H_
 
-#include "platform.h"
+#include "platform_api.h"
 #include "recovery_image.h"
 #include "common/observable.h"
-#include "common/signature_verification.h"
+#include "crypto/signature_verification.h"
 #include "recovery_image_observer.h"
 #include "flash/flash.h"
 #include "flash/flash_updater.h"
@@ -123,24 +123,24 @@ struct recovery_image_manager {
 	struct recovery_image_manager_flash_region region1;	/**< The first flash region for a recovery image. */
 	struct recovery_image_manager_flash_region region2;	/**< The second flash region for a recovery image. */
 	struct hash_engine *hash;							/**< The hash engine for recovery image validation. */
-	struct signature_verification *verification;		/**< Verification module for verifying recovery
+	const struct signature_verification *verification;	/**< Verification module for verifying recovery
 															 image signatures. */
 	struct pfm_manager *pfm;							/**< The PFM manager for recovery image verification. */
 	platform_mutex lock;								/**< Synchronization for recovery image manager state. */
 	int port;											/**< Port identifier for the manager. */
 	struct host_state_manager *state;					/**< State manager interface. */
-	struct flash_updater *updating;                 	/**< The update manager being used to write
+	struct flash_updater *updating;						/**< The update manager being used to write
 															 new recovery image data. */
 };
 
 
 int recovery_image_manager_init (struct recovery_image_manager *manager,
 	struct recovery_image *image, struct hash_engine *hash,
-	struct signature_verification *verification, struct pfm_manager *pfm, size_t max_size);
+	const struct signature_verification *verification, struct pfm_manager *pfm, size_t max_size);
 int recovery_image_manager_init_two_region (struct recovery_image_manager *manager,
 	struct recovery_image *image1, struct recovery_image *image2, struct host_state_manager *state,
-	struct hash_engine *hash, struct signature_verification *verification, struct pfm_manager *pfm,
-	size_t max_size);
+	struct hash_engine *hash, const struct signature_verification *verification,
+	struct pfm_manager *pfm, size_t max_size);
 void recovery_image_manager_release (struct recovery_image_manager *manager);
 
 int recovery_image_manager_add_observer (struct recovery_image_manager *manager,
@@ -171,6 +171,11 @@ enum {
 	RECOVERY_IMAGE_MANAGER_NO_TASK = RECOVERY_IMAGE_MANAGER_ERROR (0x07),			/**< No manager command task is running. */
 	RECOVERY_IMAGE_MANAGER_UNSUPPORTED_OP = RECOVERY_IMAGE_MANAGER_ERROR (0x08),	/**< The requested operation is not supported by the manager. */
 	RECOVERY_IMAGE_MANAGER_NO_IMAGE = RECOVERY_IMAGE_MANAGER_ERROR (0x09),			/**< No recovery image is available. */
+	RECOVERY_IMAGE_MANAGER_ACTIVATE_FAILED = RECOVERY_IMAGE_MANAGER_ERROR (0x0a),	/**< Failed to activate the recovery image. */
+	RECOVERY_IMAGE_MANAGER_CLEAR_FAILED = RECOVERY_IMAGE_MANAGER_ERROR (0x0b),		/**< Failed to clear the recovery image region. */
+	RECOVERY_IMAGE_MANAGER_WRITE_FAILED = RECOVERY_IMAGE_MANAGER_ERROR (0x0c),		/**< Failed to write recovery image data. */
+	RECOVERY_IMAGE_MANAGER_ERASE_ALL_FAILED = RECOVERY_IMAGE_MANAGER_ERROR (0x0d),	/**< Failed to erase all recovery image regions. */
+	RECOVERY_IMAGE_MANAGER_TOO_MUCH_DATA = RECOVERY_IMAGE_MANAGER_ERROR (0x0e),		/**< Too much data was sent in a single request. */
 };
 
 

@@ -8,6 +8,7 @@
 #include "mctp_base_protocol.h"
 #include "mctp_control_protocol.h"
 #include "mctp_control_protocol_commands.h"
+#include "mctp_logging.h"
 #include "cmd_interface_mctp_control.h"
 
 
@@ -24,6 +25,9 @@ static int cmd_interface_mctp_control_process_mctp_protocol_message (
 	struct cmd_interface_mctp_control *intf, struct cmd_interface_msg *message, uint8_t *command_id)
 {
 	struct mctp_control_protocol_header *header;
+	struct mctp_control_protocol_resp_header *rsp_header;
+
+	UNUSED (intf);
 
 	message->crypto_timeout = false;
 
@@ -42,9 +46,22 @@ static int cmd_interface_mctp_control_process_mctp_protocol_message (
 		return CMD_HANDLER_MCTP_CTRL_RSVD_NOT_ZERO;
 	}
 
-	header->rq = 0;
-
 	*command_id = header->command_code;
+
+	if (header->rq == 0) {
+		rsp_header = (struct mctp_control_protocol_resp_header*) message->data;
+
+		if (rsp_header->completion_code != MCTP_CONTROL_PROTOCOL_SUCCESS) {
+			debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
+				MCTP_LOGGING_MCTP_CONTROL_RSP_CC_FAIL, rsp_header->completion_code,
+				(message->source_eid << 8) | *command_id);
+
+			return CMD_HANDLER_ERROR_MESSAGE;
+		}
+	}
+	else {
+		header->rq = 0;
+	}
 
 	return 0;
 }
@@ -151,6 +168,17 @@ static int cmd_interface_mctp_control_process_response (struct cmd_interface *in
 						on_get_routing_table_entries_response), response);
 			}
 
+		case MCTP_CONTROL_PROTOCOL_DISCOVERY_NOTIFY:
+			status = mctp_control_protocol_process_discovery_notify_response (response);
+			if (status != 0) {
+				return status;
+			}
+			else {
+				return observable_notify_observers_with_ptr (&interface->observable,
+					offsetof (struct mctp_control_protocol_observer, on_discovery_notify_response),
+					response);
+			}
+
 		default:
 			return CMD_HANDLER_MCTP_CTRL_UNKNOWN_RESPONSE;
 	}
@@ -231,13 +259,13 @@ void cmd_interface_mctp_control_deinit (struct cmd_interface_mctp_control *intf)
  * @return 0 if the observer was successfully added or an error code.
  */
 int cmd_interface_mctp_control_add_mctp_control_protocol_observer (
-	struct cmd_interface_mctp_control *intf, struct mctp_control_protocol_observer *observer)
+	struct cmd_interface_mctp_control *intf, const struct mctp_control_protocol_observer *observer)
 {
 	if (intf == NULL) {
 		return CMD_HANDLER_MCTP_CTRL_INVALID_ARGUMENT;
 	}
 
-	return observable_add_observer (&intf->observable, observer);
+	return observable_add_observer (&intf->observable, (void*) observer);
 }
 
 /**
@@ -249,11 +277,11 @@ int cmd_interface_mctp_control_add_mctp_control_protocol_observer (
  * @return 0 if the observer was successfully removed or an error code.
  */
 int cmd_interface_mctp_control_remove_mctp_control_protocol_observer (
-	struct cmd_interface_mctp_control *intf, struct mctp_control_protocol_observer *observer)
+	struct cmd_interface_mctp_control *intf, const struct mctp_control_protocol_observer *observer)
 {
 	if (intf == NULL) {
 		return CMD_HANDLER_MCTP_CTRL_INVALID_ARGUMENT;
 	}
 
-	return observable_remove_observer (&intf->observable, observer);
+	return observable_remove_observer (&intf->observable, (void*) observer);
 }

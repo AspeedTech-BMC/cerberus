@@ -18,9 +18,11 @@
 #define	platform_realloc	realloc
 #define	platform_free		free
 
+#define platform_htons _platform_htons
+
 /* Zephyr internet operations. */
 uint32_t platform_htonl(uint32_t host_long);
-uint16_t platform_htons(uint16_t host_short);
+uint16_t _platform_htons(uint16_t host_short);
 
 /* Zephyr msleep. */
 void platform_msleep(uint32_t msec);
@@ -31,7 +33,7 @@ typedef int64_t platform_clock;
 int platform_init_timeout(uint32_t msec, platform_clock *timeout);
 int platform_increase_timeout(uint32_t msec, platform_clock *timeout);
 int platform_init_current_tick(platform_clock *currtime);
-int platform_has_timeout_expired(platform_clock *timeout);
+int platform_has_timeout_expired(const platform_clock *timeout);
 uint64_t platform_get_time(void);
 uint32_t platform_get_duration(const platform_clock *start, const platform_clock *end);
 

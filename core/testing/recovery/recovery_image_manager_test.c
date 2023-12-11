@@ -137,7 +137,7 @@ static void recovery_image_manager_test_init (CuTest *test)
 	image.base.addr = 0x10000;
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
@@ -253,67 +253,9 @@ static void recovery_image_manager_test_init_bad_signature (CuTest *test)
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
-	CuAssertIntEquals (test, 0, status);
-
-	image.base.flash = &flash.base;
-	image.base.addr = 0x10000;
-
-	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
-		&verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
-	CuAssertIntEquals (test, 0, status);
-
-	CuAssertPtrEquals (test, NULL, manager.get_active_recovery_image (&manager));
-
-	status = pfm_manager_mock_validate_and_release (&pfm_manager);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_validate_and_release (&image);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_validate_and_release (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_validate_and_release (&flash);
-	CuAssertIntEquals (test, 0, status);
-
-	recovery_image_manager_release (&manager);
-
-	HASH_TESTING_ENGINE_RELEASE (&hash);
-}
-
-static void recovery_image_manager_test_init_bad_signature_ecc (CuTest *test)
-{
-	HASH_TESTING_ENGINE hash;
-	struct recovery_image_mock image;
-	struct recovery_image_manager manager;
-	struct signature_verification_mock verification;
-	struct pfm_manager_mock pfm_manager;
-	struct flash_mock flash;
-	int status;
-
-	TEST_START;
-
-	status = HASH_TESTING_ENGINE_INIT (&hash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_init (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	status = pfm_manager_mock_init (&pfm_manager);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_init (&image);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_init (&flash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = mock_expect (&image.mock, image.base.verify, &image, ECC_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -370,8 +312,7 @@ static void recovery_image_manager_test_init_malformed (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -428,8 +369,7 @@ static void recovery_image_manager_test_init_bad_platform_id (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, RECOVERY_IMAGE_INCOMPATIBLE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -486,8 +426,7 @@ static void recovery_image_manager_test_init_flash_error (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, FLASH_READ_FAILED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -542,8 +481,7 @@ static void recovery_image_manager_test_init_image_header_too_small (CuTest *tes
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, IMAGE_HEADER_NOT_MINIMUM_SIZE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -600,8 +538,7 @@ static void recovery_image_manager_test_init_image_header_bad_marker (CuTest *te
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, IMAGE_HEADER_BAD_MARKER,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -658,8 +595,7 @@ static void recovery_image_manager_test_init_image_header_too_long (CuTest *test
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, IMAGE_HEADER_TOO_LONG,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -717,7 +653,7 @@ static void recovery_image_manager_test_init_image_header_bad_format_length (CuT
 
 	status = mock_expect (&image.mock, image.base.verify, &image,
 		RECOVERY_IMAGE_HEADER_BAD_FORMAT_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -775,7 +711,7 @@ static void recovery_image_manager_test_init_image_header_bad_platform_id (CuTes
 
 	status = mock_expect (&image.mock, image.base.verify, &image,
 		RECOVERY_IMAGE_HEADER_BAD_PLATFORM_ID, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -833,7 +769,7 @@ static void recovery_image_manager_test_init_image_header_bad_version_id (CuTest
 
 	status = mock_expect (&image.mock, image.base.verify, &image,
 		RECOVERY_IMAGE_HEADER_BAD_VERSION_ID, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -891,7 +827,7 @@ static void recovery_image_manager_test_init_image_header_bad_image_length (CuTe
 
 	status = mock_expect (&image.mock, image.base.verify, &image,
 		RECOVERY_IMAGE_HEADER_BAD_IMAGE_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -949,7 +885,7 @@ static void recovery_image_manager_test_init_section_header_bad_length (CuTest *
 
 	status = mock_expect (&image.mock, image.base.verify, &image,
 		RECOVERY_IMAGE_SECTION_HEADER_BAD_FORMAT_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1007,7 +943,7 @@ static void recovery_image_manager_test_init_invalid_section_address (CuTest *te
 
 	status = mock_expect (&image.mock, image.base.verify, &image,
 		RECOVERY_IMAGE_INVALID_SECTION_ADDRESS, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1125,7 +1061,7 @@ static void recovery_image_manager_test_get_active_recovery_image (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1182,7 +1118,7 @@ static void recovery_image_manager_test_get_active_recovery_image_null (CuTest *
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1239,7 +1175,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_null (CuTest
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1299,7 +1235,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_image_too_la
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1360,7 +1296,7 @@ static void recovery_image_manager_test_clear_recovery_image_region (CuTest *tes
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1424,7 +1360,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_erase_error 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1493,7 +1429,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_image_in_use
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1568,7 +1504,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_image_in_use
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1645,8 +1581,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_image_not_in
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1711,7 +1646,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_extra_free_c
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1790,7 +1725,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_free_null_re
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1852,7 +1787,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_free_null_ma
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1915,7 +1850,7 @@ static void recovery_image_manager_test_clear_recovery_image_region_in_use_after
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -1994,9 +1929,9 @@ static void recovery_image_manager_test_clear_recovery_image_region_with_valid_i
 	status = recovery_image_observer_mock_init (&observer);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2013,12 +1948,12 @@ static void recovery_image_manager_test_clear_recovery_image_region_with_valid_i
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&observer.mock, observer.base.on_recovery_image_activated, &observer, 0,
-		MOCK_ARG (&image));
+		MOCK_ARG_PTR (&image));
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -2088,9 +2023,9 @@ static void recovery_image_manager_test_clear_recovery_image_region_with_invalid
 	status = recovery_image_observer_mock_init (&observer);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2106,13 +2041,13 @@ static void recovery_image_manager_test_clear_recovery_image_region_with_invalid
 	status = recovery_image_manager_add_observer (&manager, &observer.base);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	status = flash_mock_expect_erase_flash_verify (&flash, 0x10000,
 		sizeof (data));
@@ -2170,7 +2105,7 @@ static void recovery_image_manager_test_write_recovery_image_data_null (CuTest *
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2240,7 +2175,7 @@ static void recovery_image_manager_test_write_recovery_image_data_without_clear 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2302,7 +2237,7 @@ static void recovery_image_manager_test_write_recovery_image_data_too_long (CuTe
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2376,7 +2311,7 @@ static void recovery_image_manager_test_write_recovery_image_data_write_error (C
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2389,8 +2324,7 @@ static void recovery_image_manager_test_write_recovery_image_data_write_error (C
 	status = flash_mock_expect_erase_flash_verify (&flash, 0x10000, sizeof (data));
 
 	status |= mock_expect (&flash.mock, flash.base.write, &flash, FLASH_WRITE_FAILED,
-		MOCK_ARG (0x10000), MOCK_ARG_PTR_CONTAINS (&data, sizeof (data)),
-		MOCK_ARG (sizeof (data)));
+		MOCK_ARG (0x10000), MOCK_ARG_PTR_CONTAINS (&data, sizeof (data)), MOCK_ARG (sizeof (data)));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -2449,7 +2383,7 @@ static void recovery_image_manager_test_write_recovery_image_data_partial_write 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2465,8 +2399,7 @@ static void recovery_image_manager_test_write_recovery_image_data_partial_write 
         MOCK_ARG_PTR_CONTAINS (fill, sizeof (fill)), MOCK_ARG (sizeof (fill)));
 
 	status |= mock_expect (&flash.mock, flash.base.write, &flash, 1,
-		MOCK_ARG (0x100ff), MOCK_ARG_PTR_CONTAINS (&data, sizeof (data)),
-		MOCK_ARG (sizeof (data)));
+		MOCK_ARG (0x100ff), MOCK_ARG_PTR_CONTAINS (&data, sizeof (data)), MOCK_ARG (sizeof (data)));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -2527,7 +2460,7 @@ static void recovery_image_manager_test_write_recovery_image_data (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2600,7 +2533,7 @@ static void recovery_image_manager_test_write_recovery_image_data_multiple (CuTe
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2687,7 +2620,7 @@ static void recovery_image_manager_test_write_recovery_image_data_block_end (CuT
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2766,7 +2699,7 @@ static void recovery_image_manager_test_write_recovery_image_data_write_after_er
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2855,7 +2788,7 @@ static void recovery_image_manager_test_write_recovery_image_data_write_after_pa
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -2875,8 +2808,8 @@ static void recovery_image_manager_test_write_recovery_image_data_write_after_pa
 		MOCK_ARG (sizeof (data1)));
 
 	status |= mock_expect (&flash.mock, flash.base.write, &flash, sizeof (data2),
-		MOCK_ARG (0x10100),
-		MOCK_ARG_PTR_CONTAINS (&data2, sizeof (data2)), MOCK_ARG (sizeof (data2)));
+		MOCK_ARG (0x10100), MOCK_ARG_PTR_CONTAINS (&data2, sizeof (data2)),
+		MOCK_ARG (sizeof (data2)));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -2942,7 +2875,7 @@ static void recovery_image_manager_test_write_recovery_image_data_restart_write 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3034,7 +2967,7 @@ static void recovery_image_manager_test_write_recovery_image_data_image_in_use (
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3099,7 +3032,7 @@ static void recovery_image_manager_test_activate_recovery_image_incomplete_image
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3165,7 +3098,7 @@ static void recovery_image_manager_test_activate_recovery_image_write_after_inco
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3237,9 +3170,9 @@ static void recovery_image_manager_test_activate_recovery_image (CuTest *test)
 	status = pfm_manager_mock_init (&pfm_manager);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3252,9 +3185,9 @@ static void recovery_image_manager_test_activate_recovery_image (CuTest *test)
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -3311,9 +3244,9 @@ static void recovery_image_manager_test_activate_recovery_image_notify_observers
 	status = recovery_image_observer_mock_init (&observer);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3330,12 +3263,12 @@ static void recovery_image_manager_test_activate_recovery_image_notify_observers
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&observer.mock, observer.base.on_recovery_image_activated, &observer, 0,
-		MOCK_ARG (&image));
+		MOCK_ARG_PTR (&image));
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -3390,9 +3323,9 @@ static void recovery_image_manager_test_activate_recovery_image_no_pending_image
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3458,9 +3391,9 @@ static void recovery_image_manager_test_activate_recovery_image_no_pending_notif
 	status = recovery_image_observer_mock_init (&observer);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3525,9 +3458,9 @@ static void recovery_image_manager_test_activate_recovery_image_null (CuTest *te
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3589,9 +3522,9 @@ static void recovery_image_manager_test_activate_recovery_image_already_valid_no
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3659,9 +3592,9 @@ static void recovery_image_manager_test_activate_recovery_image_already_valid (
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3724,9 +3657,9 @@ static void recovery_image_manager_test_activate_recovery_image_recovery_image_m
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3740,8 +3673,8 @@ static void recovery_image_manager_test_activate_recovery_image_recovery_image_m
 		sizeof (data));
 
 	status = mock_expect (&image.mock, image.base.verify, &image, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -3796,9 +3729,9 @@ static void recovery_image_manager_test_activate_recovery_image_extra_data_writt
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3830,8 +3763,8 @@ static void recovery_image_manager_test_activate_recovery_image_extra_data_writt
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -3885,9 +3818,9 @@ static void recovery_image_manager_test_activate_recovery_image_verify_error (
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3901,8 +3834,8 @@ static void recovery_image_manager_test_activate_recovery_image_verify_error (
 		sizeof (data));
 
 	status = mock_expect (&image.mock, image.base.verify, &image, FLASH_READ_FAILED,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -3960,9 +3893,9 @@ static void recovery_image_manager_test_activate_recovery_image_verify_error_not
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -3979,8 +3912,8 @@ static void recovery_image_manager_test_activate_recovery_image_verify_error_not
 		sizeof (data));
 
 	status = mock_expect (&image.mock, image.base.verify, &image, FLASH_READ_FAILED,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -4037,9 +3970,9 @@ static void recovery_image_manager_test_activate_recovery_image_verify_fail (
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4057,86 +3990,13 @@ static void recovery_image_manager_test_activate_recovery_image_verify_fail (
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
-
-	CuAssertPtrEquals (test, NULL, manager.get_active_recovery_image (&manager));
-
-	status = pfm_manager_mock_validate_and_release (&pfm_manager);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_validate_and_release (&image);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_validate_and_release (&flash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_validate_and_release (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	recovery_image_manager_release (&manager);
-
-	HASH_TESTING_ENGINE_RELEASE (&hash);
-}
-
-static void recovery_image_manager_test_activate_recovery_image_verify_fail_ecc (
-	CuTest *test)
-{
-	HASH_TESTING_ENGINE hash;
-	struct recovery_image_mock image;
-	struct recovery_image_manager manager;
-	struct signature_verification_mock verification;
-	struct pfm_manager_mock pfm_manager;
-	struct flash_mock flash;
-	uint8_t data[] = {0x01, 0x02, 0x03, 0x04};
-	int status;
-
-	TEST_START;
-
-	status = recovery_image_mock_init (&image);
-	CuAssertIntEquals (test, 0, status);
-
-	status = HASH_TESTING_ENGINE_INIT (&hash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_init (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	status = pfm_manager_mock_init (&pfm_manager);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_init (&flash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
-	CuAssertIntEquals (test, 0, status);
-
-	image.base.flash = &flash.base;
-	image.base.addr = 0x10000;
-
-	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
-		&verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
-	CuAssertIntEquals (test, 0, status);
-
-	CuAssertPtrEquals (test, NULL, manager.get_active_recovery_image (&manager));
-
-	recovery_image_manager_testing_write_new_image (test, &manager, &flash, 0x10000, data,
-		sizeof (data));
-
-	status = mock_expect (&image.mock, image.base.verify, &image, ECC_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
-	CuAssertIntEquals (test, 0, status);
-
-	status = manager.activate_recovery_image (&manager);
-	CuAssertIntEquals (test, ECC_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	CuAssertPtrEquals (test, NULL, manager.get_active_recovery_image (&manager));
 
@@ -4186,9 +4046,9 @@ static void recovery_image_manager_test_activate_recovery_image_activate_after_v
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4204,8 +4064,8 @@ static void recovery_image_manager_test_activate_recovery_image_activate_after_v
 		sizeof (data));
 
 	status = mock_expect (&image.mock, image.base.verify, &image, FLASH_READ_FAILED,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -4262,9 +4122,9 @@ static void recovery_image_manager_test_activate_recovery_image_activate_after_v
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4279,13 +4139,13 @@ static void recovery_image_manager_test_activate_recovery_image_activate_after_v
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	CuAssertPtrEquals (test, NULL, manager.get_active_recovery_image (&manager));
 
@@ -4338,9 +4198,9 @@ static void recovery_image_manager_test_activate_recovery_image_write_after_acti
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4355,9 +4215,9 @@ static void recovery_image_manager_test_activate_recovery_image_write_after_acti
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -4416,9 +4276,9 @@ static void recovery_image_manager_test_activate_recovery_image_write_after_acti
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4433,13 +4293,13 @@ static void recovery_image_manager_test_activate_recovery_image_write_after_acti
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	CuAssertPtrEquals (test, NULL, manager.get_active_recovery_image (&manager));
 
@@ -4494,9 +4354,9 @@ static void recovery_image_manager_test_activate_recovery_image_with_active (
 	status = flash_mock_init (&flash);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4511,9 +4371,9 @@ static void recovery_image_manager_test_activate_recovery_image_with_active (
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -4578,8 +4438,8 @@ static void recovery_image_manager_test_activate_recovery_image_no_event_handler
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4592,9 +4452,9 @@ static void recovery_image_manager_test_activate_recovery_image_no_event_handler
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	observer.base.on_recovery_image_activated = NULL;
@@ -4654,9 +4514,9 @@ static void recovery_image_manager_test_erase_all_recovery_regions (CuTest *test
 	status = pfm_manager_mock_init (&pfm_manager);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4720,9 +4580,9 @@ static void recovery_image_manager_test_erase_all_recovery_regions_null (CuTest 
 	status = pfm_manager_mock_init (&pfm_manager);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4782,9 +4642,9 @@ static void recovery_image_manager_test_erase_all_recovery_regions_image_in_use 
 	status = pfm_manager_mock_init (&pfm_manager);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4856,9 +4716,9 @@ static void recovery_image_manager_test_erase_all_recovery_regions_during_update
 	status = pfm_manager_mock_init (&pfm_manager);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -4932,9 +4792,9 @@ static void recovery_image_manager_test_erase_all_recovery_regions_erase_error (
 	status = pfm_manager_mock_init (&pfm_manager);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -5006,9 +4866,9 @@ static void recovery_image_manager_test_erase_all_recovery_regions_valid_image_n
 	status = recovery_image_observer_mock_init (&observer);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -5086,9 +4946,9 @@ static void recovery_image_manager_test_erase_all_recovery_regions_invalid_image
 	status = recovery_image_observer_mock_init (&observer);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -5167,7 +5027,7 @@ static void recovery_image_manager_test_init_two_region (CuTest *test)
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -5251,7 +5111,7 @@ static void recovery_image_manager_test_init_two_region_active_region1 (CuTest *
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -5330,7 +5190,7 @@ static void recovery_image_manager_test_init_two_region_active_region2 (CuTest *
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -5485,7 +5345,7 @@ static void recovery_image_manager_test_init_two_region_region1_bad_platform_id 
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, RECOVERY_IMAGE_INCOMPATIBLE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -5565,7 +5425,7 @@ static void recovery_image_manager_test_init_two_region_region2_bad_platform_id 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, RECOVERY_IMAGE_INCOMPATIBLE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -5642,7 +5502,7 @@ static void recovery_image_manager_test_init_two_region_region1_flash_error (CuT
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, FLASH_READ_FAILED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -5720,7 +5580,7 @@ static void recovery_image_manager_test_init_two_region_region2_flash_error (CuT
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, FLASH_READ_FAILED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -5794,8 +5654,8 @@ static void recovery_image_manager_test_init_two_region_region1_bad_signature (C
 
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
-	status = mock_expect (&image1.mock, image1.base.verify, &image1, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+	status = mock_expect (&image1.mock, image1.base.verify, &image1, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -5874,165 +5734,8 @@ static void recovery_image_manager_test_init_two_region_region2_bad_signature (C
 	status = host_state_manager_save_active_recovery_image (&state, RECOVERY_IMAGE_REGION_2);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image2.mock, image2.base.verify, &image2, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
-	CuAssertIntEquals (test, 0, status);
-
-	image1.base.flash = &flash_image.base;
-	image1.base.addr = 0x10000;
-
-	image2.base.flash = &flash_image.base;
-	image2.base.addr = 0x20000;
-
-	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
-		&hash.base, &verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
-	CuAssertIntEquals (test, 0, status);
-
-	CuAssertPtrEquals (test, NULL, manager.get_active_recovery_image (&manager));
-
-	status = pfm_manager_mock_validate_and_release (&pfm_manager);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_validate_and_release (&image1);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_validate_and_release (&image2);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_validate_and_release (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	recovery_image_manager_release (&manager);
-
-	host_state_manager_release (&state);
-
-	status = flash_mock_validate_and_release (&flash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_validate_and_release (&flash_image);
-	CuAssertIntEquals (test, 0, status);
-
-	HASH_TESTING_ENGINE_RELEASE (&hash);
-}
-
-static void recovery_image_manager_test_init_two_region_region1_bad_signature_ecc (CuTest *test)
-{
-	HASH_TESTING_ENGINE hash;
-	struct recovery_image_mock image1;
-	struct recovery_image_mock image2;
-	struct recovery_image_manager manager;
-	struct signature_verification_mock verification;
-	struct pfm_manager_mock pfm_manager;
-	struct flash_mock flash;
-	struct flash_mock flash_image;
-	struct host_state_manager state;
-	int status;
-
-	TEST_START;
-
-	status = HASH_TESTING_ENGINE_INIT (&hash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_init (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	status = pfm_manager_mock_init (&pfm_manager);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_init (&image1);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_init (&image2);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_init (&flash_image);
-	CuAssertIntEquals (test, 0, status);
-
-	recovery_image_manager_testing_init_host_state (test, &state, &flash);
-
-	status = mock_expect (&image1.mock, image1.base.verify, &image1, ECC_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG_NOT_NULL);
-	CuAssertIntEquals (test, 0, status);
-
-	image1.base.flash = &flash_image.base;
-	image1.base.addr = 0x10000;
-
-	image2.base.flash = &flash_image.base;
-	image2.base.addr = 0x20000;
-
-	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
-		&hash.base, &verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
-	CuAssertIntEquals (test, 0, status);
-
-	CuAssertPtrEquals (test, NULL, manager.get_active_recovery_image (&manager));
-
-	status = pfm_manager_mock_validate_and_release (&pfm_manager);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_validate_and_release (&image1);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_validate_and_release (&image2);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_validate_and_release (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	recovery_image_manager_release (&manager);
-
-	host_state_manager_release (&state);
-
-	status = flash_mock_validate_and_release (&flash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_validate_and_release (&flash_image);
-	CuAssertIntEquals (test, 0, status);
-
-	HASH_TESTING_ENGINE_RELEASE (&hash);
-}
-
-static void recovery_image_manager_test_init_two_region_region2_bad_signature_ecc (CuTest *test)
-{
-	HASH_TESTING_ENGINE hash;
-	struct recovery_image_mock image1;
-	struct recovery_image_mock image2;
-	struct recovery_image_manager manager;
-	struct signature_verification_mock verification;
-	struct pfm_manager_mock pfm_manager;
-	struct flash_mock flash;
-	struct flash_mock flash_image;
-	struct host_state_manager state;
-	int status;
-
-	TEST_START;
-
-	status = HASH_TESTING_ENGINE_INIT (&hash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_init (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	status = pfm_manager_mock_init (&pfm_manager);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_init (&image1);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_mock_init (&image2);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_init (&flash_image);
-	CuAssertIntEquals (test, 0, status);
-
-	recovery_image_manager_testing_init_host_state (test, &state, &flash);
-
-	status = host_state_manager_save_active_recovery_image (&state, RECOVERY_IMAGE_REGION_2);
-	CuAssertIntEquals (test, 0, status);
-
-	status = mock_expect (&image2.mock, image2.base.verify, &image2, ECC_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+	status = mock_expect (&image2.mock, image2.base.verify, &image2, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6109,7 +5812,7 @@ static void recovery_image_manager_test_init_two_region_region1_malformed (CuTes
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6189,7 +5892,7 @@ static void recovery_image_manager_test_init_two_region_region2_malformed (CuTes
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6230,7 +5933,8 @@ static void recovery_image_manager_test_init_two_region_region2_malformed (CuTes
 	HASH_TESTING_ENGINE_RELEASE (&hash);
 }
 
-static void recovery_image_manager_test_init_two_region_region1_image_header_too_small (CuTest *test)
+static void recovery_image_manager_test_init_two_region_region1_image_header_too_small (
+	CuTest *test)
 {
 	HASH_TESTING_ENGINE hash;
 	struct recovery_image_mock image1;
@@ -6266,7 +5970,7 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_too
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, IMAGE_HEADER_NOT_MINIMUM_SIZE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6307,7 +6011,8 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_too
 	HASH_TESTING_ENGINE_RELEASE (&hash);
 }
 
-static void recovery_image_manager_test_init_two_region_region2_image_header_too_small (CuTest *test)
+static void recovery_image_manager_test_init_two_region_region2_image_header_too_small (
+	CuTest *test)
 {
 	HASH_TESTING_ENGINE hash;
 	struct recovery_image_mock image1;
@@ -6346,7 +6051,7 @@ static void recovery_image_manager_test_init_two_region_region2_image_header_too
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, IMAGE_HEADER_NOT_MINIMUM_SIZE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6387,7 +6092,8 @@ static void recovery_image_manager_test_init_two_region_region2_image_header_too
 	HASH_TESTING_ENGINE_RELEASE (&hash);
 }
 
-static void recovery_image_manager_test_init_two_region_region1_image_header_bad_marker (CuTest *test)
+static void recovery_image_manager_test_init_two_region_region1_image_header_bad_marker (
+	CuTest *test)
 {
 	HASH_TESTING_ENGINE hash;
 	struct recovery_image_mock image1;
@@ -6423,7 +6129,7 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_bad
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, IMAGE_HEADER_BAD_MARKER,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6464,7 +6170,8 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_bad
 	HASH_TESTING_ENGINE_RELEASE (&hash);
 }
 
-static void recovery_image_manager_test_init_two_region_region2_image_header_bad_marker (CuTest *test)
+static void recovery_image_manager_test_init_two_region_region2_image_header_bad_marker (
+	CuTest *test)
 {
 	HASH_TESTING_ENGINE hash;
 	struct recovery_image_mock image1;
@@ -6503,7 +6210,7 @@ static void recovery_image_manager_test_init_two_region_region2_image_header_bad
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, IMAGE_HEADER_BAD_MARKER,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6580,7 +6287,7 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_too
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, IMAGE_HEADER_TOO_LONG,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6660,7 +6367,7 @@ static void recovery_image_manager_test_init_two_region_region2_image_header_too
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, IMAGE_HEADER_TOO_LONG,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -6739,7 +6446,7 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_bad
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1,
 		RECOVERY_IMAGE_HEADER_BAD_FORMAT_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -6820,7 +6527,7 @@ static void recovery_image_manager_test_init_two_region_region2_image_header_bad
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2,
 		RECOVERY_IMAGE_HEADER_BAD_FORMAT_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -6898,7 +6605,7 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_bad
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1,
 		RECOVERY_IMAGE_HEADER_BAD_PLATFORM_ID, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -6979,7 +6686,7 @@ static void recovery_image_manager_test_init_two_region_region2_image_header_bad
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2,
 		RECOVERY_IMAGE_HEADER_BAD_PLATFORM_ID, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7057,7 +6764,7 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_bad
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1,
 		RECOVERY_IMAGE_HEADER_BAD_VERSION_ID, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7138,7 +6845,7 @@ static void recovery_image_manager_test_init_two_region_region2_image_header_bad
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2,
 		RECOVERY_IMAGE_HEADER_BAD_VERSION_ID, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7216,7 +6923,7 @@ static void recovery_image_manager_test_init_two_region_region1_image_header_bad
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1,
 		RECOVERY_IMAGE_HEADER_BAD_IMAGE_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7297,7 +7004,7 @@ static void recovery_image_manager_test_init_two_region_region2_image_header_bad
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2,
 		RECOVERY_IMAGE_HEADER_BAD_IMAGE_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7375,7 +7082,7 @@ static void recovery_image_manager_test_init_two_region_region1_image_section_he
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1,
 		RECOVERY_IMAGE_HEADER_BAD_IMAGE_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7456,7 +7163,7 @@ static void recovery_image_manager_test_init_two_region_region2_image_section_he
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2,
 		RECOVERY_IMAGE_HEADER_BAD_IMAGE_LENGTH, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7534,7 +7241,7 @@ static void recovery_image_manager_test_init_two_region_region1_invalid_section_
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1,
 		RECOVERY_IMAGE_INVALID_SECTION_ADDRESS, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7615,7 +7322,7 @@ static void recovery_image_manager_test_init_two_region_region2_invalid_section_
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2,
 		RECOVERY_IMAGE_INVALID_SECTION_ADDRESS, MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL,
-		MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7691,7 +7398,7 @@ static void recovery_image_manager_test_get_active_recovery_image_two_region (Cu
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7767,7 +7474,7 @@ static void recovery_image_manager_test_get_active_recovery_image_two_region_nul
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -7849,7 +7556,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_null (Cu
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -7929,7 +7636,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_region1 
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8016,7 +7723,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_region2 
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8107,14 +7814,15 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_region1_
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
 		&hash.base, &verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
 	CuAssertIntEquals (test, 0, status);
 
-	status = manager.clear_recovery_image_region (&manager, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN + 1);
+	status = manager.clear_recovery_image_region (&manager,
+		RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN + 1);
 	CuAssertIntEquals (test, FLASH_UPDATER_TOO_LARGE, status);
 
 	CuAssertPtrEquals (test, &image2.base, manager.get_active_recovery_image (&manager));
@@ -8187,14 +7895,15 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_region2_
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
 		&hash.base, &verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
 	CuAssertIntEquals (test, 0, status);
 
-	status = manager.clear_recovery_image_region (&manager, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN + 1);
+	status = manager.clear_recovery_image_region (&manager,
+		RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN + 1);
 	CuAssertIntEquals (test, FLASH_UPDATER_TOO_LARGE, status);
 
 	CuAssertPtrEquals (test, &image1.base, manager.get_active_recovery_image (&manager));
@@ -8270,7 +7979,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_erase_er
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8363,7 +8072,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_erase_er
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8457,7 +8166,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_r
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8557,7 +8266,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_r
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8656,7 +8365,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_m
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8761,7 +8470,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_m
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8861,7 +8570,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_extra_fr
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -8972,7 +8681,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_extra_fr
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9079,7 +8788,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_free_nul
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9166,7 +8875,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_free_nul
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9251,7 +8960,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_free_nul
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9339,7 +9048,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_free_nul
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9428,7 +9137,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_a
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9449,7 +9158,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_a
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	active = manager.get_active_recovery_image (&manager);
@@ -9538,7 +9247,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_a
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9561,7 +9270,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_a
 	active = manager.get_active_recovery_image (&manager);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -9608,7 +9317,8 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_in_use_a
 	HASH_TESTING_ENGINE_RELEASE (&hash);
 }
 
-static void recovery_image_manager_test_clear_recovery_image_two_region_not_in_use_region1 (CuTest *test)
+static void recovery_image_manager_test_clear_recovery_image_two_region_not_in_use_region1 (
+	CuTest *test)
 {
 	HASH_TESTING_ENGINE hash;
 	struct recovery_image_mock image1;
@@ -9650,7 +9360,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_not_in_u
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -9740,7 +9450,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_not_in_u
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -9835,7 +9545,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_notify_o
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9846,7 +9556,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_notify_o
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&observer.mock, observer.base.on_recovery_image_activated, &observer, 0,
-		MOCK_ARG (&image1.base));
+		MOCK_ARG_PTR (&image1.base));
 	CuAssertIntEquals (test, 0, status);
 
 	status = flash_mock_expect_erase_flash_verify (&flash_image, 0x10000, sizeof (data));
@@ -9863,7 +9573,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_notify_o
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -9951,7 +9661,7 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_notify_o
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -9975,11 +9685,11 @@ static void recovery_image_manager_test_clear_recovery_image_two_region_notify_o
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&observer.mock, observer.base.on_recovery_image_activated, &observer, 0,
-		MOCK_ARG (&image2.base));
+		MOCK_ARG_PTR (&image2.base));
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -10065,7 +9775,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_reg
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10160,7 +9870,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_reg
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10257,7 +9967,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_wit
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10338,7 +10048,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_too
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10437,7 +10147,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_wri
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10534,7 +10244,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_par
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10637,7 +10347,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_mul
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10749,7 +10459,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_blo
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10853,7 +10563,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_wri
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -10966,7 +10676,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_wri
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11077,7 +10787,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_res
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11086,8 +10796,9 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_res
 
 	status = flash_mock_expect_erase_flash_verify (&flash, 0x20000, RECOVERY_IMAGE_DATA_LEN);
 
-	status |= mock_expect (&flash.mock, flash.base.write, &flash, sizeof (data1), MOCK_ARG (0x20000),
-		MOCK_ARG_PTR_CONTAINS (&data1, sizeof (data1)), MOCK_ARG (sizeof (data1)));
+	status |= mock_expect (&flash.mock, flash.base.write, &flash, sizeof (data1),
+		MOCK_ARG (0x20000), MOCK_ARG_PTR_CONTAINS (&data1, sizeof (data1)),
+		MOCK_ARG (sizeof (data1)));
 
 	status |= mock_expect (&flash.mock, flash.base.write, &flash, sizeof (data2),
 		MOCK_ARG (0x20000 + sizeof (data1)), MOCK_ARG_PTR_CONTAINS (&data2, sizeof (data2)),
@@ -11096,7 +10807,8 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_res
 	status |= flash_mock_expect_erase_flash_verify (&flash, 0x20000, RECOVERY_IMAGE_DATA_LEN);
 
 	status |= mock_expect (&flash.mock, flash.base.write, &flash, sizeof (data3),
-		MOCK_ARG (0x20000), MOCK_ARG_PTR_CONTAINS (&data3, sizeof (data3)), MOCK_ARG (sizeof (data3)));
+		MOCK_ARG (0x20000), MOCK_ARG_PTR_CONTAINS (&data3, sizeof (data3)),
+		MOCK_ARG (sizeof (data3)));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -11191,7 +10903,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_in_
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11280,7 +10992,7 @@ static void recovery_image_manager_test_write_recovery_image_data_two_region_wri
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11376,7 +11088,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11397,7 +11109,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -11477,7 +11189,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11498,7 +11210,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -11586,7 +11298,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11597,7 +11309,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&observer.mock, observer.base.on_recovery_image_activated, &observer, 0,
-		MOCK_ARG (&image1.base));
+		MOCK_ARG_PTR (&image1.base));
 	CuAssertIntEquals (test, 0, status);
 
 	status = flash_mock_expect_erase_flash_verify (&flash_image, 0x10000, sizeof (data));
@@ -11614,7 +11326,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -11702,7 +11414,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11726,11 +11438,11 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_regio
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&observer.mock, observer.base.on_recovery_image_activated, &observer, 0,
-		MOCK_ARG (&image2.base));
+		MOCK_ARG_PTR (&image2.base));
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -11816,7 +11528,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_no_pe
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -11894,7 +11606,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_no_pe
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -11991,7 +11703,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_no_pe
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12085,7 +11797,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_no_pe
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12174,7 +11886,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_null 
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12261,7 +11973,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12354,7 +12066,7 @@ CuTest *test)
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12449,7 +12161,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_after
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12533,7 +12245,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_after
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12626,7 +12338,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12649,11 +12361,11 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&observer.mock, observer.base.on_recovery_image_activated, &observer, 0,
-		MOCK_ARG (&image1.base));
+		MOCK_ARG_PTR (&image1.base));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -12741,7 +12453,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12764,11 +12476,11 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&observer.mock, observer.base.on_recovery_image_activated, &observer, 0,
-		MOCK_ARG (&image2.base));
+		MOCK_ARG_PTR (&image2.base));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -12807,7 +12519,8 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	HASH_TESTING_ENGINE_RELEASE (&hash);
 }
 
-static void recovery_image_manager_test_activate_recovery_image_two_region_verify_region1 (CuTest *test)
+static void recovery_image_manager_test_activate_recovery_image_two_region_verify_region1 (
+	CuTest *test)
 {
 	HASH_TESTING_ENGINE hash;
 	struct recovery_image_mock image1;
@@ -12854,7 +12567,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12874,7 +12587,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -12955,7 +12668,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -12975,7 +12688,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -13059,7 +12772,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_malfo
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -13079,7 +12792,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_malfo
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -13161,7 +12874,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_malfo
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -13181,7 +12894,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_malfo
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image1.base.verify, &image2, RECOVERY_IMAGE_MALFORMED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -13261,7 +12974,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_extra
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -13296,7 +13009,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_extra
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -13378,7 +13091,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_extra
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -13407,7 +13120,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_extra
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -13495,7 +13208,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -13518,7 +13231,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, FLASH_READ_FAILED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -13607,7 +13320,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -13630,7 +13343,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_verif
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, FLASH_READ_FAILED,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -13718,7 +13431,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -13728,9 +13441,9 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash_image, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -13814,7 +13527,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -13824,9 +13537,9 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash_image, 0x20000, data,
 		sizeof (data));
 
-	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -13913,7 +13626,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -13923,13 +13636,13 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash_image, 0x10000, data,
 		sizeof (data));
 
-	status = mock_expect (&image1.mock, image1.base.verify, &image1, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image1.mock, image1.base.verify, &image1, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	status = manager.write_recovery_image_data (&manager, data, sizeof (data));
 	CuAssertIntEquals (test, RECOVERY_IMAGE_MANAGER_NOT_CLEARED, status);
@@ -14009,7 +13722,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14019,13 +13732,13 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_write
 	recovery_image_manager_testing_write_new_image (test, &manager, &flash_image, 0x20000, data,
 		sizeof (data));
 
-	status = mock_expect (&image2.mock, image2.base.verify, &image2, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG (&hash), MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image2.mock, image2.base.verify, &image2, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_PTR (&hash), MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	status = manager.write_recovery_image_data (&manager, data, sizeof (data));
 	CuAssertIntEquals (test, RECOVERY_IMAGE_MANAGER_NOT_CLEARED, status);
@@ -14108,7 +13821,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_with_
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14119,7 +13832,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_with_
 		sizeof (data));
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -14205,7 +13918,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_with_
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14216,7 +13929,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_with_
 		sizeof (data));
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -14309,7 +14022,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_no_ev
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14335,7 +14048,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_no_ev
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -14417,7 +14130,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_no_ev
 	recovery_image_manager_testing_init_host_state (test, &state, &flash);
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image1.base.flash = &flash_image.base;
@@ -14449,7 +14162,7 @@ static void recovery_image_manager_test_activate_recovery_image_two_region_no_ev
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -14533,7 +14246,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_region1 (CuTe
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14626,7 +14339,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_region2 (CuTe
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14719,7 +14432,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_null_region1 
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14806,7 +14519,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_null_region2 
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14894,7 +14607,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_in_use_region
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -14998,7 +14711,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_in_use_region
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -15102,7 +14815,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_erase_error_r
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -15198,7 +14911,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_erase_error_r
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -15298,7 +15011,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_valid_image_n
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image1.mock, image1.base.verify, &image1, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -15403,8 +15116,8 @@ static void recovery_image_manager_test_erase_all_recovery_regions_invalid_image
 	image2.base.flash = &flash.base;
 	image2.base.addr = 0x20000;
 
-	status = mock_expect (&image1.mock, image1.base.verify, &image1, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+	status = mock_expect (&image1.mock, image1.base.verify, &image1, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -15509,7 +15222,7 @@ static void recovery_image_manager_test_erase_all_recovery_regions_valid_image_n
 	image2.base.addr = 0x20000;
 
 	status = mock_expect (&image2.mock, image2.base.verify, &image2, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init_two_region (&manager, &image1.base, &image2.base, &state,
@@ -15614,8 +15327,8 @@ static void recovery_image_manager_test_erase_all_recovery_regions_invalid_image
 	image2.base.flash = &flash.base;
 	image2.base.addr = 0x20000;
 
-	status = mock_expect (&image2.mock, image2.base.verify, &image2, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
+	status = mock_expect (&image2.mock, image2.base.verify, &image2, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0),
 		MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
@@ -15725,7 +15438,7 @@ static void recovery_image_manager_test_get_flash_update_manager (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -15790,7 +15503,7 @@ static void recovery_image_manager_test_get_flash_update_manager_after_write (Cu
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -15851,7 +15564,7 @@ static void recovery_image_manager_test_get_flash_update_manager_after_activate 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -15866,9 +15579,9 @@ static void recovery_image_manager_test_get_flash_update_manager_after_activate 
 
 	CuAssertPtrNotNull (test, manager.get_flash_update_manager (&manager));
 
-	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG (&hash),
-		MOCK_ARG (&verification), MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0),
-		MOCK_ARG (&pfm_manager));
+	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_PTR (&hash),
+		MOCK_ARG_PTR (&verification), MOCK_ARG_PTR (NULL), MOCK_ARG (0),
+		MOCK_ARG_PTR (&pfm_manager));
 	CuAssertIntEquals (test, 0, status);
 
 	status = manager.activate_recovery_image (&manager);
@@ -15921,7 +15634,7 @@ static void recovery_image_manager_test_get_flash_update_manager_null (CuTest *t
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -15978,7 +15691,7 @@ static void recovery_image_manager_test_get_flash_update_manager_after_activate_
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	image.base.flash = &flash.base;
@@ -16052,14 +15765,14 @@ static void recovery_image_manager_test_get_measured_data (CuTest *test)
 	image.base.addr = 0x10000;
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
 		&verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.get_hash, &image, 0, MOCK_ARG (&hash.base),
+	status = mock_expect (&image.mock, image.base.get_hash, &image, 0, MOCK_ARG_PTR (&hash.base),
 		MOCK_ARG_NOT_NULL, MOCK_ARG (SHA256_HASH_LENGTH));
 	status |= mock_expect_output (&image.mock, 1, RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN, 2);
 
@@ -16124,14 +15837,14 @@ static void recovery_image_manager_test_get_measured_data_with_offset (CuTest *t
 	image.base.addr = 0x10000;
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
 		&verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.get_hash, &image, 0, MOCK_ARG (&hash.base),
+	status = mock_expect (&image.mock, image.base.get_hash, &image, 0, MOCK_ARG_PTR (&hash.base),
 		MOCK_ARG_NOT_NULL, MOCK_ARG (SHA256_HASH_LENGTH));
 	status |= mock_expect_output (&image.mock, 1, RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN, 2);
 
@@ -16197,14 +15910,14 @@ static void recovery_image_manager_test_get_measured_data_small_buffer (CuTest *
 	image.base.addr = 0x10000;
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
 		&verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.get_hash, &image, 0, MOCK_ARG (&hash.base),
+	status = mock_expect (&image.mock, image.base.get_hash, &image, 0, MOCK_ARG_PTR (&hash.base),
 		MOCK_ARG_NOT_NULL, MOCK_ARG (SHA256_HASH_LENGTH));
 	status |= mock_expect_output (&image.mock, 1, RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN, 2);
 
@@ -16269,14 +15982,14 @@ static void recovery_image_manager_test_get_measured_data_small_buffer_with_offs
 	image.base.addr = 0x10000;
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
 		&verification.base, &pfm_manager.base, RECOVERY_IMAGE_MANAGER_IMAGE_MAX_LEN);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&image.mock, image.base.get_hash, &image, 0, MOCK_ARG (&hash.base),
+	status = mock_expect (&image.mock, image.base.get_hash, &image, 0, MOCK_ARG_PTR (&hash.base),
 		MOCK_ARG_NOT_NULL, MOCK_ARG (SHA256_HASH_LENGTH));
 	status |= mock_expect_output (&image.mock, 1, RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN, 2);
 
@@ -16342,8 +16055,8 @@ static void recovery_image_manager_test_get_measured_data_no_active (CuTest *tes
 	image.base.flash = &flash.base;
 	image.base.addr = 0x10000;
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
@@ -16409,8 +16122,8 @@ static void recovery_image_manager_test_get_measured_data_no_active_with_offset 
 	image.base.flash = &flash.base;
 	image.base.addr = 0x10000;
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
@@ -16476,8 +16189,8 @@ static void recovery_image_manager_test_get_measured_data_no_active_small_buffer
 	image.base.flash = &flash.base;
 	image.base.addr = 0x10000;
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
@@ -16544,8 +16257,8 @@ static void recovery_image_manager_test_get_measured_data_no_active_small_buffer
 	image.base.flash = &flash.base;
 	image.base.addr = 0x10000;
 
-	status = mock_expect (&image.mock, image.base.verify, &image, RSA_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+	status = mock_expect (&image.mock, image.base.verify, &image, SIG_VERIFICATION_BAD_SIGNATURE,
+		MOCK_ARG_NOT_NULL, MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
@@ -16611,7 +16324,7 @@ static void recovery_image_manager_test_get_measured_data_0_bytes_read (CuTest *
 	image.base.addr = 0x10000;
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
@@ -16674,7 +16387,7 @@ static void recovery_image_manager_test_get_measured_data_invalid_offset (CuTest
 	image.base.addr = 0x10000;
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
@@ -16737,7 +16450,7 @@ static void recovery_image_manager_test_get_measured_data_null (CuTest *test)
 	image.base.addr = 0x10000;
 
 	status = mock_expect (&image.mock, image.base.verify, &image, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG_NOT_NULL, MOCK_ARG ((uintptr_t) NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
+		MOCK_ARG_NOT_NULL, MOCK_ARG_PTR (NULL), MOCK_ARG (0), MOCK_ARG_NOT_NULL);
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_init (&manager, &image.base, &hash.base,
@@ -16787,14 +16500,14 @@ static void recovery_image_manager_test_get_measured_data_fail (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&manager.mock, manager.base.get_active_recovery_image, &manager,
-		(intptr_t) &image.base);
+		MOCK_RETURN_PTR (&image.base));
 	status |= mock_expect (&manager.mock, manager.base.free_recovery_image, &manager,
-		0, MOCK_ARG (&image.base));
+		0, MOCK_ARG_PTR (&image.base));
 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&image.mock, image.base.get_hash, &image, RECOVERY_IMAGE_GET_HASH_FAILED,
-		MOCK_ARG (manager.base.hash), MOCK_ARG_NOT_NULL, MOCK_ARG (SHA256_HASH_LENGTH));
+		MOCK_ARG_PTR (manager.base.hash), MOCK_ARG_NOT_NULL, MOCK_ARG (SHA256_HASH_LENGTH));
 	CuAssertIntEquals (test, 0, status);
 
 	status = recovery_image_manager_get_measured_data (&manager.base, 0, buffer, length,
@@ -16814,7 +16527,6 @@ TEST_SUITE_START (recovery_image_manager);
 TEST (recovery_image_manager_test_init);
 TEST (recovery_image_manager_test_init_null);
 TEST (recovery_image_manager_test_init_bad_signature);
-TEST (recovery_image_manager_test_init_bad_signature_ecc);
 TEST (recovery_image_manager_test_init_malformed);
 TEST (recovery_image_manager_test_init_bad_platform_id);
 TEST (recovery_image_manager_test_init_flash_error);
@@ -16871,7 +16583,6 @@ TEST (recovery_image_manager_test_activate_recovery_image_extra_data_written);
 TEST (recovery_image_manager_test_activate_recovery_image_verify_error);
 TEST (recovery_image_manager_test_activate_recovery_image_verify_error_notify_observers);
 TEST (recovery_image_manager_test_activate_recovery_image_verify_fail);
-TEST (recovery_image_manager_test_activate_recovery_image_verify_fail_ecc);
 TEST (recovery_image_manager_test_activate_recovery_image_activate_after_verify_error);
 TEST (recovery_image_manager_test_activate_recovery_image_activate_after_verify_fail);
 TEST (recovery_image_manager_test_activate_recovery_image_write_after_activate);
@@ -16895,8 +16606,6 @@ TEST (recovery_image_manager_test_init_two_region_region1_flash_error);
 TEST (recovery_image_manager_test_init_two_region_region2_flash_error);
 TEST (recovery_image_manager_test_init_two_region_region1_bad_signature);
 TEST (recovery_image_manager_test_init_two_region_region2_bad_signature);
-TEST (recovery_image_manager_test_init_two_region_region1_bad_signature_ecc);
-TEST (recovery_image_manager_test_init_two_region_region2_bad_signature_ecc);
 TEST (recovery_image_manager_test_init_two_region_region1_malformed);
 TEST (recovery_image_manager_test_init_two_region_region2_malformed);
 TEST (recovery_image_manager_test_init_two_region_region1_image_header_too_small);

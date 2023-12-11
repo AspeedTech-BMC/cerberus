@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "status/rot_status.h"
-#include "platform.h"
+#include "platform_api.h"
 #include "mctp/mctp_base_protocol.h"
 
 
@@ -98,6 +98,7 @@ struct cmd_channel {
 
 int cmd_channel_get_id (struct cmd_channel *channel);
 
+int cmd_channel_validate_packet_for_send (const struct cmd_packet *packet);
 int cmd_channel_receive_and_process (struct cmd_channel *channel, struct mctp_interface *mctp,
 	int ms_timeout);
 int cmd_channel_send_message (struct cmd_channel *channel, struct cmd_message *message);
@@ -122,6 +123,7 @@ enum {
 	CMD_CHANNEL_PKT_OVERFLOW = CMD_CHANNEL_ERROR (0x06),		/**< Packet overflow encountered. */
 	CMD_CHANNEL_INVALID_PKT_STATE = CMD_CHANNEL_ERROR (0x07),	/**< Packet state is not valid. */
 	CMD_CHANNEL_PKT_EXPIRED = CMD_CHANNEL_ERROR (0x08),			/**< The timeout on a received packet has expired. */
+	CMD_CHANNEL_INVALID_PKT_SIZE = CMD_CHANNEL_ERROR (0x09),	/**< The packet size is larger than the buffer. */
 };
 
 

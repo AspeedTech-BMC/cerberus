@@ -127,7 +127,7 @@ const uint8_t HASH_TESTING_FULL_BLOCK_1024[] = {
 const uint32_t HASH_TESTING_FULL_BLOCK_1024_LEN = sizeof (HASH_TESTING_FULL_BLOCK_1024);
 
 /**
- * A 2048-bit block of data.  This is two full blocks for SHA384/SHA512 hashes, or three full blocks
+ * A 2048-bit block of data.  This is two full blocks for SHA384/SHA512 hashes, or four full blocks
  * for SHA1/SHA256 hashes.
  */
 const uint8_t HASH_TESTING_FULL_BLOCK_2048[] = {
@@ -152,7 +152,7 @@ const uint8_t HASH_TESTING_FULL_BLOCK_2048[] = {
 const uint32_t HASH_TESTING_FULL_BLOCK_2048_LEN = sizeof (HASH_TESTING_FULL_BLOCK_2048);
 
 /**
- * A 4096-bit block of data.  This is three full blocks for SHA384/SHA512 hashes, or four full
+ * A 4096-bit block of data.  This is four full blocks for SHA384/SHA512 hashes, or eight full
  * blocks for SHA1/SHA256 hashes.
  */
 const uint8_t HASH_TESTING_FULL_BLOCK_4096[] = {
@@ -420,6 +420,14 @@ const uint8_t SHA1_TEST_HMAC[] = {
 };
 
 /**
+ * SHA1 HMAC of HASH_TESTING_FULL_BLOCK_1024 using SHA1_HMAC_KEY.
+ */
+const uint8_t SHA1_FULL_BLOCK_1024_HMAC[] = {
+	0xfb,0x39,0xd4,0x29,0xad,0x5b,0xeb,0xfb,0xeb,0x65,0xab,0xf5,0x0e,0xf3,0x39,0xd3,
+	0xc1,0x29,0x1e,0x7e
+};
+
+/**
  * SHA256 hash of "Test"
  */
 const uint8_t SHA256_TEST_HASH[] = {
@@ -577,6 +585,14 @@ const uint8_t SHA256_HMAC_KEY[] = {
 const uint8_t SHA256_TEST_HMAC[] = {
 	0xbe,0xac,0xa5,0x36,0x3b,0xec,0xae,0x40,0xda,0x59,0x28,0x57,0x79,0x4e,0x38,0x79,
 	0x6e,0x86,0xd2,0x9a,0x7a,0x23,0xdf,0x5e,0x1c,0x62,0xb5,0xd0,0xa5,0xba,0x2e,0x67
+};
+
+/**
+ * SHA256 HMAC of HASH_TESTING_FULL_BLOCK_1024 using SHA256_HMAC_KEY.
+ */
+const uint8_t SHA256_FULL_BLOCK_1024_HMAC[] = {
+	0x2a,0xcb,0x2d,0xb4,0x39,0x40,0xdd,0x1b,0x0f,0xfb,0x87,0x5b,0x35,0x3c,0xc6,0x5e,
+	0x41,0x81,0xb8,0xa8,0x83,0x7c,0x5e,0x0a,0xb3,0x39,0x96,0x8b,0x19,0x2f,0x96,0x76
 };
 
 /**
@@ -757,6 +773,15 @@ const uint8_t SHA384_TEST_HMAC[] = {
 	0x59,0x38,0x2e,0xc3,0x89,0xf5,0x8f,0x5b,0x95,0x1b,0xad,0xed,0xd4,0xab,0x25,0x40,
 	0xc3,0x49,0x7e,0x99,0x23,0xb5,0x08,0x84,0x6b,0x0a,0x68,0x62,0xf2,0xe5,0x7f,0x1c,
 	0x86,0x3b,0x9b,0x81,0x4e,0xce,0x4a,0x91,0x6b,0x20,0x80,0x32,0x2b,0x86,0x2f,0xf1
+};
+
+/**
+ * SHA384 HMAC of HASH_TESTING_FULL_BLOCK_1024 using SHA384_HMAC_KEY.
+ */
+const uint8_t SHA384_FULL_BLOCK_1024_HMAC[] = {
+	0xf5,0x8f,0xaa,0x62,0xb6,0x46,0x29,0x1e,0x86,0x24,0xca,0x70,0xb4,0xc7,0x42,0x0a,
+	0x01,0xe3,0xbf,0x13,0xdb,0x58,0x3c,0x8a,0x16,0x62,0xae,0x81,0x36,0x21,0x56,0xd8,
+	0x21,0xbf,0xea,0xbe,0x79,0xbd,0x9d,0x42,0x5d,0x5b,0x53,0x41,0xd9,0xdf,0xc9,0x38
 };
 
 /**
@@ -957,6 +982,16 @@ const uint8_t SHA512_TEST_HMAC[] = {
 	0x28,0x8c,0x9b,0x40,0xbf,0xfd,0xad,0x91,0x05,0x4f,0xc5,0x79,0x7a,0x91,0x4b,0x94,
 	0xbf,0x82,0xa9,0x21,0xac,0x41,0xba,0x92,0xed,0xae,0x05,0x70,0xc0,0xc6,0x5f,0xfd,
 	0xf6,0x82,0x43,0xe7,0xed,0x79,0xa8,0xaa,0x9a,0xa5,0x40,0x1f,0x06,0x22,0xc0,0x46
+};
+
+/**
+ * SHA512 HMAC of HASH_TESTING_FULL_BLOCK_1024 using SHA512_HMAC_KEY.
+ */
+const uint8_t SHA512_FULL_BLOCK_1024_HMAC[] = {
+	0xf0,0x1d,0xac,0x42,0x48,0xee,0x66,0x5d,0x84,0xe6,0xb0,0xd0,0x38,0x9d,0xee,0xe2,
+	0x64,0xd3,0xd5,0xe9,0x2c,0xb6,0x00,0x7f,0xf5,0xc5,0x86,0x5a,0x65,0x57,0xbc,0x4a,
+	0xb9,0x4f,0xf3,0x60,0xef,0xe1,0x9f,0xc4,0xa4,0xf8,0x01,0x36,0x20,0xfc,0x32,0xfb,
+	0x55,0x27,0x9f,0xf6,0xeb,0x6b,0x08,0x52,0xd4,0xbb,0xf2,0xa4,0x89,0x7d,0x68,0xf4
 };
 
 /*******************
@@ -1390,7 +1425,7 @@ static void hash_test_hmac_init_sha1_large_key_error (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&engine.mock, engine.base.calculate_sha1, &engine,
-		HASH_ENGINE_SHA1_FAILED, MOCK_ARG (key), MOCK_ARG (sizeof (key)), MOCK_ARG_NOT_NULL,
+		HASH_ENGINE_SHA1_FAILED, MOCK_ARG_PTR (key), MOCK_ARG (sizeof (key)), MOCK_ARG_NOT_NULL,
 		MOCK_ARG_ANY);
 	CuAssertIntEquals (test, 0, status);
 
@@ -1420,7 +1455,7 @@ static void hash_test_hmac_init_sha256_large_key_error (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&engine.mock, engine.base.calculate_sha256, &engine,
-		HASH_ENGINE_SHA256_FAILED, MOCK_ARG (key), MOCK_ARG (sizeof (key)), MOCK_ARG_NOT_NULL,
+		HASH_ENGINE_SHA256_FAILED, MOCK_ARG_PTR (key), MOCK_ARG (sizeof (key)), MOCK_ARG_NOT_NULL,
 		MOCK_ARG_ANY);
 	CuAssertIntEquals (test, 0, status);
 
@@ -1450,7 +1485,7 @@ static void hash_test_hmac_init_sha384_large_key_error (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&engine.mock, engine.base.calculate_sha384, &engine,
-		HASH_ENGINE_SHA384_FAILED, MOCK_ARG (key), MOCK_ARG (sizeof (key)), MOCK_ARG_NOT_NULL,
+		HASH_ENGINE_SHA384_FAILED, MOCK_ARG_PTR (key), MOCK_ARG (sizeof (key)), MOCK_ARG_NOT_NULL,
 		MOCK_ARG_ANY);
 	CuAssertIntEquals (test, 0, status);
 
@@ -1481,7 +1516,7 @@ static void hash_test_hmac_init_sha512_large_key_error (CuTest *test)
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&engine.mock, engine.base.calculate_sha512, &engine,
-		HASH_ENGINE_SHA512_FAILED, MOCK_ARG (key), MOCK_ARG (sizeof (key)), MOCK_ARG_NOT_NULL,
+		HASH_ENGINE_SHA512_FAILED, MOCK_ARG_PTR (key), MOCK_ARG (sizeof (key)), MOCK_ARG_NOT_NULL,
 		MOCK_ARG_ANY);
 	CuAssertIntEquals (test, 0, status);
 
@@ -1718,7 +1753,7 @@ static void hash_test_hmac_finish_inner_hash_error (CuTest *test)
 	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_NOT_NULL,
 		MOCK_ARG (SHA256_BLOCK_SIZE));
 
-	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG (message),
+	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_PTR (message),
 		MOCK_ARG (strlen (message)));
 
 	status |= mock_expect (&engine.mock, engine.base.finish, &engine, HASH_ENGINE_FINISH_FAILED,
@@ -1758,7 +1793,7 @@ static void hash_test_hmac_finish_outer_init_error (CuTest *test)
 	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_NOT_NULL,
 		MOCK_ARG (SHA256_BLOCK_SIZE));
 
-	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG (message),
+	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_PTR (message),
 		MOCK_ARG (strlen (message)));
 
 	status |= mock_expect (&engine.mock, engine.base.finish, &engine, 0, MOCK_ARG_NOT_NULL,
@@ -1801,7 +1836,7 @@ static void hash_test_hmac_finish_outer_key_error (CuTest *test)
 	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_NOT_NULL,
 		MOCK_ARG (SHA256_BLOCK_SIZE));
 
-	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG (message),
+	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_PTR (message),
 		MOCK_ARG (strlen (message)));
 
 	status |= mock_expect (&engine.mock, engine.base.finish, &engine, 0, MOCK_ARG_NOT_NULL,
@@ -1846,7 +1881,7 @@ static void hash_test_hmac_finish_outer_update_error (CuTest *test)
 	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_NOT_NULL,
 		MOCK_ARG (SHA256_BLOCK_SIZE));
 
-	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG (message),
+	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_PTR (message),
 		MOCK_ARG (strlen (message)));
 
 	status |= mock_expect (&engine.mock, engine.base.finish, &engine, 0, MOCK_ARG_NOT_NULL,
@@ -1894,7 +1929,7 @@ static void hash_test_hmac_finish_outer_hash_error (CuTest *test)
 	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_NOT_NULL,
 		MOCK_ARG (SHA256_BLOCK_SIZE));
 
-	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG (message),
+	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_PTR (message),
 		MOCK_ARG (strlen (message)));
 
 	status |= mock_expect (&engine.mock, engine.base.finish, &engine, 0, MOCK_ARG_NOT_NULL,
@@ -1909,7 +1944,7 @@ static void hash_test_hmac_finish_outer_hash_error (CuTest *test)
 		MOCK_ARG (SHA256_HASH_LENGTH));
 
 	status |= mock_expect (&engine.mock, engine.base.finish, &engine, HASH_ENGINE_FINISH_FAILED,
-		MOCK_ARG (hmac), MOCK_ARG (SHA256_HASH_LENGTH));
+		MOCK_ARG_PTR (hmac), MOCK_ARG (SHA256_HASH_LENGTH));
 	status |= mock_expect (&engine.mock, engine.base.cancel, &engine, 0);
 
 	CuAssertIntEquals (test, 0, status);
@@ -2412,7 +2447,7 @@ static void hash_test_hash_generate_hmac_update_error (CuTest *test)
 		MOCK_ARG (SHA256_BLOCK_SIZE));
 
 	status |= mock_expect (&engine.mock, engine.base.update, &engine, HASH_ENGINE_UPDATE_FAILED,
-		MOCK_ARG (message), MOCK_ARG (strlen (message)));
+		MOCK_ARG_PTR (message), MOCK_ARG (strlen (message)));
 	status |= mock_expect (&engine.mock, engine.base.cancel, &engine, 0);
 
 	CuAssertIntEquals (test, 0, status);
@@ -2443,7 +2478,7 @@ static void hash_test_hash_generate_hmac_finish_error (CuTest *test)
 	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_NOT_NULL,
 		MOCK_ARG (SHA256_BLOCK_SIZE));
 
-	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG (message),
+	status |= mock_expect (&engine.mock, engine.base.update, &engine, 0, MOCK_ARG_PTR (message),
 		MOCK_ARG (strlen (message)));
 
 	status |= mock_expect (&engine.mock, engine.base.finish, &engine, HASH_ENGINE_FINISH_FAILED,
@@ -3046,33 +3081,96 @@ static void hash_test_calculate_sha512_small_buffer (CuTest *test)
 }
 #endif
 
-static void hash_test_get_hash_len (CuTest *test)
+static void hash_test_get_hash_length (CuTest *test)
 {
 	int status;
 
 	TEST_START;
 
-	status = hash_get_hash_len (HASH_TYPE_SHA1);
+	status = hash_get_hash_length (HASH_TYPE_SHA1);
 	CuAssertIntEquals (test, SHA1_HASH_LENGTH, status);
 
-	status = hash_get_hash_len (HASH_TYPE_SHA256);
+	status = hash_get_hash_length (HASH_TYPE_SHA256);
 	CuAssertIntEquals (test, SHA256_HASH_LENGTH, status);
 
-	status = hash_get_hash_len (HASH_TYPE_SHA384);
+	status = hash_get_hash_length (HASH_TYPE_SHA384);
 	CuAssertIntEquals (test, SHA384_HASH_LENGTH, status);
 
-	status = hash_get_hash_len (HASH_TYPE_SHA512);
+	status = hash_get_hash_length (HASH_TYPE_SHA512);
 	CuAssertIntEquals (test, SHA512_HASH_LENGTH, status);
 }
 
-static void hash_test_get_hash_len_unsupported (CuTest *test)
+static void hash_test_get_hash_length_unsupported (CuTest *test)
 {
 	int status;
 
 	TEST_START;
 
-	status = hash_get_hash_len (4);
+	status = hash_get_hash_length ((enum hash_type) 4);
 	CuAssertIntEquals (test, HASH_ENGINE_UNKNOWN_HASH, status);
+}
+
+static void hash_test_hmac_get_hmac_length (CuTest *test)
+{
+	int status;
+
+	TEST_START;
+
+	status = hash_hmac_get_hmac_length (HMAC_SHA1);
+	CuAssertIntEquals (test, SHA1_HASH_LENGTH, status);
+
+	status = hash_hmac_get_hmac_length (HMAC_SHA256);
+	CuAssertIntEquals (test, SHA256_HASH_LENGTH, status);
+
+	status = hash_hmac_get_hmac_length (HMAC_SHA384);
+	CuAssertIntEquals (test, SHA384_HASH_LENGTH, status);
+
+	status = hash_hmac_get_hmac_length (HMAC_SHA512);
+	CuAssertIntEquals (test, SHA512_HASH_LENGTH, status);
+}
+
+static void hash_test_hmac_get_hmac_length_unsupported (CuTest *test)
+{
+	int status;
+
+	TEST_START;
+
+	status = hash_hmac_get_hmac_length ((enum hmac_hash) 4);
+	CuAssertIntEquals (test, HASH_ENGINE_UNKNOWN_HASH, status);
+}
+
+static void hash_test_is_alg_supported (CuTest *test)
+{
+	int status;
+
+	TEST_START;
+
+	status = hash_is_alg_supported (HASH_TYPE_SHA1);
+#ifdef HASH_ENABLE_SHA1
+	CuAssertIntEquals (test, 1, status);
+#else
+	CuAssertIntEquals (test, 0, status);
+#endif
+
+	status = hash_is_alg_supported (HASH_TYPE_SHA256);
+	CuAssertIntEquals (test, 1, status);
+
+	status = hash_is_alg_supported (HASH_TYPE_SHA384);
+#ifdef HASH_ENABLE_SHA384
+	CuAssertIntEquals (test, 1, status);
+#else
+	CuAssertIntEquals (test, 0, status);
+#endif
+
+	status = hash_is_alg_supported (HASH_TYPE_SHA512);
+#ifdef HASH_ENABLE_SHA512
+	CuAssertIntEquals (test, 1, status);
+#else
+	CuAssertIntEquals (test, 0, status);
+#endif
+
+	status = hash_is_alg_supported ((enum hash_type) (HASH_TYPE_SHA512 + 1));
+	CuAssertIntEquals (test, 0, status);
 }
 
 
@@ -3190,7 +3288,10 @@ TEST (hash_test_calculate_sha384_small_buffer);
 #ifdef HASH_ENABLE_SHA512
 TEST (hash_test_calculate_sha512_small_buffer);
 #endif
-TEST (hash_test_get_hash_len);
-TEST (hash_test_get_hash_len_unsupported);
+TEST (hash_test_get_hash_length);
+TEST (hash_test_get_hash_length_unsupported);
+TEST (hash_test_hmac_get_hmac_length);
+TEST (hash_test_hmac_get_hmac_length_unsupported);
+TEST (hash_test_is_alg_supported);
 
 TEST_SUITE_END;

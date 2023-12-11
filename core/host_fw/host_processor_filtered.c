@@ -21,13 +21,16 @@
  * @param recovery The manager for recovery of the host processor.
  * @param reset_pulse Length of the reset pulse to use after authentication has completed, in
  * milliseconds.  If 0, the processor is held in reset during authentication.
+ * @param reset_flash The flag to indicate that host flash should be reset based on every 
+ * host processor reset.
  *
  * @return 0 if the host processor interface was successfully initialized or an error code.
  */
 int host_processor_filtered_init (struct host_processor_filtered *host,
-	struct host_control *control, struct host_flash_manager *flash,
-	struct host_state_manager *state, struct spi_filter_interface *filter, struct pfm_manager *pfm,
-	struct recovery_image_manager *recovery, int reset_pulse)
+	const struct host_control *control, struct host_flash_manager *flash,
+	struct host_state_manager *state, const struct spi_filter_interface *filter,
+	struct pfm_manager *pfm, struct recovery_image_manager *recovery, int reset_pulse,
+	bool reset_flash)
 {
 	int status;
 
@@ -55,6 +58,7 @@ int host_processor_filtered_init (struct host_processor_filtered *host,
 	host->pfm = pfm;
 	host->recovery = recovery;
 	host->reset_pulse = reset_pulse;
+	host->reset_flash = reset_flash;
 
 	return 0;
 }
@@ -769,6 +773,45 @@ exit_host:
 }
 
 /**
+ * Reset the host flash. The flash reset will retry a fixed number of times on failures unless the
+ * reset command is unsupported.
+ *
+ * @param host The host processor instance.
+ */
+static void host_processor_filtered_reset_host_flash (struct host_processor_filtered *host)
+{
+	int status = 0;
+	int retries = 3;
+
+	do {
+		if (status != 0) {
+			platform_msleep (100);
+		}
+
+		status = host->flash->reset_flash (host->flash);
+
+		debug_log_create_entry ((status == 0) ? DEBUG_LOG_SEVERITY_INFO : DEBUG_LOG_SEVERITY_ERROR,
+			DEBUG_LOG_COMPONENT_HOST_FW, HOST_LOGGING_FLASH_RESET, host->base.port, status);
+	} while (((status != 0) && (--retries > 0) && (status != SPI_FLASH_RESET_NOT_SUPPORTED)));
+}
+
+/**
+ * Clear the PFM and host flash dirty states.
+ *
+ * @param host The host processor instance.
+ * @param no_pfm Flag indicating if there is no active or pending PFM.
+ */
+static void host_processor_filtered_clear_host_dirty_state (
+	struct host_processor_filtered *host, bool no_pfm)
+{
+	host_state_manager_set_pfm_dirty (host->state, false);
+	if (no_pfm) {
+		host->filter->clear_flash_dirty_state (host->filter);
+		host_state_manager_save_inactive_dirty (host->state, false);
+	}
+}
+
+/**
  * Common handler for verification events that occur after the host has been initialized.
  *
  * @param host The host instance generating the event.
@@ -793,6 +836,10 @@ int host_processor_filtered_update_verification (struct host_processor_filtered 
 	bool dirty;
 	bool only_validated = false;
 	bool notified = !reset;
+	bool validate_flash;
+	bool reset_flash = host->reset_flash && reset;
+	bool no_pfm;
+	bool no_state_change;
 
 	if ((hash == NULL) || (rsa == NULL)) {
 		return HOST_PROCESSOR_INVALID_ARGUMENT;
@@ -813,11 +860,14 @@ int host_processor_filtered_update_verification (struct host_processor_filtered 
 	bypass = host_state_manager_is_bypass_mode (host->state);
 	dirty = host_state_manager_is_inactive_dirty (host->state);
 
-	if (pending_pfm || (!pending_pfm && !active_pfm && !bypass) ||
-		(active_pfm && (dirty || bypass))) {
+	no_pfm = !active_pfm && !pending_pfm;
+	validate_flash = pending_pfm || (no_pfm && !bypass) || (active_pfm && (dirty || bypass));
+	no_state_change = !dirty && !bypass && !host_state_manager_is_pfm_dirty (host->state) &&
+		(active_pfm || (pending_pfm && !active_pfm));
+
+	if (validate_flash || reset_flash) {
 		/* If nothing has changed since the last validation, just exit. */
-		if (!dirty && !bypass && !host_state_manager_is_pfm_dirty (host->state) &&
-			(active_pfm || (pending_pfm && !active_pfm))) {
+		if (!reset_flash && no_state_change) {
 			goto exit;
 		}
 
@@ -826,7 +876,15 @@ int host_processor_filtered_update_verification (struct host_processor_filtered 
 		}
 
 		status = host->flash->set_flash_for_rot_access (host->flash, host->control);
-		if (status != 0) {
+		if (reset_flash && (status == 0)) {
+			host_processor_filtered_reset_host_flash (host);
+		}
+
+		if ((status != 0) || !validate_flash || no_state_change) {
+			if (!validate_flash) {
+				host_processor_filtered_clear_host_dirty_state (host, no_pfm);
+			}
+
 			goto return_flash;
 		}
 
@@ -922,11 +980,7 @@ return_flash:
 		}
 	}
 	else {
-		host_state_manager_set_pfm_dirty (host->state, false);
-		if (!active_pfm && !pending_pfm) {
-			host->filter->clear_flash_dirty_state (host->filter);
-			host_state_manager_save_inactive_dirty (host->state, false);
-		}
+		host_processor_filtered_clear_host_dirty_state (host, no_pfm);
 	}
 
 exit:
@@ -1073,7 +1127,7 @@ int host_processor_filtered_apply_recovery_image (struct host_processor *host, b
 {
 	struct host_processor_filtered *filtered = (struct host_processor_filtered*) host;
 	struct recovery_image *active_image;
-	struct spi_flash *ro_flash;
+	const struct spi_flash *ro_flash;
 	int status = 0;
 
 	if (filtered == NULL) {

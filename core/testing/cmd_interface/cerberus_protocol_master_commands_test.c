@@ -10,6 +10,7 @@
 #include "cmd_interface/cerberus_protocol_master_commands.h"
 #include "cmd_interface/cerberus_protocol_required_commands.h"
 #include "flash/flash_updater.h"
+#include "testing/mock/crypto/rng_mock.h"
 #include "testing/mock/manifest/cfm_mock.h"
 #include "testing/mock/manifest/pcd_mock.h"
 #include "testing/cmd_interface/cerberus_protocol_master_commands_testing.h"
@@ -47,8 +48,7 @@ void cerberus_protocol_master_commands_testing_process_response_get_certificate_
 	response->data[offset] = 0xFF;
 
 	response->length =
-		cerberus_protocol_get_certificate_digest_response_length (
-			rsp->num_digests * SHA256_HASH_LENGTH);
+		cerberus_protocol_get_certificate_digest_response_length (rsp);
 	response->source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
 	response->target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
@@ -81,8 +81,8 @@ void cerberus_protocol_master_commands_testing_process_response_get_certificate_
 
 	rsp->num_digests = 3;
 
-	response.length =
-		cerberus_protocol_get_certificate_digest_response_length (3 * SHA256_HASH_LENGTH) - 1;
+	response.length = SHA256_HASH_LENGTH * 3 +
+		sizeof (struct cerberus_protocol_get_certificate_digest_response) - 1;
 	response.source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
 	response.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
@@ -238,7 +238,7 @@ void cerberus_protocol_master_commands_testing_process_response_challenge_unsupp
 	rsp->header.pci_vendor_id = CERBERUS_PROTOCOL_MSFT_PCI_VID;
 	rsp->header.command = CERBERUS_PROTOCOL_ATTESTATION_CHALLENGE;
 
-	response.length = sizeof (struct cerberus_protocol_challenge_response) + 1;
+	response.length = sizeof (struct cerberus_protocol_challenge_response) + SHA256_HASH_LENGTH + 1;
 	response.source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
 	response.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
@@ -265,12 +265,95 @@ void cerberus_protocol_master_commands_testing_process_response_challenge_rsvd_n
 	rsp->header.pci_vendor_id = CERBERUS_PROTOCOL_MSFT_PCI_VID;
 	rsp->header.command = CERBERUS_PROTOCOL_ATTESTATION_CHALLENGE;
 
-	response.length = sizeof (struct cerberus_protocol_challenge_response) + 1;
+	response.length = sizeof (struct cerberus_protocol_challenge_response) + SHA256_HASH_LENGTH + 1;
 	response.source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
 	response.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
 	rsp->challenge.digests_size = 1;
 	rsp->challenge.reserved = 1;
+
+	status = cmd->process_response (cmd, &response);
+	CuAssertIntEquals (test, CMD_HANDLER_RSVD_NOT_ZERO, status);
+}
+
+void cerberus_protocol_master_commands_testing_process_response_device_capabilities (CuTest *test,
+	struct cmd_interface *cmd, struct cmd_interface_msg *response)
+{
+	struct cerberus_protocol_device_capabilities_response *rsp =
+		(struct cerberus_protocol_device_capabilities_response*) response->data;
+	int status;
+
+	rsp->header.msg_type = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
+	rsp->header.pci_vendor_id = CERBERUS_PROTOCOL_MSFT_PCI_VID;
+	rsp->header.command = CERBERUS_PROTOCOL_GET_DEVICE_CAPABILITIES;
+
+	response->length = sizeof (struct cerberus_protocol_device_capabilities_response);
+	response->source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
+	response->target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
+
+	status = cmd->process_response (cmd, response);
+	CuAssertIntEquals (test, 0, status);
+}
+
+void cerberus_protocol_master_commands_testing_process_response_device_capabilities_invalid_buf_len (
+	CuTest *test, struct cmd_interface *cmd)
+{
+	uint8_t data[MCTP_BASE_PROTOCOL_MAX_MESSAGE_BODY];
+	struct cmd_interface_msg response;
+	struct cerberus_protocol_device_capabilities_response *rsp =
+		(struct cerberus_protocol_device_capabilities_response*) data;
+	int status;
+
+	memset (&response, 0, sizeof (struct cmd_interface_msg));
+	memset (data, 0, sizeof (data));
+	response.data = data;
+
+	rsp->header.msg_type = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
+	rsp->header.pci_vendor_id = CERBERUS_PROTOCOL_MSFT_PCI_VID;
+	rsp->header.command = CERBERUS_PROTOCOL_GET_DEVICE_CAPABILITIES;
+
+	response.length = sizeof (struct cerberus_protocol_device_capabilities_response) + 1;
+	response.source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
+	response.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
+
+	status = cmd->process_response (cmd, &response);
+	CuAssertIntEquals (test, CMD_HANDLER_BAD_LENGTH, status);
+}
+
+void cerberus_protocol_master_commands_testing_process_response_device_capabilities_rsvd_not_zero (
+	CuTest *test, struct cmd_interface *cmd)
+{
+	uint8_t data[MCTP_BASE_PROTOCOL_MAX_MESSAGE_BODY];
+	struct cmd_interface_msg response;
+	struct cerberus_protocol_device_capabilities_response *rsp =
+		(struct cerberus_protocol_device_capabilities_response*) data;
+	int status;
+
+	memset (&response, 0, sizeof (struct cmd_interface_msg));
+	memset (data, 0, sizeof (data));
+	response.data = data;
+
+	rsp->header.msg_type = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
+	rsp->header.pci_vendor_id = CERBERUS_PROTOCOL_MSFT_PCI_VID;
+	rsp->header.command = CERBERUS_PROTOCOL_GET_DEVICE_CAPABILITIES;
+
+	response.length = sizeof (struct cerberus_protocol_device_capabilities_response);
+	response.source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
+	response.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
+
+	rsp->capabilities.request.reserved1 = 1;
+
+	status = cmd->process_response (cmd, &response);
+	CuAssertIntEquals (test, CMD_HANDLER_RSVD_NOT_ZERO, status);
+
+	rsp->capabilities.request.reserved1 = 0;
+	rsp->capabilities.request.reserved2 = 1;
+
+	status = cmd->process_response (cmd, &response);
+	CuAssertIntEquals (test, CMD_HANDLER_RSVD_NOT_ZERO, status);
+
+	rsp->capabilities.request.reserved2 = 0;
+	rsp->capabilities.request.reserved3 = 1;
 
 	status = cmd->process_response (cmd, &response);
 	CuAssertIntEquals (test, CMD_HANDLER_RSVD_NOT_ZERO, status);
@@ -706,9 +789,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_region0 (CuTes
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (&cfm_mock.base));
+		0, MOCK_ARG_PTR (&cfm_mock.base));
 
 	status |= mock_expect (&cfm_mock.mock, cfm_mock.base.base.get_id, &cfm_mock, 0,
 		MOCK_ARG_NOT_NULL);
@@ -767,9 +850,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_region1 (CuTes
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_pending_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (&cfm_mock.base));
+		0, MOCK_ARG_PTR (&cfm_mock.base));
 
 	status |= mock_expect (&cfm_mock.mock, cfm_mock.base.base.get_id, &cfm_mock, 0,
 		MOCK_ARG_NOT_NULL);
@@ -827,9 +910,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_no_id_type (Cu
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (&cfm_mock.base));
+		0, MOCK_ARG_PTR (&cfm_mock.base));
 
 	status |= mock_expect (&cfm_mock.mock, cfm_mock.base.base.get_id, &cfm_mock, 0,
 		MOCK_ARG_NOT_NULL);
@@ -947,9 +1030,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_fail (CuTest *
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (&cfm_mock.base));
+		0, MOCK_ARG_PTR (&cfm_mock.base));
 
 	status |= mock_expect (&cfm_mock.mock, cfm_mock.base.base.get_id, &cfm_mock, CFM_NO_MEMORY,
 		MOCK_ARG_NOT_NULL);
@@ -990,9 +1073,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_no_cfm (CuTest
 	request.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) NULL);
+		MOCK_RETURN_PTR (NULL));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (NULL));
+		0, MOCK_ARG_PTR (NULL));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1114,9 +1197,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_platform_regio
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (&cfm_mock.base));
+		0, MOCK_ARG_PTR (&cfm_mock.base));
 
 	status |= mock_expect (&cfm_mock.mock, cfm_mock.base.base.get_platform_id, &cfm_mock, 0,
 		MOCK_ARG_PTR_PTR_NOT_NULL, MOCK_ARG (max));
@@ -1177,9 +1260,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_platform_regio
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_pending_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (&cfm_mock.base));
+		0, MOCK_ARG_PTR (&cfm_mock.base));
 
 	status |= mock_expect (&cfm_mock.mock, cfm_mock.base.base.get_platform_id, &cfm_mock, 0,
 		MOCK_ARG_PTR_PTR_NOT_NULL, MOCK_ARG (max));
@@ -1234,9 +1317,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_platform_no_cf
 	request.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) NULL);
+		MOCK_RETURN_PTR (NULL));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (NULL));
+		0, MOCK_ARG_PTR (NULL));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1328,9 +1411,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_id_platform_fail 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager,
-		0, MOCK_ARG (&cfm_mock.base));
+		0, MOCK_ARG_PTR (&cfm_mock.base));
 
 	status |= mock_expect (&cfm_mock.mock, cfm_mock.base.base.get_platform_id, &cfm_mock,
 		CFM_NO_MEMORY, MOCK_ARG_PTR_PTR_NOT_NULL, MOCK_ARG (max));
@@ -1396,9 +1479,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_reg
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (&cfm_mock.base));
+		MOCK_ARG_PTR (&cfm_mock.base));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1431,8 +1514,8 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_reg
 	CuAssertIntEquals (test, 0xAABBCCDD, resp->version);
 	CuAssertIntEquals (test, false, request.crypto_timeout);
 
-	status = testing_validate_array (types_buf, cerberus_protocol_cfm_component_ids (resp),
-		resp_length);
+	status = testing_validate_array (types_buf,
+		(uint8_t*) cerberus_protocol_cfm_component_ids (resp), resp_length);
 	CuAssertIntEquals (test, 0, status);
 
 	status = cfm_mock_validate_and_release (&cfm_mock);
@@ -1489,9 +1572,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_reg
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_pending_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (&cfm_mock.base));
+		MOCK_ARG_PTR (&cfm_mock.base));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1524,8 +1607,8 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_reg
 	CuAssertIntEquals (test, 0xAABBCCDD, resp->version);
 	CuAssertIntEquals (test, false, request.crypto_timeout);
 
-	status = testing_validate_array (types_buf, cerberus_protocol_cfm_component_ids (resp),
-		resp_length);
+	status = testing_validate_array (types_buf,
+		(uint8_t*) cerberus_protocol_cfm_component_ids (resp), resp_length);
 	CuAssertIntEquals (test, 0, status);
 
 	status = cfm_mock_validate_and_release (&cfm_mock);
@@ -1582,9 +1665,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_non
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (&cfm_mock.base));
+		MOCK_ARG_PTR (&cfm_mock.base));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1618,7 +1701,7 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_non
 	CuAssertIntEquals (test, false, request.crypto_timeout);
 
 	status = testing_validate_array (&types_buf[offset],
-		cerberus_protocol_cfm_component_ids (resp), resp_length);
+		(uint8_t*) cerberus_protocol_cfm_component_ids (resp), resp_length);
 	CuAssertIntEquals (test, 0, status);
 
 	status = cfm_mock_validate_and_release (&cfm_mock);
@@ -1675,9 +1758,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_lim
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (&cfm_mock.base));
+		MOCK_ARG_PTR (&cfm_mock.base));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1710,8 +1793,8 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_lim
 	CuAssertIntEquals (test, 0xAABBCCDD, resp->version);
 	CuAssertIntEquals (test, false, request.crypto_timeout);
 
-	status = testing_validate_array (types_buf, cerberus_protocol_cfm_component_ids (resp),
-		resp_length);
+	status = testing_validate_array (types_buf,
+		(uint8_t*) cerberus_protocol_cfm_component_ids (resp), resp_length);
 	CuAssertIntEquals (test, 0, status);
 
 	status = cfm_mock_validate_and_release (&cfm_mock);
@@ -1790,9 +1873,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_no_
 	request.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) NULL);
+		MOCK_RETURN_PTR (NULL));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (NULL));
+		MOCK_ARG_PTR (NULL));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1841,9 +1924,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_no_
 	request.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_pending_cfm, cfm_manager,
-		(intptr_t) NULL);
+		MOCK_RETURN_PTR (NULL));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (NULL));
+		MOCK_ARG_PTR (NULL));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1894,9 +1977,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_fai
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (&cfm_mock.base));
+		MOCK_ARG_PTR (&cfm_mock.base));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1947,9 +2030,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_fai
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (&cfm_mock.base));
+		MOCK_ARG_PTR (&cfm_mock.base));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -2085,9 +2168,9 @@ void cerberus_protocol_master_commands_testing_process_get_cfm_component_ids_inv
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&cfm_manager->mock, cfm_manager->base.get_active_cfm, cfm_manager,
-		(intptr_t) &cfm_mock.base);
+		MOCK_RETURN_PTR (&cfm_mock.base));
 	status |= mock_expect (&cfm_manager->mock, cfm_manager->base.free_cfm, cfm_manager, 0,
-		MOCK_ARG (&cfm_mock.base));
+		MOCK_ARG_PTR (&cfm_mock.base));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -2151,9 +2234,9 @@ void cerberus_protocol_master_commands_testing_process_get_pcd_id (CuTest *test,
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&pcd_manager->mock, pcd_manager->base.get_active_pcd, pcd_manager,
-		(intptr_t) &pcd_mock.base);
+		MOCK_RETURN_PTR (&pcd_mock.base));
 	status |= mock_expect (&pcd_manager->mock, pcd_manager->base.free_pcd, pcd_manager, 0,
-		MOCK_ARG (&pcd_mock.base));
+		MOCK_ARG_PTR (&pcd_mock.base));
 
 	status |= mock_expect (&pcd_mock.mock, pcd_mock.base.base.get_id, &pcd_mock, 0,
 		MOCK_ARG_NOT_NULL);
@@ -2210,9 +2293,9 @@ void cerberus_protocol_master_commands_testing_process_get_pcd_id_no_id_type (Cu
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&pcd_manager->mock, pcd_manager->base.get_active_pcd, pcd_manager,
-		(intptr_t) &pcd_mock.base);
+		MOCK_RETURN_PTR (&pcd_mock.base));
 	status |= mock_expect (&pcd_manager->mock, pcd_manager->base.free_pcd, pcd_manager, 0,
-		MOCK_ARG (&pcd_mock.base));
+		MOCK_ARG_PTR (&pcd_mock.base));
 
 	status |= mock_expect (&pcd_mock.mock, pcd_mock.base.base.get_id, &pcd_mock, 0,
 		MOCK_ARG_NOT_NULL);
@@ -2265,9 +2348,9 @@ void cerberus_protocol_master_commands_testing_process_get_pcd_id_no_pcd (CuTest
 	request.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
 	status = mock_expect (&pcd_manager->mock, pcd_manager->base.get_active_pcd, pcd_manager,
-		(intptr_t) NULL);
+		MOCK_RETURN_PTR (NULL));
 	status |= mock_expect (&pcd_manager->mock, pcd_manager->base.free_pcd, pcd_manager, 0,
-		MOCK_ARG (NULL));
+		MOCK_ARG_PTR (NULL));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -2382,9 +2465,9 @@ void cerberus_protocol_master_commands_testing_process_get_pcd_id_fail (CuTest *
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&pcd_manager->mock, pcd_manager->base.get_active_pcd, pcd_manager,
-		(intptr_t) &pcd_mock.base);
+		MOCK_RETURN_PTR (&pcd_mock.base));
 	status |= mock_expect (&pcd_manager->mock, pcd_manager->base.free_pcd, pcd_manager, 0,
-		MOCK_ARG (&pcd_mock.base));
+		MOCK_ARG_PTR (&pcd_mock.base));
 
 	status |= mock_expect (&pcd_mock.mock, pcd_mock.base.base.get_id, &pcd_mock, PCD_NO_MEMORY,
 		MOCK_ARG_NOT_NULL);
@@ -2457,9 +2540,9 @@ void cerberus_protocol_master_commands_testing_process_get_pcd_id_platform (CuTe
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&pcd_manager->mock, pcd_manager->base.get_active_pcd, pcd_manager,
-		(intptr_t) &pcd_mock.base);
+		MOCK_RETURN_PTR (&pcd_mock.base));
 	status |= mock_expect (&pcd_manager->mock, pcd_manager->base.free_pcd, pcd_manager, 0,
-		MOCK_ARG (&pcd_mock.base));
+		MOCK_ARG_PTR (&pcd_mock.base));
 
 	status |= mock_expect (&pcd_mock.mock, pcd_mock.base.base.get_platform_id, &pcd_mock, 0,
 		MOCK_ARG_PTR_PTR_NOT_NULL, MOCK_ARG (max));
@@ -2514,9 +2597,9 @@ void cerberus_protocol_master_commands_testing_process_get_pcd_id_platform_no_pc
 	request.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
 
 	status = mock_expect (&pcd_manager->mock, pcd_manager->base.get_active_pcd, pcd_manager,
-		(intptr_t) NULL);
+		MOCK_RETURN_PTR (NULL));
 	status |= mock_expect (&pcd_manager->mock, pcd_manager->base.free_pcd, pcd_manager, 0,
-		MOCK_ARG (NULL));
+		MOCK_ARG_PTR (NULL));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -2606,9 +2689,9 @@ void cerberus_protocol_master_commands_testing_process_get_pcd_id_platform_fail 
 	CuAssertIntEquals (test, 0, status);
 
 	status = mock_expect (&pcd_manager->mock, pcd_manager->base.get_active_pcd, pcd_manager,
-		(intptr_t) &pcd_mock.base);
+		MOCK_RETURN_PTR (&pcd_mock.base));
 	status |= mock_expect (&pcd_manager->mock, pcd_manager->base.free_pcd, pcd_manager, 0,
-		MOCK_ARG (&pcd_mock.base));
+		MOCK_ARG_PTR (&pcd_mock.base));
 
 	status |= mock_expect (&pcd_mock.mock, pcd_mock.base.base.get_platform_id, &pcd_mock,
 		PCD_NO_MEMORY, MOCK_ARG_PTR_PTR_NOT_NULL, MOCK_ARG (max));
@@ -4167,7 +4250,7 @@ void cerberus_protocol_master_commands_testing_process_get_recovery_image_ext_up
 		update_status);
 	status |= mock_expect (&recovery_manager_0->mock,
 		recovery_manager_0->base.get_flash_update_manager, recovery_manager_0,
-		(intptr_t) &updater);
+		MOCK_RETURN_PTR (&updater));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -4229,7 +4312,7 @@ void cerberus_protocol_master_commands_testing_process_get_recovery_image_ext_up
 		update_status);
 	status |= mock_expect (&recovery_manager_1->mock,
 		recovery_manager_1->base.get_flash_update_manager, recovery_manager_1,
-		(intptr_t) &updater);
+		MOCK_RETURN_PTR (&updater));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -4991,12 +5074,12 @@ static void cerberus_protocol_master_commands_test_generate_get_device_capabilit
 
 	TEST_START;
 
-	status = device_manager_init (&device_mgr, 2, DEVICE_MANAGER_PA_ROT_MODE,
-		DEVICE_MANAGER_MASTER_AND_SLAVE_BUS_ROLE);
+	status = device_manager_init (&device_mgr, 2, 0, DEVICE_MANAGER_PA_ROT_MODE,
+		DEVICE_MANAGER_MASTER_AND_SLAVE_BUS_ROLE, 1000, 0, 0, 0, 0, 0, 0);
 	CuAssertIntEquals (test, 0, status);
 
-	status = device_manager_update_device_entry (&device_mgr, 0, MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID,
-		0xAA);
+	status = device_manager_update_not_attestable_device_entry (&device_mgr, 0,
+		MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID, 0xAA, 0);
 	CuAssertIntEquals (test, 0, status);
 
 	status = cerberus_protocol_generate_get_device_capabilities_request (&device_mgr, buf,
@@ -5027,12 +5110,12 @@ static void cerberus_protocol_master_commands_test_generate_get_device_capabilit
 
 	TEST_START;
 
-	status = device_manager_init (&device_mgr, 2, DEVICE_MANAGER_PA_ROT_MODE,
-		DEVICE_MANAGER_MASTER_AND_SLAVE_BUS_ROLE);
+	status = device_manager_init (&device_mgr, 2, 0, DEVICE_MANAGER_PA_ROT_MODE,
+		DEVICE_MANAGER_MASTER_AND_SLAVE_BUS_ROLE, 1000, 0, 0, 0, 0, 0, 0);
 	CuAssertIntEquals (test, 0, status);
 
-	status = device_manager_update_device_entry (&device_mgr, 0, MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID,
-		0xAA);
+	status = device_manager_update_not_attestable_device_entry (&device_mgr, 0,
+		MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID, 0xAA, 0);
 	CuAssertIntEquals (test, 0, status);
 
 	status = cerberus_protocol_generate_get_device_capabilities_request (&device_mgr, buf,
@@ -5051,12 +5134,12 @@ static void cerberus_protocol_master_commands_test_generate_get_device_capabilit
 
 	TEST_START;
 
-	status = device_manager_init (&device_mgr, 2, DEVICE_MANAGER_PA_ROT_MODE,
-		DEVICE_MANAGER_MASTER_AND_SLAVE_BUS_ROLE);
+	status = device_manager_init (&device_mgr, 2, 0, DEVICE_MANAGER_PA_ROT_MODE,
+		DEVICE_MANAGER_MASTER_AND_SLAVE_BUS_ROLE, 1000, 0, 0, 0, 0, 0, 0);
 	CuAssertIntEquals (test, 0, status);
 
-	status = device_manager_update_device_entry (&device_mgr, 0, MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID,
-		0xAA);
+	status = device_manager_update_not_attestable_device_entry (&device_mgr, 0,
+		MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID, 0xAA, 0);
 	CuAssertIntEquals (test, 0, status);
 
 	status = cerberus_protocol_generate_get_device_capabilities_request (NULL, buf, sizeof (buf));
@@ -5204,34 +5287,34 @@ static void cerberus_protocol_master_commands_test_generate_get_certificate_requ
 
 static void cerberus_protocol_master_commands_test_generate_challenge_request (CuTest *test)
 {
-	struct attestation_challenge challenge = {0};
 	uint8_t buf[CERBERUS_PROTOCOL_MAX_PAYLOAD_PER_MSG];
+	uint8_t nonce[ATTESTATION_NONCE_LEN] = {0};
 	struct cerberus_protocol_challenge *req = (struct cerberus_protocol_challenge*) buf;
-	struct attestation_master_mock master_attestation;
+	struct rng_engine_mock rng;
 	int status;
 
-	challenge.slot_num = 3;
-	challenge.reserved = 0;
-	challenge.nonce[0] = 0xAA;
-	challenge.nonce[31] = 0xBB;
+	req->challenge.slot_num = 3;
+	req->challenge.reserved = 0;
+	req->challenge.nonce[0] = 0xAA;
+	req->challenge.nonce[31] = 0xBB;
+
+	nonce[0] = 0xAA;
+	nonce[31] = 0xBB;
 
 	TEST_START;
 
-	status = attestation_master_mock_init (&master_attestation);
+	status = rng_mock_init (&rng);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&master_attestation.mock,
-		master_attestation.base.generate_challenge_request, &master_attestation,
-		sizeof (struct attestation_challenge), MOCK_ARG (2), MOCK_ARG (3), MOCK_ARG_NOT_NULL);
-	status |= mock_expect_output (&master_attestation.mock, 2, &challenge,
-		sizeof (struct attestation_challenge), -1);
+	status = mock_expect (&rng.mock, rng.base.generate_random_buffer, &rng, 0,
+		MOCK_ARG (ATTESTATION_NONCE_LEN), MOCK_ARG_NOT_NULL);
+	status |= mock_expect_output (&rng.mock, 1, nonce, sizeof (nonce), -1);
 
 	CuAssertIntEquals (test, 0, status);
 
 	memset (buf, 0x55, sizeof (buf));
 
-	status = cerberus_protocol_generate_challenge_request (&master_attestation.base, 2, 3, buf,
-		sizeof (buf));
+	status = cerberus_protocol_generate_challenge_request (&rng.base, 2, 3, buf, sizeof (buf));
 	CuAssertIntEquals (test, sizeof (struct cerberus_protocol_challenge), status);
 	CuAssertIntEquals (test, MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF, req->header.msg_type);
 	CuAssertIntEquals (test, CERBERUS_PROTOCOL_MSFT_PCI_VID, req->header.pci_vendor_id);
@@ -5244,93 +5327,89 @@ static void cerberus_protocol_master_commands_test_generate_challenge_request (C
 	CuAssertIntEquals (test, 3, req->challenge.slot_num);
 	CuAssertIntEquals (test, 0, req->challenge.reserved);
 
-	status = testing_validate_array (challenge.nonce, req->challenge.nonce, ATTESTATION_NONCE_LEN);
+	status = testing_validate_array (nonce, req->challenge.nonce, ATTESTATION_NONCE_LEN);
 	CuAssertIntEquals (test, 0, status);
 
-	attestation_master_mock_validate_and_release (&master_attestation);
+	rng_mock_validate_and_release (&rng);
 }
 
 static void cerberus_protocol_master_commands_test_generate_challenge_request_buf_too_small (
 	CuTest *test)
 {
 	uint8_t buf[sizeof (struct cerberus_protocol_challenge) - 1];
-	struct attestation_master_mock master_attestation;
+	struct rng_engine_mock rng;
 	int status;
 
 	TEST_START;
 
-	status = attestation_master_mock_init (&master_attestation);
+	status = rng_mock_init (&rng);
 	CuAssertIntEquals (test, 0, status);
 
-	status = cerberus_protocol_generate_challenge_request (&master_attestation.base, 2, 3, buf,
-		sizeof (buf));
+	status = cerberus_protocol_generate_challenge_request (&rng.base, 2, 3, buf, sizeof (buf));
 	CuAssertIntEquals (test, CMD_HANDLER_BUF_TOO_SMALL, status);
 
-	attestation_master_mock_validate_and_release (&master_attestation);
+	rng_mock_validate_and_release (&rng);
 }
 
 static void cerberus_protocol_master_commands_test_generate_challenge_request_out_of_range (
 	CuTest *test)
 {
 	uint8_t buf[sizeof (struct cerberus_protocol_challenge)];
-	struct attestation_master_mock master_attestation;
+	struct rng_engine_mock rng;
 	int status;
 
 	TEST_START;
 
-	status = attestation_master_mock_init (&master_attestation);
+	status = rng_mock_init (&rng);
 	CuAssertIntEquals (test, 0, status);
 
-	status = cerberus_protocol_generate_challenge_request (&master_attestation.base, 2,
+	status = cerberus_protocol_generate_challenge_request (&rng.base, 2,
 		ATTESTATION_MAX_SLOT_NUM + 1, buf, sizeof (buf));
 	CuAssertIntEquals (test, CMD_HANDLER_OUT_OF_RANGE, status);
 
-	attestation_master_mock_validate_and_release (&master_attestation);
+	rng_mock_validate_and_release (&rng);
 }
 
 static void cerberus_protocol_master_commands_test_generate_challenge_request_fail (CuTest *test)
 {
 	uint8_t buf[CERBERUS_PROTOCOL_MAX_PAYLOAD_PER_MSG];
-	struct attestation_master_mock master_attestation;
+	struct rng_engine_mock rng;
 	int status;
 
 	TEST_START;
 
-	status = attestation_master_mock_init (&master_attestation);
+	status = rng_mock_init (&rng);
 	CuAssertIntEquals (test, 0, status);
 
-	status = mock_expect (&master_attestation.mock,
-		master_attestation.base.generate_challenge_request, &master_attestation,
-		ATTESTATION_NO_MEMORY, MOCK_ARG (2), MOCK_ARG (3), MOCK_ARG_NOT_NULL);
+	status = mock_expect (&rng.mock, rng.base.generate_random_buffer, &rng,
+		RNG_ENGINE_NO_MEMORY, MOCK_ARG (ATTESTATION_NONCE_LEN), MOCK_ARG_NOT_NULL);
 
 	CuAssertIntEquals (test, 0, status);
 
-	status = cerberus_protocol_generate_challenge_request (&master_attestation.base, 2, 3, buf,
-		sizeof (buf));
-	CuAssertIntEquals (test, ATTESTATION_NO_MEMORY, status);
+	status = cerberus_protocol_generate_challenge_request (&rng.base, 2, 3, buf, sizeof (buf));
+	CuAssertIntEquals (test, RNG_ENGINE_NO_MEMORY, status);
 
-	attestation_master_mock_validate_and_release (&master_attestation);
+	rng_mock_validate_and_release (&rng);
 }
 
 static void cerberus_protocol_master_commands_test_generate_challenge_request_null (CuTest *test)
 {
 	uint8_t buf[CERBERUS_PROTOCOL_MAX_PAYLOAD_PER_MSG];
-	struct attestation_master_mock master_attestation;
+	struct rng_engine_mock rng;
 	int status;
 
 	TEST_START;
 
-	status = attestation_master_mock_init (&master_attestation);
+	status = rng_mock_init (&rng);
 	CuAssertIntEquals (test, 0, status);
 
-	status = cerberus_protocol_generate_challenge_request (&master_attestation.base, 2, 3, NULL,
-		sizeof (buf));
+	status = cerberus_protocol_generate_challenge_request (&rng.base, 2, 3, NULL, sizeof (buf));
 	CuAssertIntEquals (test, CMD_HANDLER_INVALID_ARGUMENT, status);
 
 	status = cerberus_protocol_generate_challenge_request (NULL, 2, 3, buf, sizeof (buf));
 	CuAssertIntEquals (test, CMD_HANDLER_INVALID_ARGUMENT, status);
 
-	attestation_master_mock_validate_and_release (&master_attestation);
+	rng_mock_validate_and_release (&rng);
 }
 
 

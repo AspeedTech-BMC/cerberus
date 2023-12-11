@@ -4,8 +4,11 @@
 #ifndef CRYPTO_LOGGING_H_
 #define CRYPTO_LOGGING_H_
 
+#include "logging/debug_log.h"
+
+
 /**
- * Cerberus crypto log messages - MAKE SURE IN SYNC WITH tools\cerberus_utility\cerberus_utility_commands.h!!
+ * Cerberus crypto log messages.
  */
 enum {
 	CRYPTO_LOG_MSG_MBEDTLS_AES_GCM_INIT_EC,					/**< mbedTLS failure during AES GCM init */

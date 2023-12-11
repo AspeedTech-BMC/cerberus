@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 #include <string.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "testing.h"
 #include "recovery/recovery_image.h"
 #include "recovery/recovery_image_section_header.h"
@@ -501,7 +501,8 @@ static void recovery_image_test_verify (CuTest *test)
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -509,9 +510,9 @@ static void recovery_image_test_verify (CuTest *test)
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -579,7 +580,8 @@ static void recovery_image_test_verify_with_multiple_recovery_sections (CuTest *
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE2,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -587,9 +589,9 @@ static void recovery_image_test_verify_with_multiple_recovery_sections (CuTest *
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -677,7 +679,8 @@ static void recovery_image_test_verify_second_recovery_section_header_too_long (
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -685,9 +688,9 @@ static void recovery_image_test_verify_second_recovery_section_header_too_long (
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -764,7 +767,8 @@ static void recovery_image_test_verify_image_length_too_long (CuTest *test)
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -772,9 +776,9 @@ static void recovery_image_test_verify_image_length_too_long (CuTest *test)
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0,
 		MOCK_ARG (0x10000 + RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -846,7 +850,8 @@ static void recovery_image_test_verify_image_length_too_short (CuTest *test)
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -854,9 +859,9 @@ static void recovery_image_test_verify_image_length_too_short (CuTest *test)
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL, MOCK_ARG (
@@ -926,7 +931,8 @@ static void recovery_image_test_verify_section_image_length_too_long (CuTest *te
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -934,9 +940,9 @@ static void recovery_image_test_verify_section_image_length_too_long (CuTest *te
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -1006,7 +1012,8 @@ static void recovery_image_test_verify_section_image_length_too_short (CuTest *t
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -1014,9 +1021,9 @@ static void recovery_image_test_verify_section_image_length_too_short (CuTest *t
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -1092,7 +1099,7 @@ static void recovery_image_test_verify_bad_signature (CuTest *test)
 		sizeof (bad_image) - RECOVERY_IMAGE_HEADER_SIGNATURE_LEN);
 
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification,
-		RSA_ENGINE_BAD_SIGNATURE,
+		SIG_VERIFICATION_BAD_SIGNATURE,
 		MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN),
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
@@ -1101,7 +1108,7 @@ static void recovery_image_test_verify_bad_signature (CuTest *test)
 
 	status = recovery_image.verify (&recovery_image, &hash.base, &verification.base, NULL, 0,
 		&manager.base);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	status = flash_mock_validate_and_release (&flash);
 	CuAssertIntEquals (test, 0, status);
@@ -1110,79 +1117,6 @@ static void recovery_image_test_verify_bad_signature (CuTest *test)
 
 	recovery_image_release (&recovery_image);
 
-	HASH_TESTING_ENGINE_RELEASE (&hash);
-}
-
-static void recovery_image_test_verify_bad_signature_ecc_with_hash_out (CuTest *test)
-{
-	struct flash_mock flash;
-	HASH_TESTING_ENGINE hash;
-	struct signature_verification_mock verification;
-	struct recovery_image recovery_image;
-	uint8_t bad_image[RECOVERY_IMAGE_DATA_LEN];
-	uint8_t hash_out[SHA256_HASH_LENGTH];
-	struct pfm_manager_mock manager;
-	int status;
-
-	TEST_START;
-
-	memcpy (bad_image, RECOVERY_IMAGE_DATA, RECOVERY_IMAGE_DATA_LEN);
-	bad_image[RECOVERY_IMAGE_SIGNATURE_OFFSET] ^= 0x55;
-
-	status = HASH_TESTING_ENGINE_INIT (&hash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = signature_verification_mock_init (&verification);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_init (&flash);
-	CuAssertIntEquals (test, 0, status);
-
-	status = recovery_image_init (&recovery_image, &flash.base, 0x10000);
-	CuAssertIntEquals (test, 0, status);
-
-	status = mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000),
-		MOCK_ARG_NOT_NULL, MOCK_ARG (IMAGE_HEADER_BASE_LEN));
-	status |= mock_expect_output (&flash.mock, 1, bad_image, RECOVERY_IMAGE_DATA_LEN, 2);
-
-	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0,
-		MOCK_ARG (0x10000 + IMAGE_HEADER_BASE_LEN), MOCK_ARG_NOT_NULL,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_FORMAT_0_LEN));
-	status |= mock_expect_output (&flash.mock, 1, bad_image + IMAGE_HEADER_BASE_LEN,
-		RECOVERY_IMAGE_HEADER_FORMAT_0_LEN, 2);
-
-	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0,
-		MOCK_ARG (0x10000 + RECOVERY_IMAGE_SIGNATURE_OFFSET), MOCK_ARG_NOT_NULL,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
-	status |= mock_expect_output (&flash.mock, 1, bad_image +
-		RECOVERY_IMAGE_SIGNATURE_OFFSET, RECOVERY_IMAGE_HEADER_SIGNATURE_LEN, 2);
-
-	status |= flash_mock_expect_verify_flash (&flash, 0x10000, bad_image,
-		sizeof (bad_image) - RECOVERY_IMAGE_HEADER_SIGNATURE_LEN);
-
-	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification,
-		ECC_ENGINE_BAD_SIGNATURE,
-		MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN),
-		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
-		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
-
-	CuAssertIntEquals (test, 0, status);
-
-	memset (hash_out, 0, sizeof (hash_out));
-
-	status = recovery_image.verify (&recovery_image, &hash.base, &verification.base, hash_out,
-		sizeof (hash_out), &manager.base);
-	CuAssertIntEquals (test, ECC_ENGINE_BAD_SIGNATURE, status);
-
-	status = testing_validate_array (RECOVERY_IMAGE_HASH, hash_out, RECOVERY_IMAGE_HASH_LEN);
-	CuAssertIntEquals (test, 0, status);
-
-	status = flash_mock_validate_and_release (&flash);
-	CuAssertIntEquals (test, 0, status);
-
-	signature_verification_mock_release (&verification);
-
-	recovery_image_release (&recovery_image);
 	HASH_TESTING_ENGINE_RELEASE (&hash);
 }
 
@@ -1234,7 +1168,7 @@ static void recovery_image_test_verify_bad_signature_with_hash_out (CuTest *test
 		sizeof (bad_image) - RECOVERY_IMAGE_HEADER_SIGNATURE_LEN);
 
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification,
-		RSA_ENGINE_BAD_SIGNATURE,
+		SIG_VERIFICATION_BAD_SIGNATURE,
 		MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN),
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
@@ -1245,7 +1179,7 @@ static void recovery_image_test_verify_bad_signature_with_hash_out (CuTest *test
 
 	status = recovery_image.verify (&recovery_image, &hash.base, &verification.base, hash_out,
 		sizeof (hash_out), &manager.base);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	status = testing_validate_array (RECOVERY_IMAGE_HASH, hash_out, RECOVERY_IMAGE_HASH_LEN);
 	CuAssertIntEquals (test, 0, status);
@@ -1307,7 +1241,7 @@ static void recovery_image_test_verify_bad_hash (CuTest *test)
 		RECOVERY_IMAGE_DATA_LEN - RECOVERY_IMAGE_HEADER_SIGNATURE_LEN);
 
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification,
-		RSA_ENGINE_BAD_SIGNATURE,
+		SIG_VERIFICATION_BAD_SIGNATURE,
 		MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN),
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
@@ -1316,7 +1250,7 @@ static void recovery_image_test_verify_bad_hash (CuTest *test)
 
 	status = recovery_image.verify (&recovery_image, &hash.base, &verification.base, NULL, 0,
 		&manager.base);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	status = flash_mock_validate_and_release (&flash);
 	CuAssertIntEquals (test, 0, status);
@@ -1416,7 +1350,8 @@ static void recovery_image_test_verify_with_hash_out (CuTest *test)
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -1424,9 +1359,9 @@ static void recovery_image_test_verify_with_hash_out (CuTest *test)
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -1578,7 +1513,8 @@ static void recovery_image_test_verify_no_active_pfm (CuTest *test)
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (uintptr_t) NULL);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (NULL));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -1647,16 +1583,17 @@ static void recovery_image_test_verify_platform_id_mismatch (CuTest *test)
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
 	status |= mock_expect_output (&pfm.mock, 0, &platform_id, sizeof (void*), -1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (platform_id));
+		MOCK_ARG_PTR (platform_id));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1710,12 +1647,13 @@ static void recovery_image_test_verify_platform_id_error (CuTest *test)
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm,
 		MANIFEST_GET_PLATFORM_ID_FAILED, MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -1770,7 +1708,8 @@ static void recovery_image_test_verify_recovery_section_header_length_too_short 
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -1778,9 +1717,9 @@ static void recovery_image_test_verify_recovery_section_header_length_too_short 
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL, MOCK_ARG (
@@ -1842,7 +1781,8 @@ static void recovery_image_test_verify_recovery_section_header_length_too_long (
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -1850,9 +1790,9 @@ static void recovery_image_test_verify_recovery_section_header_length_too_long (
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -1918,7 +1858,8 @@ static void recovery_image_test_verify_no_recovery_section_image (CuTest *test)
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -1926,9 +1867,9 @@ static void recovery_image_test_verify_no_recovery_section_image (CuTest *test)
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	CuAssertIntEquals (test, 0, status);
 
@@ -2126,7 +2067,8 @@ static void recovery_image_test_verify_section_address_overlap (CuTest *test)
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification, 0,
 		MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY, MOCK_ARG_ANY);
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -2134,9 +2076,9 @@ static void recovery_image_test_verify_section_address_overlap (CuTest *test)
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -2311,7 +2253,8 @@ static void recovery_image_test_get_hash_after_verify (CuTest *test)
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -2319,9 +2262,9 @@ static void recovery_image_test_get_hash_after_verify (CuTest *test)
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -2397,7 +2340,8 @@ static void recovery_image_test_get_hash_after_verify_error (CuTest *test)
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -2405,9 +2349,9 @@ static void recovery_image_test_get_hash_after_verify_error (CuTest *test)
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -2535,7 +2479,7 @@ static void recovery_image_test_get_hash_after_verify_bad_signature (CuTest *tes
 		sizeof (bad_image) - RECOVERY_IMAGE_HEADER_SIGNATURE_LEN);
 
 	status |= mock_expect (&verification.mock, verification.base.verify_signature, &verification,
-		RSA_ENGINE_BAD_SIGNATURE,
+		SIG_VERIFICATION_BAD_SIGNATURE,
 		MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_HASH, RECOVERY_IMAGE_HASH_LEN),
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
@@ -2544,7 +2488,7 @@ static void recovery_image_test_get_hash_after_verify_bad_signature (CuTest *tes
 
 	status = recovery_image.verify (&recovery_image, &hash.base, &verification.base, NULL, 0,
 		&manager.base);
-	CuAssertIntEquals (test, RSA_ENGINE_BAD_SIGNATURE, status);
+	CuAssertIntEquals (test, SIG_VERIFICATION_BAD_SIGNATURE, status);
 
 	status = recovery_image.get_hash (&recovery_image, &hash.base, hash_out, sizeof (hash_out));
 	CuAssertIntEquals (test, 0, status);
@@ -2612,7 +2556,8 @@ static void recovery_image_test_get_hash_after_verify_sig_read_error (CuTest *te
 		MOCK_ARG (RECOVERY_IMAGE_HASH_LEN), MOCK_ARG_PTR_CONTAINS (RECOVERY_IMAGE_SIGNATURE,
 		RECOVERY_IMAGE_HEADER_SIGNATURE_LEN), MOCK_ARG (RECOVERY_IMAGE_HEADER_SIGNATURE_LEN));
 
-	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager, (intptr_t) &pfm);
+	status |= mock_expect (&manager.mock, manager.base.get_active_pfm, &manager,
+		MOCK_RETURN_PTR (&pfm));
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.get_platform_id, &pfm, 0,
 		MOCK_ARG_PTR_PTR (NULL), MOCK_ARG_ANY);
@@ -2620,9 +2565,9 @@ static void recovery_image_test_get_hash_after_verify_sig_read_error (CuTest *te
 		-1);
 
 	status |= mock_expect (&pfm.mock, pfm.base.base.free_platform_id, &pfm, 0,
-		MOCK_ARG (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
+		MOCK_ARG_PTR (RECOVERY_IMAGE_HEADER_PLATFORM_ID));
 
-	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG (&pfm));
+	status |= mock_expect (&manager.mock, manager.base.free_pfm, &manager, 0, MOCK_ARG_PTR (&pfm));
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0, MOCK_ARG (0x10000 +
 		RECOVERY_IMAGE_HEADER_FORMAT_0_TOTAL_LEN), MOCK_ARG_NOT_NULL,
@@ -3135,8 +3080,8 @@ static void recovery_image_test_apply_to_flash_with_multiple_recovery_sections (
 		RECOVERY_IMAGE_SECTION_HEADER_FORMAT_0_TOTAL_LEN, 2);
 
 	status |= mock_expect (&flash.mock, flash.base.read, &flash, 0,
-		MOCK_ARG (0x10000 + RECOVERY_IMAGE_DATA2_SECTION_2_OFFSET + IMAGE_HEADER_BASE_LEN), MOCK_ARG_NOT_NULL,
-		MOCK_ARG (RECOVERY_IMAGE_SECTION_HEADER_FORMAT_0_LEN));
+		MOCK_ARG (0x10000 + RECOVERY_IMAGE_DATA2_SECTION_2_OFFSET + IMAGE_HEADER_BASE_LEN),
+		MOCK_ARG_NOT_NULL, MOCK_ARG (RECOVERY_IMAGE_SECTION_HEADER_FORMAT_0_LEN));
 	status |= mock_expect_output (&flash.mock, 1, RECOVERY_IMAGE_DATA2 +
 		 RECOVERY_IMAGE_DATA2_SECTION_2_OFFSET +
 		IMAGE_HEADER_BASE_LEN, RECOVERY_IMAGE_SECTION_HEADER_FORMAT_0_LEN, 2);
@@ -3590,7 +3535,6 @@ TEST (recovery_image_test_verify_image_length_too_short);
 TEST (recovery_image_test_verify_section_image_length_too_long);
 TEST (recovery_image_test_verify_section_image_length_too_short);
 TEST (recovery_image_test_verify_bad_signature);
-TEST (recovery_image_test_verify_bad_signature_ecc_with_hash_out);
 TEST (recovery_image_test_verify_bad_signature_with_hash_out);
 TEST (recovery_image_test_verify_bad_hash);
 TEST (recovery_image_test_verify_null);

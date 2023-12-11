@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "cmd_interface/device_manager.h"
 #include "mctp_base_protocol.h"
 #include "mctp_logging.h"
@@ -61,7 +61,7 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 
 	if (request->length != sizeof (struct mctp_control_set_eid)) {
 		request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-		response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
 
 		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 			MCTP_LOGGING_MCTP_CONTROL_INVALID_LEN, request->length,
@@ -70,7 +70,7 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 	else if ((rq->reserved != 0) || (rq->operation > MCTP_CONTROL_SET_EID_OPERATION_FORCE_ID) ||
 		(rq->eid == MCTP_BASE_PROTOCOL_NULL_EID) || (rq->eid == MCTP_BASE_PROTOCOL_BROADCAST_EID)) {
 		request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-		response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_DATA;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_DATA;
 	}
 	else {
 		eid_original = device_manager_get_device_eid (device_mgr, DEVICE_MANAGER_SELF_DEVICE_NUM);
@@ -80,8 +80,9 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 			goto update_device_mgr_fail;
 		}
 
-		status = device_manager_update_device_entry (device_mgr,
-			DEVICE_MANAGER_MCTP_BRIDGE_DEVICE_NUM, request->source_eid, request->source_addr);
+		status = device_manager_update_not_attestable_device_entry (device_mgr,
+			DEVICE_MANAGER_MCTP_BRIDGE_DEVICE_NUM, request->source_eid, request->source_addr,
+			DEVICE_MANAGER_NOT_PCD_COMPONENT);
 		if (status != 0) {
 			// restore self device eid
 			device_manager_update_device_eid (device_mgr, DEVICE_MANAGER_SELF_DEVICE_NUM,
@@ -91,7 +92,7 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 
 		eid_assigned = rq->eid;
 
-		response->completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
 		request->length = sizeof (struct mctp_control_set_eid_response);
 
 		response->eid_setting = eid_assigned;
@@ -104,7 +105,7 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 
 #if defined(CONFIG_PFR_MCTP_I3C)
 #if !defined(CONFIG_I3C_SLAVE)
-	int bus_role = device_mgr->entries[0].info.capabilities.request.bus_role;
+	int bus_role = device_mgr->entries[0].capabilities.request.bus_role;
 
 	if (bus_role == DEVICE_MANAGER_I3C_SLAVE_BUS_ROLE) {
 		mctp_i3c_stop_discovery_notify(device_mgr);
@@ -116,7 +117,7 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 
 update_device_mgr_fail:
 	request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-	response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR;
+	response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR;
 
 	debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 		MCTP_LOGGING_SET_EID_FAIL, status, request->channel_id);
@@ -146,7 +147,7 @@ int mctp_control_protocol_get_eid (struct device_manager *device_mgr,
 
 	if (request->length != sizeof (struct mctp_control_get_eid)) {
 		request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-		response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
 
 		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 			MCTP_LOGGING_MCTP_CONTROL_INVALID_LEN, request->length,
@@ -156,7 +157,7 @@ int mctp_control_protocol_get_eid (struct device_manager *device_mgr,
 		status = device_manager_get_device_eid (device_mgr, 0);
 		if (ROT_IS_ERROR (status)) {
 			request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-			response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR;
+			response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR;
 
 			debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 				MCTP_LOGGING_GET_EID_FAIL, status, request->channel_id);
@@ -165,7 +166,7 @@ int mctp_control_protocol_get_eid (struct device_manager *device_mgr,
 		}
 
 		request->length = sizeof (struct mctp_control_get_eid_response);
-		response->completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
 		response->eid = status;
 		response->eid_type = MCTP_CONTROL_GET_EID_EID_TYPE_STATIC_EID_SUPPORTED;
 		response->reserved = 0;
@@ -199,7 +200,7 @@ int mctp_control_protocol_get_mctp_version_support (struct cmd_interface_msg *re
 
 	if (request->length != sizeof (struct mctp_control_get_mctp_version)) {
 		request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-		response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
 
 		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 			MCTP_LOGGING_MCTP_CONTROL_INVALID_LEN, request->length,
@@ -244,14 +245,14 @@ int mctp_control_protocol_get_mctp_version_support (struct cmd_interface_msg *re
 
 		default:
 			request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-			response->completion_code = MCTP_CONTROL_GET_MCTP_VERSION_MSG_TYPE_UNSUPPORTED;
+			response->header.completion_code = MCTP_CONTROL_GET_MCTP_VERSION_MSG_TYPE_UNSUPPORTED;
 
 			return 0;
 	}
 
 	request->length =
 		mctp_control_get_mctp_version_response_length (response->version_num_entry_count);
-	response->completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
+	response->header.completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
 
 	return 0;
 }
@@ -276,7 +277,7 @@ int mctp_control_protocol_get_message_type_support (struct cmd_interface_msg *re
 
 	if (request->length != sizeof (struct mctp_control_get_message_type)) {
 		request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-		response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
 
 		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 			MCTP_LOGGING_MCTP_CONTROL_INVALID_LEN, request->length,
@@ -285,13 +286,13 @@ int mctp_control_protocol_get_message_type_support (struct cmd_interface_msg *re
 		return 0;
 	}
 
-	response->completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
+	response->header.completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
 	response->message_type_count = 3;
 
 	message_type_list = mctp_control_get_message_type_response_get_entries (response);
 
 	message_type_list[0] = MCTP_BASE_PROTOCOL_MSG_TYPE_CONTROL_MSG;
-	message_type_list[1] = MCTP_BASE_PROTOCOL_MSG_TYPE_SPDM_MSG;
+	message_type_list[1] = MCTP_BASE_PROTOCOL_MSG_TYPE_SPDM;
 	message_type_list[2] = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
 
 	request->length = mctp_control_get_message_type_response_length (response->message_type_count);
@@ -350,12 +351,6 @@ int mctp_control_protocol_process_get_message_type_support_response (
 		return CMD_HANDLER_MCTP_CTRL_BAD_LENGTH;
 	}
 
-	if (rsp->completion_code != MCTP_CONTROL_PROTOCOL_SUCCESS) {
-		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
-			MCTP_LOGGING_MCTP_CONTROL_RSP_CC_FAIL, rsp->completion_code,
-			(response->source_eid << 8) | MCTP_CONTROL_PROTOCOL_GET_MESSAGE_TYPE);
-	}
-
 	return 0;
 }
 
@@ -382,7 +377,7 @@ int mctp_control_protocol_get_vendor_def_msg_support (uint16_t pci_vendor_id,
 
 	if (request->length != sizeof (struct mctp_control_get_vendor_def_msg_support)) {
 		request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-		response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN;
 
 		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 			MCTP_LOGGING_MCTP_CONTROL_INVALID_LEN, request->length,
@@ -390,11 +385,11 @@ int mctp_control_protocol_get_vendor_def_msg_support (uint16_t pci_vendor_id,
 	}
 	else if (rq->vid_set_selector != CERBERUS_VID_SET) {
 		request->length = MCTP_CONTROL_PROTOCOL_FAILURE_RESP_LEN;
-		response->completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_DATA;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_ERROR_INVALID_DATA;
 	}
 	else {
 		request->length = sizeof (struct mctp_control_get_vendor_def_msg_support_pci_response);
-		response->completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
+		response->header.completion_code = MCTP_CONTROL_PROTOCOL_SUCCESS;
 		response->vid_set_selector = CERBERUS_VID_SET_RESPONSE;
 		response->vid_format = MCTP_BASE_PROTOCOL_VID_FORMAT_PCI;
 		response->vid = platform_htons (pci_vendor_id);
@@ -478,12 +473,6 @@ int mctp_control_protocol_process_get_vendor_def_msg_support_response (
 		return CMD_HANDLER_MCTP_CTRL_BAD_LENGTH;
 	}
 
-	if (rsp->completion_code != MCTP_CONTROL_PROTOCOL_SUCCESS) {
-		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
-			MCTP_LOGGING_MCTP_CONTROL_RSP_CC_FAIL, rsp->completion_code,
-			(response->source_eid << 8) | MCTP_CONTROL_PROTOCOL_GET_VEN_DEF_MSG_SUPPORT);
-	}
-
 	return 0;
 }
 
@@ -544,10 +533,51 @@ int mctp_control_protocol_process_get_routing_table_entries_response (
 		return CMD_HANDLER_MCTP_CTRL_BAD_LENGTH;
 	}
 
-	if (rsp->completion_code != MCTP_CONTROL_PROTOCOL_SUCCESS) {
-		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
-			MCTP_LOGGING_MCTP_CONTROL_RSP_CC_FAIL, rsp->completion_code,
-			(response->source_eid << 8) | MCTP_CONTROL_PROTOCOL_GET_ROUTING_TABLE_ENTRIES);
+	return 0;
+}
+
+/**
+ * Construct Discovery Notify request.
+ *
+ * @param buf The buffer containing the generated request.
+ * @param buf_len Maximum size of buffer.
+ *
+ * @return Length of the generated request if the request was successfully constructed or an
+ * error code.
+ */
+int mctp_control_protocol_generate_discovery_notify_request (uint8_t *buf, size_t buf_len)
+{
+	struct mctp_control_discovery_notify *rq = (struct mctp_control_discovery_notify*) buf;
+
+	if (rq == NULL) {
+		return CMD_HANDLER_MCTP_CTRL_INVALID_ARGUMENT;
+	}
+
+	if (buf_len < sizeof (struct mctp_control_discovery_notify)) {
+		return CMD_HANDLER_MCTP_CTRL_BUF_TOO_SMALL;
+	}
+
+	mctp_control_protocol_populate_header (&rq->header, MCTP_CONTROL_PROTOCOL_DISCOVERY_NOTIFY);
+
+	return sizeof (struct mctp_control_discovery_notify);
+}
+
+/**
+ * Process Discovery Notify response. This function only ensures the response is valid per MCTP
+ * 	control protocol response definition.
+ *
+ * @param response Discovery Notify response to process
+ *
+ * @return 0 if response processed successfully or an error code.
+ */
+int mctp_control_protocol_process_discovery_notify_response (struct cmd_interface_msg *response)
+{
+	if (response == NULL) {
+		return CMD_HANDLER_MCTP_CTRL_INVALID_ARGUMENT;
+	}
+
+	if (response->length != sizeof (struct mctp_control_discovery_notify_response)) {
+		return CMD_HANDLER_MCTP_CTRL_BAD_LENGTH;
 	}
 
 	return 0;

@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include "status/rot_status.h"
 #include "crypto/hash.h"
-#include "common/signature_verification.h"
+#include "crypto/signature_verification.h"
 
 
 /**
@@ -30,7 +30,7 @@ struct manifest {
 	 * @return 0 if the manifest is valid or an error code.
 	 */
 	int (*verify) (struct manifest *manifest, struct hash_engine *hash,
-		struct signature_verification *verification, uint8_t *hash_out, size_t hash_length);
+		const struct signature_verification *verification, uint8_t *hash_out, size_t hash_length);
 
 	/**
 	 * Get the ID of the manifest.

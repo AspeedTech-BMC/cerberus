@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "status/rot_status.h"
-#include "common/signature_verification.h"
 #include "crypto/hash.h"
+#include "crypto/signature_verification.h"
 #include "flash/flash.h"
 #include "manifest/pfm/pfm_manager.h"
 #include "flash/spi_flash.h"
@@ -32,7 +32,7 @@ struct recovery_image {
 	 * @return 0 if the recovery image is valid or an error code.
 	 */
 	int (*verify) (struct recovery_image *image, struct hash_engine *hash,
-		struct signature_verification *verification, uint8_t *hash_out, size_t hash_length,
+		const struct signature_verification *verification, uint8_t *hash_out, size_t hash_length,
 		struct pfm_manager *pfm);
 
 	/**
@@ -68,15 +68,16 @@ struct recovery_image {
 	 *
 	 * @return 0 if applying the recovery image to host flash was successful or an error code.
 	 */
-	int (*apply_to_flash) (struct recovery_image *image, struct spi_flash *flash);
+	int (*apply_to_flash) (struct recovery_image *image, const struct spi_flash *flash);
 
-	struct flash *flash;							/**< The flash device that contains the recovery image. */
+	const struct flash *flash;						/**< The flash device that contains the recovery image. */
  	uint32_t addr;									/**< The starting address in flash of the recovery image. */
 	uint8_t hash_cache[SHA256_HASH_LENGTH];			/**< Cache for the recovery image hash. */
-	bool cache_valid;                       		/**< Flag indicating if the cached hash is valid. */
+	bool cache_valid;								/**< Flag indicating if the cached hash is valid. */
 };
 
-int recovery_image_init (struct recovery_image *image, struct flash *flash, uint32_t base_addr);
+int recovery_image_init (struct recovery_image *image, const struct flash *flash,
+	uint32_t base_addr);
 void recovery_image_release (struct recovery_image *image);
 
 

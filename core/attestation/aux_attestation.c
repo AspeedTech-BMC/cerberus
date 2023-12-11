@@ -5,7 +5,9 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdbool.h>
-#include "platform.h"
+#include "platform_api.h"
+#include "common/buffer_util.h"
+#include "common/unused.h"
 #include "crypto/kdf.h"
 #include "riot/riot_core.h"
 #include "aux_attestation.h"
@@ -34,7 +36,7 @@ static const char AUX_ATTESTATION_SIGNING_LABEL[] = "signing key";
  *
  * @return 0 if the attestation handler was successfully initialized or an error code.
  */
-int aux_attestation_init (struct aux_attestation *aux, struct keystore *keystore,
+int aux_attestation_init (struct aux_attestation *aux, const struct keystore *keystore,
 	struct rsa_engine *rsa, struct riot_key_manager *riot, struct ecc_engine *ecc)
 {
 	if ((aux == NULL) || ((rsa != NULL) && (keystore == NULL)) ||
@@ -123,6 +125,8 @@ int aux_attestation_generate_key (struct aux_attestation *aux)
 
 	return status;
 #else
+	UNUSED (aux);
+
 	return AUX_ATTESTATION_UNSUPPORTED_CRYPTO;
 #endif
 }
@@ -212,8 +216,9 @@ int aux_attestation_create_certificate (struct aux_attestation *aux, struct x509
 		}
 	} while (i == sizeof (serial_num));
 
-	status = x509->create_ca_signed_certificate (x509, &attestation_cert, priv, length, serial_num,
-		sizeof (serial_num), "AUX", X509_CERT_END_ENTITY, ca_key, key_length, &ca_cert, NULL);
+	status = x509->create_ca_signed_certificate (x509, &attestation_cert, priv, length,
+		serial_num, sizeof (serial_num), "AUX", X509_CERT_END_ENTITY, ca_key,
+		key_length, HASH_TYPE_SHA256, &ca_cert, NULL, 0);
 	if (status != 0) {
 		goto exit_free_ca;
 	}
@@ -439,7 +444,7 @@ int aux_attestation_unseal (struct aux_attestation *aux, struct hash_engine *has
 		return status;
 	}
 
-	if (memcmp (hmac, payload_hmac, SHA256_HASH_LENGTH) != 0) {
+	if (buffer_compare (hmac, payload_hmac, SHA256_HASH_LENGTH) != 0) {
 		return AUX_ATTESTATION_HMAC_MISMATCH;
 	}
 
@@ -462,7 +467,7 @@ int aux_attestation_unseal (struct aux_attestation *aux, struct hash_engine *has
 				return status;
 			}
 
-			if (memcmp (pcr_value, &sealing[k][32], SHA256_HASH_LENGTH) != 0) {
+			if (buffer_compare (pcr_value, &sealing[k][32], SHA256_HASH_LENGTH) != 0) {
 				return AUX_ATTESTATION_PCR_MISMATCH;
 			}
 		}
@@ -533,6 +538,15 @@ rsa_init_error:
 
 	return status;
 #else
+	UNUSED (aux);
+	UNUSED (encrypted);
+	UNUSED (len_encrypted);
+	UNUSED (label);
+	UNUSED (len_label);
+	UNUSED (pad_hash);
+	UNUSED (decrypted);
+	UNUSED (len_decrypted);
+
 	return AUX_ATTESTATION_UNSUPPORTED_CRYPTO;
 #endif
 }
@@ -612,6 +626,13 @@ ecc_init_error:
 
 	return status;
 #else
+	UNUSED (aux);
+	UNUSED (ecc_key);
+	UNUSED (key_length);
+	UNUSED (hash);
+	UNUSED (seed);
+	UNUSED (seed_length);
+
 	return AUX_ATTESTATION_UNSUPPORTED_CRYPTO;
 #endif
 }

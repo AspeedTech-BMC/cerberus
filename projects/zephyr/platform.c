@@ -89,7 +89,7 @@ int platform_init_current_tick(platform_clock *currtime)
  *
  * @return 1 if the timeout has expired, 0 if it has not, or an error code.
  */
-int platform_has_timeout_expired(platform_clock *timeout)
+int platform_has_timeout_expired(const platform_clock *timeout)
 {
 	int64_t now;
 
@@ -355,7 +355,7 @@ uint32_t platform_htonl(uint32_t host_long)
  *
  * @param host_short The unsigned 16-bit integer to convert.
  */
-uint16_t platform_htons(uint16_t host_short)
+uint16_t _platform_htons(uint16_t host_short)
 {
 	return SWAP_BYTES_UINT16(host_short);
 }

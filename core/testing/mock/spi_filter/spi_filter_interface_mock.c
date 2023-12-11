@@ -7,7 +7,7 @@
 #include "spi_filter_interface_mock.h"
 
 
-static int spi_filter_interface_mock_get_port (struct spi_filter_interface *filter)
+static int spi_filter_interface_mock_get_port (const struct spi_filter_interface *filter)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -18,7 +18,7 @@ static int spi_filter_interface_mock_get_port (struct spi_filter_interface *filt
 	MOCK_RETURN_NO_ARGS (&mock->mock, spi_filter_interface_mock_get_port, filter);
 }
 
-static int spi_filter_interface_mock_get_mfg_id (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_get_mfg_id (const struct spi_filter_interface *filter,
 	uint8_t *mfg_id)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -27,10 +27,11 @@ static int spi_filter_interface_mock_get_mfg_id (struct spi_filter_interface *fi
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_mfg_id, filter, MOCK_ARG_CALL (mfg_id));
+	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_mfg_id, filter,
+		MOCK_ARG_PTR_CALL (mfg_id));
 }
 
-static int spi_filter_interface_mock_set_mfg_id (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_set_mfg_id (const struct spi_filter_interface *filter,
 	uint8_t mfg_id)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -42,7 +43,7 @@ static int spi_filter_interface_mock_set_mfg_id (struct spi_filter_interface *fi
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_set_mfg_id, filter, MOCK_ARG_CALL (mfg_id));
 }
 
-static int spi_filter_interface_mock_get_flash_size (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_get_flash_size (const struct spi_filter_interface *filter,
 	uint32_t *bytes)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -52,10 +53,10 @@ static int spi_filter_interface_mock_get_flash_size (struct spi_filter_interface
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_flash_size, filter,
-		MOCK_ARG_CALL (bytes));
+		MOCK_ARG_PTR_CALL (bytes));
 }
 
-static int spi_filter_interface_mock_set_flash_size (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_set_flash_size (const struct spi_filter_interface *filter,
 	uint32_t bytes)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -68,7 +69,7 @@ static int spi_filter_interface_mock_set_flash_size (struct spi_filter_interface
 		MOCK_ARG_CALL (bytes));
 }
 
-static int spi_filter_interface_mock_get_filter_mode (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_get_filter_mode (const struct spi_filter_interface *filter,
 	spi_filter_flash_mode *mode)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -78,10 +79,10 @@ static int spi_filter_interface_mock_get_filter_mode (struct spi_filter_interfac
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_filter_mode, filter,
-		MOCK_ARG_CALL (mode));
+		MOCK_ARG_PTR_CALL (mode));
 }
 
-static int spi_filter_interface_mock_set_filter_mode (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_set_filter_mode (const struct spi_filter_interface *filter,
 	spi_filter_flash_mode mode)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -94,7 +95,7 @@ static int spi_filter_interface_mock_set_filter_mode (struct spi_filter_interfac
 		MOCK_ARG_CALL (mode));
 }
 
-static int spi_filter_interface_mock_get_filter_enabled (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_get_filter_enabled (const struct spi_filter_interface *filter,
 	bool *enabled)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -104,10 +105,10 @@ static int spi_filter_interface_mock_get_filter_enabled (struct spi_filter_inter
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_filter_enabled, filter,
-		MOCK_ARG_CALL (enabled));
+		MOCK_ARG_PTR_CALL (enabled));
 }
 
-static int spi_filter_interface_mock_enable_filter (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_enable_filter (const struct spi_filter_interface *filter,
 	bool enable)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -120,7 +121,7 @@ static int spi_filter_interface_mock_enable_filter (struct spi_filter_interface 
 		MOCK_ARG_CALL (enable));
 }
 
-static int spi_filter_interface_mock_get_ro_cs (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_get_ro_cs (const struct spi_filter_interface *filter,
 	spi_filter_cs *act_sel)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -130,10 +131,10 @@ static int spi_filter_interface_mock_get_ro_cs (struct spi_filter_interface *fil
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_ro_cs, filter,
-		MOCK_ARG_CALL (act_sel));
+		MOCK_ARG_PTR_CALL (act_sel));
 }
 
-static int spi_filter_interface_mock_set_ro_cs (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_set_ro_cs (const struct spi_filter_interface *filter,
 	spi_filter_cs act_sel)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -145,7 +146,7 @@ static int spi_filter_interface_mock_set_ro_cs (struct spi_filter_interface *fil
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_set_ro_cs, filter, MOCK_ARG_CALL (act_sel));
 }
 
-static int spi_filter_interface_mock_get_addr_byte_mode (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_get_addr_byte_mode (const struct spi_filter_interface *filter,
 	spi_filter_address_mode *mode)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -155,11 +156,11 @@ static int spi_filter_interface_mock_get_addr_byte_mode (struct spi_filter_inter
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_addr_byte_mode, filter,
-		MOCK_ARG_CALL (mode));
+		MOCK_ARG_PTR_CALL (mode));
 }
 
-static int spi_filter_interface_mock_get_fixed_addr_byte_mode (struct spi_filter_interface *filter,
-	bool *fixed)
+static int spi_filter_interface_mock_get_fixed_addr_byte_mode (
+	const struct spi_filter_interface *filter, bool *fixed)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -168,10 +169,10 @@ static int spi_filter_interface_mock_get_fixed_addr_byte_mode (struct spi_filter
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_fixed_addr_byte_mode, filter,
-		MOCK_ARG_CALL (fixed));
+		MOCK_ARG_PTR_CALL (fixed));
 }
 
-static int spi_filter_interface_mock_set_addr_byte_mode (struct spi_filter_interface *filter,
+static int spi_filter_interface_mock_set_addr_byte_mode (const struct spi_filter_interface *filter,
 	spi_filter_address_mode mode)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
@@ -184,8 +185,8 @@ static int spi_filter_interface_mock_set_addr_byte_mode (struct spi_filter_inter
 		MOCK_ARG_CALL (mode));
 }
 
-static int spi_filter_interface_mock_set_fixed_addr_byte_mode (struct spi_filter_interface *filter,
-	spi_filter_address_mode mode)
+static int spi_filter_interface_mock_set_fixed_addr_byte_mode (
+	const struct spi_filter_interface *filter, spi_filter_address_mode mode)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -198,7 +199,7 @@ static int spi_filter_interface_mock_set_fixed_addr_byte_mode (struct spi_filter
 }
 
 static int spi_filter_interface_mock_get_addr_byte_mode_write_enable_required (
-	struct spi_filter_interface *filter, bool *required)
+	const struct spi_filter_interface *filter, bool *required)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -207,11 +208,11 @@ static int spi_filter_interface_mock_get_addr_byte_mode_write_enable_required (
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_addr_byte_mode_write_enable_required,
-		filter, MOCK_ARG_CALL (required));
+		filter, MOCK_ARG_PTR_CALL (required));
 }
 
 static int spi_filter_interface_mock_require_addr_byte_mode_write_enable (
-	struct spi_filter_interface *filter, bool require)
+	const struct spi_filter_interface *filter, bool require)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -223,8 +224,8 @@ static int spi_filter_interface_mock_require_addr_byte_mode_write_enable (
 		filter, MOCK_ARG_CALL (require));
 }
 
-static int spi_filter_interface_mock_get_reset_addr_byte_mode (struct spi_filter_interface *filter,
-	spi_filter_address_mode *mode)
+static int spi_filter_interface_mock_get_reset_addr_byte_mode (
+	const struct spi_filter_interface *filter, spi_filter_address_mode *mode)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -233,11 +234,11 @@ static int spi_filter_interface_mock_get_reset_addr_byte_mode (struct spi_filter
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_reset_addr_byte_mode, filter,
-		MOCK_ARG_CALL (mode));
+		MOCK_ARG_PTR_CALL (mode));
 }
 
-static int spi_filter_interface_mock_set_reset_addr_byte_mode (struct spi_filter_interface *filter,
-	spi_filter_address_mode mode)
+static int spi_filter_interface_mock_set_reset_addr_byte_mode (
+	const struct spi_filter_interface *filter, spi_filter_address_mode mode)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -250,7 +251,7 @@ static int spi_filter_interface_mock_set_reset_addr_byte_mode (struct spi_filter
 }
 
 static int spi_filter_interface_mock_are_all_single_flash_writes_allowed (
-	struct spi_filter_interface *filter, bool *allowed)
+	const struct spi_filter_interface *filter, bool *allowed)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -259,11 +260,11 @@ static int spi_filter_interface_mock_are_all_single_flash_writes_allowed (
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_are_all_single_flash_writes_allowed, filter,
-		MOCK_ARG_CALL (allowed));
+		MOCK_ARG_PTR_CALL (allowed));
 }
 
 static int spi_filter_interface_mock_allow_all_single_flash_writes (
-	struct spi_filter_interface *filter, bool allowed)
+	const struct spi_filter_interface *filter, bool allowed)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -275,8 +276,8 @@ static int spi_filter_interface_mock_allow_all_single_flash_writes (
 		MOCK_ARG_CALL (allowed));
 }
 
-static int spi_filter_interface_mock_get_write_enable_detected (struct spi_filter_interface *filter,
-	bool *detected)
+static int spi_filter_interface_mock_get_write_enable_detected (
+	const struct spi_filter_interface *filter, bool *detected)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -285,11 +286,11 @@ static int spi_filter_interface_mock_get_write_enable_detected (struct spi_filte
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_write_enable_detected, filter,
-		MOCK_ARG_CALL (detected));
+		MOCK_ARG_PTR_CALL (detected));
 }
 
-static int spi_filter_interface_mock_get_flash_dirty_state (struct spi_filter_interface *filter,
-	spi_filter_flash_state *state)
+static int spi_filter_interface_mock_get_flash_dirty_state (
+	const struct spi_filter_interface *filter, spi_filter_flash_state *state)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -298,10 +299,11 @@ static int spi_filter_interface_mock_get_flash_dirty_state (struct spi_filter_in
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_flash_dirty_state, filter,
-		MOCK_ARG_CALL (state));
+		MOCK_ARG_PTR_CALL (state));
 }
 
-static int spi_filter_interface_mock_clear_flash_dirty_state (struct spi_filter_interface *filter)
+static int spi_filter_interface_mock_clear_flash_dirty_state (
+	const struct spi_filter_interface *filter)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -312,8 +314,9 @@ static int spi_filter_interface_mock_clear_flash_dirty_state (struct spi_filter_
 	MOCK_RETURN_NO_ARGS (&mock->mock, spi_filter_interface_mock_clear_flash_dirty_state, filter);
 }
 
-static int spi_filter_interface_mock_get_filter_rw_region (struct spi_filter_interface *filter,
-	uint8_t region, uint32_t *start_addr, uint32_t *end_addr)
+static int spi_filter_interface_mock_get_filter_rw_region (
+	const struct spi_filter_interface *filter, uint8_t region, uint32_t *start_addr,
+	uint32_t *end_addr)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -322,11 +325,12 @@ static int spi_filter_interface_mock_get_filter_rw_region (struct spi_filter_int
 	}
 
 	MOCK_RETURN (&mock->mock, spi_filter_interface_mock_get_filter_rw_region, filter,
-		MOCK_ARG_CALL (region), MOCK_ARG_CALL (start_addr), MOCK_ARG_CALL (end_addr));
+		MOCK_ARG_CALL (region), MOCK_ARG_PTR_CALL (start_addr), MOCK_ARG_PTR_CALL (end_addr));
 }
 
-static int spi_filter_interface_mock_set_filter_rw_region (struct spi_filter_interface *filter,
-	uint8_t region, uint32_t start_addr, uint32_t end_addr)
+static int spi_filter_interface_mock_set_filter_rw_region (
+	const struct spi_filter_interface *filter, uint8_t region, uint32_t start_addr,
+	uint32_t end_addr)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 
@@ -338,7 +342,8 @@ static int spi_filter_interface_mock_set_filter_rw_region (struct spi_filter_int
 		MOCK_ARG_CALL (region), MOCK_ARG_CALL (start_addr), MOCK_ARG_CALL (end_addr));
 }
 
-static int spi_filter_interface_mock_clear_filter_rw_regions (struct spi_filter_interface *filter)
+static int spi_filter_interface_mock_clear_filter_rw_regions (
+	const struct spi_filter_interface *filter)
 {
 	struct spi_filter_interface_mock *mock = (struct spi_filter_interface_mock*) filter;
 

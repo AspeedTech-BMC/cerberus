@@ -174,8 +174,8 @@ static int bmc_recovery_on_host_cs1 (struct bmc_recovery *recovery, struct hash_
  *
  * @return 0 if the BMC recovery manager was initialized successfully or an error code.
  */
-int bmc_recovery_init (struct bmc_recovery *recovery, struct host_irq_control *irq,
-	struct host_processor *host, struct host_control *control,
+int bmc_recovery_init (struct bmc_recovery *recovery, const struct host_irq_control *irq,
+	struct host_processor *host, const struct host_control *control,
 	struct bmc_recovery_control *rec_ctrl)
 {
 	int status;
@@ -193,7 +193,7 @@ int bmc_recovery_init (struct bmc_recovery *recovery, struct host_irq_control *i
 	}
 
 	memcpy (&recovery->rec_ctrl, rec_ctrl, sizeof (struct bmc_recovery_control));
-	status = platform_init_current_tick (&recovery->timeout);
+	status = platform_init_timeout (0, &recovery->timeout);
 	if (status != 0) {
 		return status;
 	}

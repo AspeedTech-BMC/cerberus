@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "testing.h"
 #include "logging/debug_log.h"
 #include "testing/mock/logging/logging_mock.h"
@@ -217,7 +217,7 @@ static void debug_log_test_read_contents (CuTest *test)
 	setup_debug_log_mock_test (test, &logger);
 
 	status = mock_expect (&logger.mock, logger.base.read_contents, &logger, 0, MOCK_ARG (0),
-		MOCK_ARG (contents), MOCK_ARG (sizeof (contents)));
+		MOCK_ARG_PTR (contents), MOCK_ARG (sizeof (contents)));
 	CuAssertIntEquals (test, 0, status);
 
 	status = debug_log_read_contents (0, contents, sizeof (contents));

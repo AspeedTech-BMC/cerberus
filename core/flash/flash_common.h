@@ -62,7 +62,8 @@ enum {
  */
 enum {
 	FLASH_ID_SPANSION = 0x01,		/**< Spansion manufacturer ID. */
-	FLASH_ID_MICRON = 0x20,			/**< Micron manufacturer ID. */
+	FLASH_ID_MICRON = 0x20,			/**< Micron Authenta manufacturer ID. */
+	FLASH_ID_MICRON_X = 0x2C,		/**< Micron Xccela manufacturer ID. */
 	FLASH_ID_MICROCHIP = 0xbf,		/**< Microchip manufacturer ID. */
 	FLASH_ID_MACRONIX = 0xc2,		/**< Macronix manufacturer ID. */
 	FLASH_ID_WINBOND = 0xef			/**< Winbond manufacturer ID. */
@@ -73,10 +74,13 @@ enum {
  */
 enum {
 	FLASH_ID_MX25L = 0x2000,		/**< Macronix MX25L flash device IDs. */
+	FLASH_ID_MX25U = 0x2500,		/**< Macronix MX25U flash device IDs. */
 	FLASH_ID_SST26VF = 0x2600,		/**< Microchip SST26VF flash device IDs. */
 	FLASH_ID_W25Q = 0x4000,			/**< Winbond W25Q flash device IDs. */
 	FLASH_ID_W25Q_DTR = 0x7000,		/**< Winbond W25Q-DTR flash device IDs. */
-	FLASH_ID_MT25Q = 0xba00,		/**< Micron MT25Q flash device IDs. */
+	FLASH_ID_MT25QL = 0xba00,		/**< Micron MT25QL flash device IDs. */
+	FLASH_ID_MT25QU = 0xbb00,		/**< Micron MT25QU flash device IDs. */
+	FLASH_ID_MT35X = 0x5b00,		/**< Micron MT35X flash device IDs. */
 };
 
 /**

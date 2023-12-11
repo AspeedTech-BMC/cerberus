@@ -2,14 +2,15 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See LICENSE in the project root.
  */
-#ifndef _RIOT_X509_BLDR_H
-#define _RIOT_X509_BLDR_H
+#ifndef RIOTX509BLDR_H_
+#define RIOTX509BLDR_H_
 
 #include "RiotCrypt.h"
 #include "RiotDerEnc.h"
-#include "crypto/x509.h"
+#include "asn1/base64.h"
+#include "asn1/x509.h"
 #include "crypto/hash.h"
-#include "crypto/base64.h"
+#include "riot/tcg_dice.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,6 +42,7 @@ typedef struct
     const char *SubjectCommon;
     const char *SubjectOrg;
     const char *SubjectCountry;
+    const int *SignatureAlgorithm;
 } RIOT_X509_TBS_DATA;
 
 
@@ -60,34 +62,60 @@ typedef struct
 	int src_key_type;
 } RIOT_X509_PUBLIC_KEY;
 
+// OIDs used in cert generation.
+extern const int riotOID[];
+extern const int ecdsaWithSHA256OID[];
+extern const int ecdsaWithSHA384OID[];
+extern const int ecdsaWithSHA512OID[];
+extern const int ecPublicKeyOID[];
+extern const int prime256v1OID[];
+extern const int keyUsageOID[];
+extern const int extKeyUsageOID[];
+extern const int extAuthKeyIdentifierOID[];
+extern const int extSubjectKeyIdentifierOID[];
+extern const int clientAuthOID[];
+extern const int sha1OID[];
+extern const int sha256OID[];
+extern const int sha384OID[];
+extern const int sha512OID[];
+extern const int commonNameOID[];
+extern const int countryNameOID[];
+extern const int orgNameOID[];
+extern const int basicConstraintsOID[];
+extern const int extensionRequestOID[];
+extern const int tcbInfoOID[];
+extern const int ueidOID[];
+
 int
 X509GetDeviceCertTBS(
-	DERBuilderContext			   *Tbs,
-	const RIOT_X509_TBS_DATA	   *TbsData,
-	const uint8_t				   *DevIdKeyPub,
-	size_t						   key_len,
-	const uint8_t				   *RootKeyPubDigest,
-	int							   type,
-	const struct x509_dice_tcbinfo *dice
+    DERBuilderContext                   *Tbs,
+    const RIOT_X509_TBS_DATA            *TbsData,
+    const uint8_t                       *CertKey,
+    size_t                              CertKeyLen,
+    const uint8_t                       *SubjectKeyIdentifier,
+    const uint8_t                       *AuthKeyIdentifier,
+    int                                 Type,
+    const struct tcg_dice_tcbinfo      *Dice
 );
 
 int
 X509GetCASignedCertTBS(
-	DERBuilderContext					*Tbs,
-	const RIOT_X509_TBS_DATA			*TbsData,
-	const uint8_t						*CertKey,
-	size_t								key_len,
-	const uint8_t						*AuthKeyPub,
-	size_t								auth_key_len,
-	int									type,
-	const struct x509_dice_tcbinfo 		*dice,
-	struct hash_engine		            *hash
+    DERBuilderContext                   *Tbs,
+    const RIOT_X509_TBS_DATA            *TbsData,
+    const uint8_t                       *CertKey,
+    size_t                              CertKeyLen,
+    const uint8_t                       *SubjectKeyIdentifier,
+    const uint8_t                       *AuthKeyIdentifier,
+    int                                 Type,
+    const struct tcg_dice_tcbinfo      *Dice
 );
 
 int
 X509MakeDeviceCert(
     DERBuilderContext   *DeviceIDCert,
-    RIOT_ECC_SIGNATURE  *TbsSig
+    const uint8_t       *TbsSig,
+    size_t              sig_length,
+    const int           *sig_oid
 );
 
 int
@@ -129,14 +157,17 @@ X509GetDERCsrTbs(
     uint8_t                        *DeviceIDPub,
 	size_t                         key_len,
 	int                            type,
-	const char                     *oid,
-	const struct x509_dice_tcbinfo *dice
+	const uint8_t                  *oid,
+    size_t                         oid_len,
+	const struct tcg_dice_tcbinfo *dice
 );
 
 int
 X509GetDERCsr(
     DERBuilderContext   *Context,
-    RIOT_ECC_SIGNATURE  *Signature
+    const uint8_t       *Signature,
+    size_t              sig_length,
+    const int           *sig_oid
 );
 
 int
@@ -155,4 +186,4 @@ X509MakeRootCert(
 #ifdef __cplusplus
 }
 #endif
-#endif
+#endif /* RIOTX509BLDR_H_ */

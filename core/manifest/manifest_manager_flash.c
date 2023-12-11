@@ -30,9 +30,8 @@ static int manifest_manager_flash_verify_manifest (struct manifest_manager_flash
 	if (status == 0) {
 		region->is_valid = true;
 	}
-	else if ((status == RSA_ENGINE_BAD_SIGNATURE) || (status == ECC_ENGINE_BAD_SIGNATURE) ||
-		(status == MANIFEST_BAD_MAGIC_NUMBER) || (status == MANIFEST_BAD_LENGTH) ||
-		(status == MANIFEST_MALFORMED)) {
+	else if ((status == SIG_VERIFICATION_BAD_SIGNATURE) || (status == MANIFEST_BAD_MAGIC_NUMBER) ||
+		(status == MANIFEST_BAD_LENGTH) || (status == MANIFEST_MALFORMED)) {
 		region->is_valid = false;
 		status = 0;
 	}
@@ -87,7 +86,7 @@ static int manifest_manager_flash_check_pending_platform_id (struct manifest_man
 	pending = manifest_manager_flash_get_region (manager, false);
 
 	if (active->is_valid && pending->is_valid) {
-		status = manifest_flash_compare_platform_id (active->flash, pending->flash, 
+		status = manifest_flash_compare_platform_id (active->flash, pending->flash,
 			manager->sku_upgrade_permitted);
 		if (status == 1) {
 			pending->is_valid = false;
@@ -153,7 +152,7 @@ int manifest_manager_flash_init (struct manifest_manager_flash *manager,
 	struct manifest_manager *base, struct manifest *region1, struct manifest *region2,
 	struct manifest_flash *region1_flash, struct manifest_flash *region2_flash,
 	struct state_manager *state, struct hash_engine *hash,
-	struct signature_verification *verification, uint8_t manifest_index, uint8_t log_msg_empty,
+	const struct signature_verification *verification, uint8_t manifest_index, uint8_t log_msg_empty,
 	bool sku_upgrade_permitted)
 {
 	int status;

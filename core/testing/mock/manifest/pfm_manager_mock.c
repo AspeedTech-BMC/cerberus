@@ -8,7 +8,7 @@
 #include "testing/engines/hash_testing_engine.h"
 
 
-static struct pfm* pfm_manager_mock_get_active_pfm (struct pfm_manager *manager)
+static struct pfm* pfm_manager_mock_get_active_pfm (const struct pfm_manager *manager)
 {
 	struct pfm_manager_mock *mock = (struct pfm_manager_mock*) manager;
 
@@ -16,10 +16,11 @@ static struct pfm* pfm_manager_mock_get_active_pfm (struct pfm_manager *manager)
 		return NULL;
 	}
 
-	MOCK_RETURN_NO_ARGS_CAST (&mock->mock, struct pfm*, pfm_manager_mock_get_active_pfm, manager);
+	MOCK_RETURN_NO_ARGS_CAST_PTR (&mock->mock, struct pfm*, pfm_manager_mock_get_active_pfm,
+		manager);
 }
 
-static struct pfm* pfm_manager_mock_get_pending_pfm (struct pfm_manager *manager)
+static struct pfm* pfm_manager_mock_get_pending_pfm (const struct pfm_manager *manager)
 {
 	struct pfm_manager_mock *mock = (struct pfm_manager_mock*) manager;
 
@@ -27,11 +28,11 @@ static struct pfm* pfm_manager_mock_get_pending_pfm (struct pfm_manager *manager
 		return NULL;
 	}
 
-	MOCK_RETURN_NO_ARGS_CAST (&mock->mock, struct pfm*, pfm_manager_mock_get_pending_pfm, manager);
+	MOCK_RETURN_NO_ARGS_CAST_PTR (&mock->mock, struct pfm*, pfm_manager_mock_get_pending_pfm,
+		manager);
 }
 
-static void pfm_manager_mock_free_pfm (struct pfm_manager *manager,
-	struct pfm *pfm)
+static void pfm_manager_mock_free_pfm (const struct pfm_manager *manager, struct pfm *pfm)
 {
 	struct pfm_manager_mock *mock = (struct pfm_manager_mock*) manager;
 
@@ -39,10 +40,10 @@ static void pfm_manager_mock_free_pfm (struct pfm_manager *manager,
 		return;
 	}
 
-	MOCK_VOID_RETURN (&mock->mock, pfm_manager_mock_free_pfm, manager, MOCK_ARG_CALL (pfm));
+	MOCK_VOID_RETURN (&mock->mock, pfm_manager_mock_free_pfm, manager, MOCK_ARG_PTR_CALL (pfm));
 }
 
-static int pfm_manager_mock_activate_pending_manifest (struct manifest_manager *manager)
+static int pfm_manager_mock_activate_pending_manifest (const struct manifest_manager *manager)
 {
 	struct pfm_manager_mock *mock = (struct pfm_manager_mock*) manager;
 
@@ -53,7 +54,8 @@ static int pfm_manager_mock_activate_pending_manifest (struct manifest_manager *
 	MOCK_RETURN_NO_ARGS (&mock->mock, pfm_manager_mock_activate_pending_manifest, manager);
 }
 
-static int pfm_manager_mock_clear_pending_region (struct manifest_manager *manager, size_t size)
+static int pfm_manager_mock_clear_pending_region (const struct manifest_manager *manager,
+	size_t size)
 {
 	struct pfm_manager_mock *mock = (struct pfm_manager_mock*) manager;
 
@@ -65,7 +67,7 @@ static int pfm_manager_mock_clear_pending_region (struct manifest_manager *manag
 		MOCK_ARG_CALL (size));
 }
 
-static int pfm_manager_mock_write_pending_data (struct manifest_manager *manager,
+static int pfm_manager_mock_write_pending_data (const struct manifest_manager *manager,
 	const uint8_t *data, size_t length)
 {
 	struct pfm_manager_mock *mock = (struct pfm_manager_mock*) manager;
@@ -74,11 +76,11 @@ static int pfm_manager_mock_write_pending_data (struct manifest_manager *manager
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, pfm_manager_mock_write_pending_data, manager, MOCK_ARG_CALL (data),
-		MOCK_ARG_CALL (length));
+	MOCK_RETURN (&mock->mock, pfm_manager_mock_write_pending_data, manager,
+		MOCK_ARG_PTR_CALL (data), MOCK_ARG_CALL (length));
 }
 
-static int pfm_manager_mock_verify_pending_manifest (struct manifest_manager *manager)
+static int pfm_manager_mock_verify_pending_manifest (const struct manifest_manager *manager)
 {
 	struct pfm_manager_mock *mock = (struct pfm_manager_mock*) manager;
 
@@ -89,7 +91,7 @@ static int pfm_manager_mock_verify_pending_manifest (struct manifest_manager *ma
 	MOCK_RETURN_NO_ARGS (&mock->mock, pfm_manager_mock_verify_pending_manifest, manager);
 }
 
-static int pfm_manager_mock_clear_all_manifests (struct manifest_manager *manager)
+static int pfm_manager_mock_clear_all_manifests (const struct manifest_manager *manager)
 {
 	struct pfm_manager_mock *mock = (struct pfm_manager_mock*) manager;
 
@@ -126,7 +128,7 @@ static const char* pfm_manager_mock_func_name_map (void *func)
 		return "free_pfm";
 	}
 	else if (func == pfm_manager_mock_activate_pending_manifest) {
-		return "activate_pending_pfm";
+		return "activate_pending_manifest";
 	}
 	else if (func == pfm_manager_mock_clear_pending_region) {
 		return "clear_pending_region";
@@ -135,7 +137,7 @@ static const char* pfm_manager_mock_func_name_map (void *func)
 		return "write_pending_data";
 	}
 	else if (func == pfm_manager_mock_verify_pending_manifest) {
-		return "verify_pending_pfm";
+		return "verify_pending_manifest";
 	}
 	else if (func == pfm_manager_mock_clear_all_manifests) {
 		return "clear_all_manifests";

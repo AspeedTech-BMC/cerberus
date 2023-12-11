@@ -8,13 +8,13 @@
 #include "status/rot_status.h"
 #include "flash/flash.h"
 #include "crypto/hash.h"
-#include "crypto/rsa.h"
 #include "firmware/key_manifest.h"
 #include "firmware/firmware_header.h"
 
 
 /**
- * A platform-independent API for managing a complete firmware image for the system.
+ * A platform-independent API for managing a complete firmware image for the system.  Firmware image
+ * instances are not guaranteed to be thread-safe.
  */
 struct firmware_image {
 	/**
@@ -27,26 +27,26 @@ struct firmware_image {
 	 * @param flash The flash device that contains the firmware image.
 	 * @param base_addr The starting address of the new firmware image.
 	 *
-	 * @return 0 if the image reference was updated successfully or an error code.  Load-time
-	 * validation errors will generate one of the following errors:
-	 * 		- FIRMWARE_IMAGE_INVALID_FORMAT
-	 * 		- FIRMWARE_IMAGE_BAD_CHECKSUM
-	 * 		- KEY_MANIFEST_INVALID_FORMAT
-	 * 		- FIRMWARE_HEADER or IMAGE_HEADER validation errors
+	 * @return 0 if the image reference was updated successfully or an error code.
 	 */
-	int (*load) (struct firmware_image *fw, struct flash *flash, uint32_t base_addr);
+	int (*load) (const struct firmware_image *fw, const struct flash *flash, uint32_t base_addr);
 
 	/**
 	 * Verify the complete firmware image.  All components in the image will be fully validated.
 	 * This includes checking image signatures and key revocation.
 	 *
+	 * Image structures and signing requirements can vary greatly between different devices.  Any
+	 * additional crypto, such as RSA or ECC, that is required for image verification must be
+	 * included as part of the specific implementation.
+	 *
 	 * @param fw The firmware image to validate.
 	 * @param hash The hash engine to use for validation.
-	 * @param rsa The RSA engine to use for signature checking.
 	 *
-	 * @return 0 if the firmware image is valid or an error code.
+	 * @return 0 if the firmware image is valid or an error code.  If verification failed due to an
+	 * incorrect signature, FIRMWARE_IMAGE_BAD_SIGNATURE will be returned, regardless of the
+	 * underlying signature verification algorithm.
 	 */
-	int (*verify) (struct firmware_image *fw, struct hash_engine *hash, struct rsa_engine *rsa);
+	int (*verify) (const struct firmware_image *fw, struct hash_engine *hash);
 
 	/**
 	 * Get the total size of the firmware image.
@@ -56,7 +56,7 @@ struct firmware_image {
 	 * @return The size of the firmware image or an error code.  Use ROT_IS_ERROR to check the
 	 * return value.
 	 */
-	int (*get_image_size) (struct firmware_image *fw);
+	int (*get_image_size) (const struct firmware_image *fw);
 
 	/**
 	 * Get the key manifest for the current firmware image.
@@ -67,7 +67,7 @@ struct firmware_image {
 	 * manifest is managed by the firmware image instance and is only guaranteed to be valid until
 	 * the next call to firmware_image.load.
 	 */
-	struct key_manifest* (*get_key_manifest) (struct firmware_image *fw);
+	const struct key_manifest* (*get_key_manifest) (const struct firmware_image *fw);
 
 	/**
 	 * Get the main image header for the current firmware image.
@@ -78,7 +78,7 @@ struct firmware_image {
 	 * is managed by the firmware image instance and is only guaranteed to be valid until the next
 	 * call to firmware_image.load.
 	 */
-	struct firmware_header* (*get_firmware_header) (struct firmware_image *fw);
+	const struct firmware_header* (*get_firmware_header) (const struct firmware_image *fw);
 };
 
 
@@ -102,6 +102,8 @@ enum {
 	FIRMWARE_IMAGE_NOT_AVAILABLE = FIRMWARE_IMAGE_ERROR (0x0b),			/**< A firmware component is not available in the image. */
 	FIRMWARE_IMAGE_INVALID_SIGNATURE = FIRMWARE_IMAGE_ERROR (0x0c),		/**< An image signature is malformed. */
 	FIRMWARE_IMAGE_FORCE_RECOVERY = FIRMWARE_IMAGE_ERROR (0x0d),		/**< Force loading the recovery firmware image. */
+	FIRMWARE_IMAGE_BAD_SIGNATURE = FIRMWARE_IMAGE_ERROR (0x0e),			/**< Signature verification of the image failed. */
+	FIRMWARE_IMAGE_REVOKED = FIRMWARE_IMAGE_ERROR (0x0f),				/**< Firmware data contained in the image has been revoked. */
 };
 
 

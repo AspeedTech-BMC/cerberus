@@ -6,12 +6,12 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "authorization.h"
-#include "common/signature_verification.h"
 #include "crypto/ecc.h"
 #include "crypto/hash.h"
 #include "crypto/rng.h"
+#include "crypto/signature_verification.h"
 
 
 /**

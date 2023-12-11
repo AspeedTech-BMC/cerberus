@@ -11,7 +11,7 @@
     #include <windows.h>
     #include <winsock2.h> // TODO: REMOVE THIS
 #else
-    #include "platform.h"
+    #include "platform_api.h"
 
 #endif
 
@@ -202,18 +202,19 @@ Error:
 int
 DERAddEncodedOID(
     DERBuilderContext   *Context,
-    const char          *Oid
+    const uint8_t       *Oid,
+    size_t               OidLength
 )
 {
-    uint32_t j, numChar = (uint32_t)strlen(Oid);
+    uint32_t j;
 
-    ASRT(numChar < 127);
-    CHECK_SPACE2(Context, numChar);
+    ASRT(OidLength < 127);
+    CHECK_SPACE2(Context, OidLength);
 
     Context->Buffer[Context->Position++] = 0x06;
-    Context->Buffer[Context->Position++] = (uint8_t)numChar;
+    Context->Buffer[Context->Position++] = (uint8_t)OidLength;
 
-    for (j = 0; j < numChar; j++) {
+    for (j = 0; j < OidLength; j++) {
         Context->Buffer[Context->Position++] = Oid[j];
     }
     return 0;
@@ -726,9 +727,19 @@ DERAddPublicKey(
 	size_t				key_len
 )
 {
-    CHECK_SPACE2(Context, key_len);
-    memcpy(&Context->Buffer[Context->Position], key, key_len);
-    Context->Position += key_len;
+    return DERAddDER(Context, key, key_len);
+}
+
+int
+DERAddDER(
+    DERBuilderContext   *Context,
+    const uint8_t       *der,
+    size_t              length
+)
+{
+    CHECK_SPACE2(Context, length);
+    memcpy(&Context->Buffer[Context->Position], der, length);
+    Context->Position += length;
     return 0;
 Error:
     return -1;

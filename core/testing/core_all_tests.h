@@ -6,6 +6,7 @@
 
 #include "testing.h"
 #include "platform_all_tests.h"
+#include "asn1/asn1_all_tests.h"
 #include "attestation/attestation_all_tests.h"
 #include "cmd_interface/cmd_interface_all_tests.h"
 #include "common/common_all_tests.h"
@@ -18,6 +19,7 @@
 #include "logging/logging_all_tests.h"
 #include "manifest/manifest_all_tests.h"
 #include "mctp/mctp_all_tests.h"
+#include "memory_mgmt/memory_mgmt_all_tests.h"
 #include "recovery/recovery_all_tests.h"
 #include "riot/riot_all_tests.h"
 #include "spi_filter/spi_filter_all_tests.h"
@@ -35,6 +37,7 @@
  */
 void add_all_core_tests (CuSuite *suite)
 {
+	add_all_asn1_tests (suite);
 	add_all_attestation_tests (suite);
 	add_all_cmd_interface_tests (suite);
 	add_all_common_tests (suite);
@@ -47,6 +50,7 @@ void add_all_core_tests (CuSuite *suite)
 	add_all_logging_tests (suite);
 	add_all_manifest_tests (suite);
 	add_all_mctp_tests (suite);
+	add_all_memory_mgmt_tests (suite);
 	add_all_recovery_tests (suite);
 	add_all_riot_tests (suite);
 	add_all_spi_filter_tests (suite);
@@ -55,6 +59,12 @@ void add_all_core_tests (CuSuite *suite)
 	add_all_tpm_tests (suite);
 
 	/* Test coverage for platform abstractions. */
+#if (defined TESTING_RUN_PLATFORM_CLOCK_SUITE || \
+		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
+		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \
+	!defined TESTING_SKIP_PLATFORM_CLOCK_SUITE
+	TESTING_RUN_SUITE (platform_clock);
+#endif
 #if (defined TESTING_RUN_PLATFORM_SEMAPHORE_SUITE || \
 		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
 		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \

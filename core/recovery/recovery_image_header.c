@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 #include <string.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "recovery_image_header.h"
 #include "cmd_interface/cerberus_protocol.h"
 
@@ -41,7 +41,7 @@ union recovery_image_header_format {
  *
  * @return 0 if the header was successfully loaded from flash or an error code.
  */
-int recovery_image_header_init (struct recovery_image_header *header, struct flash *flash,
+int recovery_image_header_init (struct recovery_image_header *header, const struct flash *flash,
 	uint32_t addr)
 {
 	size_t hdr_data_len;
@@ -195,7 +195,7 @@ int recovery_image_header_get_image_length (struct recovery_image_header *header
  * @param length The output buffer for the recovery image header length.
  *
  * @return 0 if the recovery image header length was available in the header or an error code.
- */ 
+ */
 int recovery_image_header_get_length (struct recovery_image_header *header, size_t *length)
 {
 	if ((header == NULL) || (length == NULL)) {

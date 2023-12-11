@@ -26,7 +26,7 @@ struct pcd_manager {
 	 *
 	 * @return The active PCD or null if there is no active PCD.
 	 */
-	struct pcd* (*get_active_pcd) (struct pcd_manager *manager);
+	struct pcd* (*get_active_pcd) (const struct pcd_manager *manager);
 
 	/**
 	 * Release a PCD instance retrieved from the manager. PCD instances must only be released by
@@ -35,12 +35,12 @@ struct pcd_manager {
 	 * @param manager The PCD manager that allocated the PCD instance.
 	 * @param pcd The PCD to release.
 	 */
-	void (*free_pcd) (struct pcd_manager *manager, struct pcd *pcd);
+	void (*free_pcd) (const struct pcd_manager *manager, struct pcd *pcd);
 };
 
 
-int pcd_manager_add_observer (struct pcd_manager *manager, struct pcd_observer *observer);
-int pcd_manager_remove_observer (struct pcd_manager *manager, struct pcd_observer *observer);
+int pcd_manager_add_observer (struct pcd_manager *manager, const struct pcd_observer *observer);
+int pcd_manager_remove_observer (struct pcd_manager *manager, const struct pcd_observer *observer);
 
 /* Internal functions for use by derived types. */
 int pcd_manager_init (struct pcd_manager *manager, struct hash_engine *hash);
@@ -49,6 +49,7 @@ void pcd_manager_release (struct pcd_manager *manager);
 void pcd_manager_on_pcd_verified (struct pcd_manager *manager, struct pcd *pending);
 void pcd_manager_on_pcd_activated (struct pcd_manager *manager);
 void pcd_manager_on_clear_active (struct pcd_manager *manager);
+void pcd_manager_on_pcd_activation_request (struct pcd_manager *manager);
 
 int pcd_manager_get_id_measured_data (struct pcd_manager *manager, size_t offset, uint8_t *buffer,
 	size_t length, uint32_t *total_len);

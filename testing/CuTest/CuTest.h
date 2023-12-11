@@ -1,11 +1,11 @@
 // Portions Copyright (c) Microsoft Corporation
 
-#ifndef CU_TEST_H
-#define CU_TEST_H
+#ifndef CUTEST_H_
+#define CUTEST_H_
 
 #include <setjmp.h>
 #include <stdarg.h>
-#include "platform.h"
+#include "platform_api.h"
 
 #define CUTEST_VERSION  "CuTest 1.5b"
 
@@ -67,6 +67,9 @@ void CuAssertStrEquals_LineMsg(CuTest* tc,
 void CuAssertIntEquals_LineMsg(CuTest* tc,
 	const char* file, int line, const char* message,
 	int expected, int actual);
+void CuAssertInt64Equals_LineMsg(CuTest* tc,
+	const char* file, int line, const char* message,
+	long long expected, long long actual);
 void CuAssertDblEquals_LineMsg(CuTest* tc,
 	const char* file, int line, const char* message,
 	double expected, double actual, double delta);
@@ -84,6 +87,8 @@ void CuAssertPtrEquals_LineMsg(CuTest* tc,
 #define CuAssertStrEquals_Msg(tc,ms,ex,ac)    CuAssertStrEquals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac))
 #define CuAssertIntEquals(tc,ex,ac)           CuAssertIntEquals_LineMsg((tc),__FILE__,__LINE__,NULL,(ex),(ac))
 #define CuAssertIntEquals_Msg(tc,ms,ex,ac)    CuAssertIntEquals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac))
+#define CuAssertInt64Equals(tc,ex,ac)         CuAssertInt64Equals_LineMsg((tc),__FILE__,__LINE__,NULL,(ex),(ac))
+#define CuAssertInt64Equals_Msg(tc,ms,ex,ac)  CuAssertInt64Equals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac))
 #define CuAssertDblEquals(tc,ex,ac,dl)        CuAssertDblEquals_LineMsg((tc),__FILE__,__LINE__,NULL,(ex),(ac),(dl))
 #define CuAssertDblEquals_Msg(tc,ms,ex,ac,dl) CuAssertDblEquals_LineMsg((tc),__FILE__,__LINE__,(ms),(ex),(ac),(dl))
 #define CuAssertPtrEquals(tc,ex,ac)           CuAssertPtrEquals_LineMsg((tc),__FILE__,__LINE__,NULL,(ex),(ac))
@@ -119,4 +124,4 @@ void CuSuiteRun(CuSuite* testSuite);
 void CuSuiteSummary(CuSuite* testSuite, CuString* summary);
 void CuSuiteDetails(CuSuite* testSuite, CuString* details);
 
-#endif /* CU_TEST_H */
+#endif /* CUTEST_H_ */

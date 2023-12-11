@@ -4,14 +4,15 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "keystore_flash.h"
+#include "common/unused.h"
 
 
-static int keystore_flash_save_key (struct keystore *store, int id, const uint8_t *key,
+int keystore_flash_save_key (const struct keystore *store, int id, const uint8_t *key,
 	size_t length)
 {
-	struct keystore_flash *flash = (struct keystore_flash*) store;
+	const struct keystore_flash *flash = (const struct keystore_flash*) store;
 
 	if (flash == NULL) {
 		return KEYSTORE_INVALID_ARGUMENT;
@@ -20,9 +21,9 @@ static int keystore_flash_save_key (struct keystore *store, int id, const uint8_
 	return flash->store->write (flash->store, id, key, length);
 }
 
-static int keystore_flash_load_key (struct keystore *store, int id, uint8_t **key, size_t *length)
+int keystore_flash_load_key (const struct keystore *store, int id, uint8_t **key, size_t *length)
 {
-	struct keystore_flash *flash = (struct keystore_flash*) store;
+	const struct keystore_flash *flash = (const struct keystore_flash*) store;
 	int key_len;
 	int status;
 
@@ -72,9 +73,9 @@ error:
 	return status;
 }
 
-static int keystore_flash_erase_key (struct keystore *store, int id)
+int keystore_flash_erase_key (const struct keystore *store, int id)
 {
-	struct keystore_flash *flash = (struct keystore_flash*) store;
+	const struct keystore_flash *flash = (const struct keystore_flash*) store;
 
 	if (flash == NULL) {
 		return KEYSTORE_INVALID_ARGUMENT;
@@ -83,9 +84,9 @@ static int keystore_flash_erase_key (struct keystore *store, int id)
 	return flash->store->erase (flash->store, id);
 }
 
-static int keystore_flash_erase_all_keys (struct keystore *store)
+int keystore_flash_erase_all_keys (const struct keystore *store)
 {
-	struct keystore_flash *flash = (struct keystore_flash*) store;
+	const struct keystore_flash *flash = (const struct keystore_flash*) store;
 
 	if (flash == NULL) {
 		return KEYSTORE_INVALID_ARGUMENT;
@@ -103,7 +104,7 @@ static int keystore_flash_erase_all_keys (struct keystore *store)
  *
  * @return 0 if the key storage was successfully initialized or an error code.
  */
-int keystore_flash_init (struct keystore_flash *store, struct flash_store *flash)
+int keystore_flash_init (struct keystore_flash *store, const struct flash_store *flash)
 {
 	if ((store == NULL) || (flash == NULL)) {
 		return KEYSTORE_INVALID_ARGUMENT;
@@ -126,7 +127,7 @@ int keystore_flash_init (struct keystore_flash *store, struct flash_store *flash
  *
  * @param store The keystore to release.
  */
-void keystore_flash_release (struct keystore_flash *store)
+void keystore_flash_release (const struct keystore_flash *store)
 {
-
+	UNUSED (store);
 }

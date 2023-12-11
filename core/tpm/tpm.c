@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "status/rot_status.h"
 #include "flash/flash_common.h"
 #include "flash/flash_util.h"
@@ -304,7 +304,7 @@ int tpm_get_storage (struct tpm *tpm, uint8_t index, uint8_t *storage, size_t st
  *
  * @return 0 if the TPM storage was successfully initialized or an error code.
  */
-int tpm_init (struct tpm *tpm, struct flash_store *flash)
+int tpm_init (struct tpm *tpm, const struct flash_store *flash)
 {
 	struct tpm_header *header;
 	int status;

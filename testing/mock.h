@@ -70,7 +70,7 @@ typedef void (*mock_arg_copy) (const struct mock_arg *expected, struct mock_arg 
  * A container for a function argument description.
  */
 struct mock_arg {
-	intptr_t value;					/**< The expected value of the argument. */
+	int64_t value;					/**< The expected value of the argument. */
 	void *ptr_value;				/**< Data stored in the pointer argument. */
 	size_t ptr_value_len;			/**< The length of the data stored at the pointer value. */
 	mock_arg_validator validate;	/**< Custom validation routine for the argument. */
@@ -97,6 +97,10 @@ enum {
 	MOCK_ARG_FLAG_PTR_PTR = 0x20,			/**< The argument is a pointer to a pointer that should be dereferenced. */
 	MOCK_ARG_FLAG_PTR_PTR_NOT_NULL = 0x40,	/**< The pointer referenced by the pointer argument can be anything except NULL (0). */
 	MOCK_ARG_FLAG_OUT_PTR_PTR = 0x80,		/**< The argument output data should be stored at a pointer referenced by another pointer. */
+	MOCK_ARG_FLAG_GREATER_EQUAL = 0x100,	/**< Check that an argument is at least a specific value. */
+	MOCK_ARG_FLAG_GREATER = 0x200,			/**< Check that an argument is larger than a specific value. */
+	MOCK_ARG_FLAG_LESS_EQUAL = 0x400,		/**< Check that an argument is no more than a specific value. */
+	MOCK_ARG_FLAG_LESS = 0x800,				/**< Check that an argument is less than a specific value. */
 };
 
 struct mock_call;
@@ -120,7 +124,7 @@ struct mock_call;
  * value of this function will be used as the return value from the mock, overriding the return
  * value specified when the expectation was created.
  */
-typedef intptr_t (*mock_call_action) (const struct mock_call *expected,
+typedef int64_t (*mock_call_action) (const struct mock_call *expected,
 	const struct mock_call *called);
 
 /**
@@ -132,7 +136,7 @@ struct mock_call {
 	const void *instance;		/**< The firmware image instance calling the function. */
 	int argc;					/**< The number of arguments. */
 	struct mock_arg *argv;		/**< The arguments to the function. */
-	intptr_t return_val;		/**< The value to return for the call. */
+	int64_t return_val;			/**< The value to return for the call. */
 	mock_call_action action;	/**< A custom action to execute while processing the call. */
 	void *context;				/**< User context provided for the custom action. */
 };
@@ -144,7 +148,7 @@ struct mock_save_arg {
 	struct mock_save_arg *next;		/**< The next saved argument in the list. */
 	int id;							/**< The ID of the saved argument. */
 	bool saved;						/**< Flag indicating if a value was saved in this container. */
-	intptr_t value;					/**< The saved argument value. */
+	int64_t value;					/**< The saved argument value. */
 	struct mock_save_arg *shared;	/**< A link a shared instance for this saved argument. */
 };
 
@@ -196,7 +200,7 @@ struct mock {
  * Structure to pass to the mock when setting expectations on a function.
  */
 struct mock_expect_arg {
-	intptr_t value;					/**< The expected value of the argument. */
+	int64_t value;					/**< The expected value of the argument. */
 	size_t ptr_value_len;			/**< The length of data that should be validated at a pointer location. */
 	mock_arg_validator validate;	/**< Custom validation routine for the argument. */
 	int save_arg;					/**< The ID of the saved argument entry to use for validation. */
@@ -207,10 +211,11 @@ struct mock_expect_arg {
 };
 
 /**
- * Expectation that an argument will be a specific value.
+ * Expectation that an argument will be a specific value.  This should only be used with integer
+ * values.  If the argument is a pointer, use MOCK_ARG_PTR instead.
  */
 #define MOCK_ARG(x)	((struct mock_expect_arg) { \
-	.value = (intptr_t) x, \
+	.value = (int64_t) x, \
 	.ptr_value_len = 0, \
 	.validate = NULL, \
 	.save_arg = -1, \
@@ -233,6 +238,62 @@ struct mock_expect_arg {
 	.copy = NULL})
 
 /**
+ * Expectation that an argument will be at least a specific value.  This will be treated as a signed
+ * integer value.
+ */
+#define MOCK_ARG_AT_LEAST(x)	((struct mock_expect_arg) { \
+	.value = (int64_t) x, \
+	.ptr_value_len = 0, \
+	.validate = NULL, \
+	.save_arg = -1, \
+	.flags = MOCK_ARG_FLAG_GREATER_EQUAL, \
+	.alloc = NULL, \
+	.free = NULL, \
+	.copy = NULL})
+
+/**
+ * Expectation that an argument will be larger than a specific value.  This will be treated as a
+ * signed integer value.
+ */
+#define MOCK_ARG_MORE_THAN(x)	((struct mock_expect_arg) { \
+	.value = (int64_t) x, \
+	.ptr_value_len = 0, \
+	.validate = NULL, \
+	.save_arg = -1, \
+	.flags = MOCK_ARG_FLAG_GREATER, \
+	.alloc = NULL, \
+	.free = NULL, \
+	.copy = NULL})
+
+/**
+ * Expectation that an argument will be no larger than a specific value.  This will be treated as a
+ * signed integer value.
+ */
+#define MOCK_ARG_NO_MORE_THAN(x)	((struct mock_expect_arg) { \
+	.value = (int64_t) x, \
+	.ptr_value_len = 0, \
+	.validate = NULL, \
+	.save_arg = -1, \
+	.flags = MOCK_ARG_FLAG_LESS_EQUAL, \
+	.alloc = NULL, \
+	.free = NULL, \
+	.copy = NULL})
+
+/**
+ * Expectation that an argument will be less than a specific value.  This will be treated as a
+ * signed integer value.
+ */
+#define MOCK_ARG_LESS_THAN(x)	((struct mock_expect_arg) { \
+	.value = (int64_t) x, \
+	.ptr_value_len = 0, \
+	.validate = NULL, \
+	.save_arg = -1, \
+	.flags = MOCK_ARG_FLAG_LESS, \
+	.alloc = NULL, \
+	.free = NULL, \
+	.copy = NULL})
+
+/**
  * Expectation that an argument can be any value expect null or 0.
  */
 #define MOCK_ARG_NOT_NULL	((struct mock_expect_arg) { \
@@ -246,10 +307,23 @@ struct mock_expect_arg {
 	.copy = NULL})
 
 /**
+ * Expectation that an argument will be a specific pointer.
+ */
+#define MOCK_ARG_PTR(ptr)	((struct mock_expect_arg) { \
+	.value = (int64_t) ((uintptr_t) ptr), \
+	.ptr_value_len = 0, \
+	.validate = NULL, \
+	.save_arg = -1, \
+	.flags = 0, \
+	.alloc = NULL, \
+	.free = NULL, \
+	.copy = NULL})
+
+/**
  * Expectation that an argument is a pointer to a location that contains the expected data.
  */
 #define MOCK_ARG_PTR_CONTAINS(ptr, len)	((struct mock_expect_arg) { \
-	.value = (intptr_t) ptr, \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = len, \
 	.validate = NULL, \
 	.save_arg = -1, \
@@ -264,7 +338,7 @@ struct mock_expect_arg {
  * the data is copied into the expectation context.
  */
 #define MOCK_ARG_PTR_CONTAINS_TMP(ptr, len)	((struct mock_expect_arg) { \
-	.value = (intptr_t) ptr, \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = len, \
 	.validate = NULL, \
 	.save_arg = -1, \
@@ -291,7 +365,7 @@ struct mock_expect_arg {
  * routine.  The validation routine must comply with {@link mock_arg_validator}.
  */
 #define	MOCK_ARG_VALIDATOR(func, ptr, len)	((struct mock_expect_arg) { \
-	.value = (intptr_t) ptr, \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = len, \
 	.validate = func, \
 	.save_arg = -1, \
@@ -307,7 +381,7 @@ struct mock_expect_arg {
  * copied into the expectation context.
  */
 #define	MOCK_ARG_VALIDATOR_TMP(func, ptr, len)	((struct mock_expect_arg) { \
-	.value = (intptr_t) ptr, \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = len, \
 	.validate = func, \
 	.save_arg = -1, \
@@ -323,7 +397,7 @@ struct mock_expect_arg {
  * null to use the default functions.
  */
 #define	MOCK_ARG_VALIDATOR_DEEP_COPY(func, ptr, len, save, rel)	((struct mock_expect_arg) { \
-	.value = (intptr_t) ptr, \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = len, \
 	.validate = func, \
 	.save_arg = -1, \
@@ -340,7 +414,7 @@ struct mock_expect_arg {
  * provided allocation and free functions.  They can be set to null to use the default functions.
  */
 #define	MOCK_ARG_VALIDATOR_DEEP_COPY_TMP(func, ptr, len, save, rel, dup)	((struct mock_expect_arg) { \
-	.value = (intptr_t) ptr, \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = len, \
 	.validate = func, \
 	.save_arg = -1, \
@@ -352,8 +426,8 @@ struct mock_expect_arg {
 /**
  * Expectation that an argument is a pointer to a pointer to a specific location.
  */
-#define MOCK_ARG_PTR_PTR(x)	((struct mock_expect_arg) { \
-	.value = (intptr_t) x, \
+#define MOCK_ARG_PTR_PTR(ptr)	((struct mock_expect_arg) { \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = 0, \
 	.validate = NULL, \
 	.save_arg = -1, \
@@ -380,7 +454,7 @@ struct mock_expect_arg {
  * data.
  */
 #define MOCK_ARG_PTR_PTR_CONTAINS(ptr, len)	((struct mock_expect_arg) { \
-	.value = (intptr_t) ptr, \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = len, \
 	.validate = NULL, \
 	.save_arg = -1, \
@@ -395,7 +469,7 @@ struct mock_expect_arg {
  * validation, so the data is copied into the expectation context.
  */
 #define MOCK_ARG_PTR_PTR_CONTAINS_TMP(ptr, len)	((struct mock_expect_arg) { \
-	.value = (intptr_t) ptr, \
+	.value = (int64_t) ((uintptr_t) ptr), \
 	.ptr_value_len = len, \
 	.validate = NULL, \
 	.save_arg = -1, \
@@ -405,7 +479,13 @@ struct mock_expect_arg {
 	.copy = NULL})
 
 
-int mock_expect (struct mock *mock, void *func_call, void *instance, intptr_t return_val, ...);
+/**
+ * The return value from an expectation is a pointer.
+ */
+#define	MOCK_RETURN_PTR(ptr)	(int64_t) ((uintptr_t) ptr)
+
+
+int mock_expect (struct mock *mock, void *func_call, void *instance, int64_t return_val, ...);
 
 int mock_expect_output (struct mock *mock, int arg, const void *out_data, size_t out_length,
 	int length_arg);
@@ -453,11 +533,12 @@ void mock_release (struct mock *mock);
 void mock_set_name (struct mock *mock, const char *name);
 
 struct mock_call* mock_allocate_call (const void *func, const void *instance, size_t args, ...);
-intptr_t mock_return_from_call (struct mock *mock, struct mock_call *call);
+int64_t mock_return_from_call (struct mock *mock, struct mock_call *call);
 
 
-#define MOCK_ARG_CALL(x)	((intptr_t) x)
-#define MOCK_ARG_COUNT(...)	(sizeof ((intptr_t[]) {__VA_ARGS__}) / sizeof (intptr_t))
+#define MOCK_ARG_CALL(x)		((int64_t) x)
+#define	MOCK_ARG_PTR_CALL(ptr)	((int64_t) ((uintptr_t) ptr))
+#define MOCK_ARG_COUNT(...)		(sizeof ((int64_t[]) {__VA_ARGS__}) / sizeof (int64_t))
 
 #define MOCK_VOID_RETURN(mock, func, inst, ...) \
 	mock_return_from_call (mock, \
@@ -473,6 +554,11 @@ intptr_t mock_return_from_call (struct mock *mock, struct mock_call *call);
 	return (cast) (MOCK_VOID_RETURN (mock, func, inst, __VA_ARGS__))
 #define MOCK_RETURN_NO_ARGS_CAST(mock, cast, func, inst) \
 	return (cast) (MOCK_VOID_RETURN_NO_ARGS (mock, func, inst))
+
+#define MOCK_RETURN_CAST_PTR(mock, cast, func, inst, ...)	\
+	return (cast) ((uintptr_t) (MOCK_VOID_RETURN (mock, func, inst, __VA_ARGS__)))
+#define MOCK_RETURN_NO_ARGS_CAST_PTR(mock, cast, func, inst) \
+	return (cast) ((uintptr_t) (MOCK_VOID_RETURN_NO_ARGS (mock, func, inst)))
 
 
 #endif /* MOCK_H_ */

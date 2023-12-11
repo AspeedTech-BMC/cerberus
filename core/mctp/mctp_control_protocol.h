@@ -18,7 +18,7 @@
 /**
  * The minimum size of an MCTP control response message.
  */
-#define MCTP_CONTROL_PROTOCOL_MIN_MSG_RSP_LEN				(sizeof (struct mctp_control_protocol_header) + MCTP_BASE_PROTOCOL_PEC_SIZE)
+#define MCTP_CONTROL_PROTOCOL_MIN_MSG_RSP_LEN				(sizeof (struct mctp_control_protocol_resp_header) + MCTP_BASE_PROTOCOL_PEC_SIZE)
 
 /**
  * The size of a MCTP control response message with a failed completion code.
@@ -44,6 +44,7 @@ enum {
 	MCTP_CONTROL_PROTOCOL_GET_MESSAGE_TYPE = 0x05,			/**< Get Message Type Support */
 	MCTP_CONTROL_PROTOCOL_GET_VEN_DEF_MSG_SUPPORT = 0x06,	/**< Get Vendor Defined Message Support */
 	MCTP_CONTROL_PROTOCOL_GET_ROUTING_TABLE_ENTRIES = 0x0A,	/**< Get Routing Table Entries */
+	MCTP_CONTROL_PROTOCOL_DISCOVERY_NOTIFY = 0x0D,			/**< Discovery Notify */
 };
 
 /**
@@ -54,11 +55,11 @@ enum
 {
 	MCTP_CONTROL_PROTOCOL_SUCCESS,							/**< Success */
 	MCTP_CONTROL_PROTOCOL_ERROR,							/**< Generic error */
-	MCTP_CONTROL_PROTOCOL_ERROR_INVALID_DATA,		/**< Invalid data or parameter value */
+	MCTP_CONTROL_PROTOCOL_ERROR_INVALID_DATA,				/**< Invalid data or parameter value */
 	MCTP_CONTROL_PROTOCOL_ERROR_INVALID_LEN,				/**< Invalid message length */
-	MCTP_CONTROL_PROTOCOL_ERROR_NOT_READY,			/**< Receiver not ready */
+	MCTP_CONTROL_PROTOCOL_ERROR_NOT_READY,					/**< Receiver not ready */
 	MCTP_CONTROL_PROTOCOL_ERROR_UNSUPPORTED_CMD,			/**< Command unspecified or unsupported */
-	MCTP_CONTROL_PROTOCOL_CMD_SPECIFIC = 0x80,						/**< Command specific completion code */
+	MCTP_CONTROL_PROTOCOL_CMD_SPECIFIC = 0x80,				/**< Command specific completion code */
 };
 
 
@@ -75,6 +76,15 @@ struct mctp_control_protocol_header
 	uint8_t d_bit:1;										/**< D-bit */
 	uint8_t rq:1;											/**< Request bit */
 	uint8_t command_code;									/**< Command code */
+};
+
+/**
+ * Control message portion of response packet header
+ */
+struct mctp_control_protocol_resp_header
+{
+	struct mctp_control_protocol_header header;				/**< MCTP control packet header */
+	uint8_t completion_code;								/**< Completion code */
 };
 #pragma pack(pop)
 

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <kernel.h>
 #include <soc.h>
+#include "platform_api.h"
 #include "flash_util.h"
 #include "flash_common.h"
 
@@ -121,6 +122,8 @@ int flash_verify_noncontiguous_contents_at_offset (const struct flash *flash, ui
 			break;
 
 		case HASH_TYPE_SHA1:
+		case HASH_TYPE_SHA384:
+		case HASH_TYPE_SHA512:
 			return FLASH_UTIL_UNSUPPORTED_SIG_HASH;
 
 		default:
@@ -133,7 +136,8 @@ int flash_verify_noncontiguous_contents_at_offset (const struct flash *flash, ui
 		return status;
 	}
 
-	return rsa->sig_verify (rsa, pub_key, signature, sig_length, hash_out, SHA256_HASH_LENGTH);
+	return rsa->sig_verify (rsa, pub_key, signature, sig_length, HASH_TYPE_SHA256, hash_out,
+		SHA256_HASH_LENGTH);
 }
 
 /**
@@ -155,8 +159,9 @@ int flash_verify_noncontiguous_contents_at_offset (const struct flash *flash, ui
  * @return 0 if the flash contents are valid or an error code.
  */
 int flash_contents_verification (const struct flash *flash, uint32_t start_addr, size_t length,
-	struct hash_engine *hash, enum hash_type type, struct signature_verification *verification,
-	const uint8_t *signature, size_t sig_length, uint8_t *hash_out, size_t hash_length)
+	struct hash_engine *hash, enum hash_type type,
+	const struct signature_verification *verification, const uint8_t *signature, size_t sig_length,
+	uint8_t *hash_out, size_t hash_length)
 {
 	struct flash_region region;
 
@@ -191,7 +196,7 @@ int flash_contents_verification (const struct flash *flash, uint32_t start_addr,
  */
 int flash_noncontiguous_contents_verification (const struct flash *flash,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash, enum hash_type type,
-	struct signature_verification *verification, const uint8_t *signature, size_t sig_length,
+	const struct signature_verification *verification, const uint8_t *signature, size_t sig_length,
 	uint8_t *hash_out, size_t hash_length)
 {
 	return flash_noncontiguous_contents_verification_at_offset (flash, 0, regions, count, hash,
@@ -221,10 +226,11 @@ int flash_noncontiguous_contents_verification (const struct flash *flash,
  */
 int flash_noncontiguous_contents_verification_at_offset (const struct flash *flash, uint32_t offset,
 	const struct flash_region *regions, size_t count, struct hash_engine *hash, enum hash_type type,
-	struct signature_verification *verification, const uint8_t *signature, size_t sig_length,
+	const struct signature_verification *verification, const uint8_t *signature, size_t sig_length,
 	uint8_t *hash_out, size_t hash_length)
 {
-	uint8_t data_hash[SHA256_HASH_LENGTH];
+	uint8_t data_hash[SHA512_HASH_LENGTH];
+	size_t length;
 	int status;
 
 	if ((flash == NULL) || (hash == NULL) || (verification == NULL) || (signature == NULL) ||
@@ -232,33 +238,27 @@ int flash_noncontiguous_contents_verification_at_offset (const struct flash *fla
 		return FLASH_UTIL_INVALID_ARGUMENT;
 	}
 
-	if ((hash_out != NULL) && (hash_length < SHA256_HASH_LENGTH)) {
+	length = hash_get_hash_length (type);
+	if (length == HASH_ENGINE_UNKNOWN_HASH) {
+		return HASH_ENGINE_UNKNOWN_HASH;
+	}
+
+	if ((hash_out != NULL) && (hash_length < length)) {
 		return FLASH_UTIL_HASH_BUFFER_TOO_SMALL;
 	}
 
 	if (hash_out == NULL) {
 		hash_out = data_hash;
-	}
-
-	switch (type) {
-		case HASH_TYPE_SHA256:
-			break;
-
-		case HASH_TYPE_SHA1:
-			return FLASH_UTIL_UNSUPPORTED_SIG_HASH;
-
-		default:
-			return FLASH_UTIL_UNKNOWN_SIG_HASH;
+		hash_length = sizeof (data_hash);
 	}
 
 	status = flash_hash_noncontiguous_contents_at_offset (flash, offset, regions, count, hash, type,
-		hash_out, SHA256_HASH_LENGTH);
+		hash_out, hash_length);
 	if (status != 0) {
 		return status;
 	}
 
-	return verification->verify_signature (verification, hash_out, SHA256_HASH_LENGTH, signature,
-		sig_length);
+	return verification->verify_signature (verification, hash_out, length, signature, sig_length);
 }
 
 /**
@@ -1075,10 +1075,15 @@ static int flash_check_copy_region (uint32_t dest_addr, uint32_t src_addr, size_
 static int flash_copy_data_to_blank_region (const struct flash *dest_flash, uint32_t dest_addr,
 	const struct flash *src_flash, uint32_t src_addr, size_t length, uint32_t page, uint8_t verify)
 {
-	uint8_t data[page];
+	uint8_t *data;
 	size_t block_len;
 	int status = 0;
 	uint32_t page_offset = FLASH_REGION_OFFSET (dest_addr, page);
+
+	data = platform_malloc (page);
+	if (data == NULL) {
+		return FLASH_UTIL_NO_MEMORY;
+	}
 
 	while ((status == 0) && (length != 0)) {
 		block_len = page - page_offset;
@@ -1108,6 +1113,8 @@ static int flash_copy_data_to_blank_region (const struct flash *dest_flash, uint
 			}
 		}
 	}
+
+	platform_free (data);
 
 	return status;
 }

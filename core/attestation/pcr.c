@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include "common/common_math.h"
 #include "flash/flash.h"
-#include "platform.h"
+#include "platform_api.h"
 #include "pcr.h"
 
 
@@ -72,6 +72,12 @@ static int pcr_update_buffer_common (struct pcr_bank *pcr, struct hash_engine *h
 	uint8_t config = 0;
 	int status;
 
+	/* If there is an attempt to update buffer with 0 total bytes, using no data buffer and not
+	 * including event and version information, then fail due to invalid arguments */
+	if (!include_event && !include_version && ((buf == NULL) || (buf_len == 0))) {
+		return PCR_INVALID_ARGUMENT;
+	}
+
 	status = hash->start_sha256 (hash);
 	if (status != 0) {
 		return status;
@@ -135,7 +141,7 @@ static int pcr_read_measurement_data_bytes (uint8_t *buffer, size_t buffer_len, 
 {
 	int bytes_read;
 
-	if ((buffer_len == 0) || (offset > data_len - 1)) {
+	if ((data == NULL) || (data_len == 0) || (buffer_len == 0) || (offset > data_len - 1)) {
 		return 0;
 	}
 
@@ -253,7 +259,7 @@ int pcr_update_digest (struct pcr_bank *pcr, uint8_t measurement_index, const ui
 int pcr_update_buffer (struct pcr_bank *pcr, struct hash_engine *hash, uint8_t measurement_index,
 	const uint8_t *buf, size_t buf_len, bool include_event)
 {
-	if ((pcr == NULL) || (buf == NULL) || (buf_len == 0) || (hash == NULL)) {
+	if ((pcr == NULL) || (hash == NULL)) {
 		return PCR_INVALID_ARGUMENT;
 	}
 
@@ -279,7 +285,7 @@ int pcr_update_versioned_buffer (struct pcr_bank *pcr, struct hash_engine *hash,
 	uint8_t measurement_index, const uint8_t *buf, size_t buf_len, bool include_event,
 	uint8_t version)
 {
-	if ((pcr == NULL) || (buf == NULL) || (buf_len == 0) || (hash == NULL)) {
+	if ((pcr == NULL) || (hash == NULL)) {
 		return PCR_INVALID_ARGUMENT;
 	}
 
@@ -344,13 +350,17 @@ int pcr_get_event_type (struct pcr_bank *pcr, uint8_t measurement_index, uint32_
  *
  * @param pcr The PCR bank to compute aggregate measurement of
  * @param hash Hashing engine to utilize
- * @param measurement Optional output buffer to return back PCR measurement
+ * @param measurement Optional output buffer to return back PCR measurement. Can be set to NULL if
+ * 	not needed
  * @param lock Boolean indicating whether mutex should be acquired during computation or not
  *
  * @return Number of measurements aggregated or an error code
  */
 int pcr_compute (struct pcr_bank *pcr, struct hash_engine *hash, uint8_t *measurement, bool lock)
 {
+	/* TODO: Instead of passing a NULL measurement buffer here to get number of digests in
+	 * measurement, create a new function that just returns number of digests. */
+
 	uint8_t prev_measurement[PCR_DIGEST_LENGTH] = {0};
 	int i_measurement;
 	int status = 0;
@@ -429,7 +439,7 @@ exit:
  * @return Completion status, 0 if success or an error code
  */
 int pcr_set_measurement_data (struct pcr_bank *pcr, uint8_t measurement_index,
-	struct pcr_measured_data *measurement_data)
+	const struct pcr_measured_data *measurement_data)
 {
 	if (pcr == NULL) {
 		return PCR_INVALID_ARGUMENT;
@@ -445,12 +455,7 @@ int pcr_set_measurement_data (struct pcr_bank *pcr, uint8_t measurement_index,
 			case PCR_DATA_TYPE_2BYTE:
 			case PCR_DATA_TYPE_4BYTE:
 			case PCR_DATA_TYPE_8BYTE:
-				break;
-
 			case PCR_DATA_TYPE_MEMORY:
-				if (measurement_data->data.memory.buffer == NULL) {
-					return PCR_MEASURED_DATA_INVALID_MEMORY;
-				}
 				break;
 
 			case PCR_DATA_TYPE_FLASH:
@@ -491,7 +496,7 @@ int pcr_set_measurement_data (struct pcr_bank *pcr, uint8_t measurement_index,
 static int pcr_get_measurement_data_internal (struct pcr_bank *pcr, uint8_t measurement_index,
 	size_t offset, uint8_t *buffer, size_t length, uint32_t *total_len)
 {
-	struct pcr_measured_data *measured_data;
+	const struct pcr_measured_data *measured_data;
 	bool include_event;
 	bool include_version;
 	size_t total_bytes = 0;
@@ -588,7 +593,7 @@ static int pcr_get_measurement_data_internal (struct pcr_bank *pcr, uint8_t meas
 			break;
 
 		case PCR_DATA_TYPE_FLASH: {
-			struct flash *flash_device = measured_data->data.flash.flash;
+			const struct flash *flash_device = measured_data->data.flash.flash;
 			size_t read_addr = measured_data->data.flash.addr + offset;
 
 			if (offset > (measured_data->data.flash.length - 1)) {
@@ -808,6 +813,7 @@ int pcr_get_tcg_log (struct pcr_bank *pcr, uint32_t pcr_num, uint8_t *buffer, si
 	uint8_t *entry_ptr = NULL;
 	size_t entry_len = 0;
 	size_t entry_offset = 0;
+	uint32_t event_size;
 	int status = 0;
 
 	if ((pcr == NULL) || (buffer == NULL) || (total_len == NULL)) {
@@ -850,18 +856,21 @@ int pcr_get_tcg_log (struct pcr_bank *pcr, uint32_t pcr_num, uint8_t *buffer, si
 			offset = 0;
 		}
 
+		/* The entry event size is not word-aligned, so use a temp location that is aligned. */
 		status = pcr_get_measurement_data_internal (pcr, i_measurement, offset, buffer, length,
-			&entry.event_size);
+			&event_size);
 		if (ROT_IS_ERROR (status)) {
 			goto exit;
 		}
+
+		entry.event_size = event_size;
 
 		if (entry_ptr != NULL) {
 			memcpy (entry_ptr, ((uint8_t*) &entry) + entry_offset, entry_len);
 			entry_ptr = NULL;
 		}
 
-		*total_len += entry.event_size;
+		*total_len += event_size;
 		buffer += status;
 		length -= status;
 
@@ -870,7 +879,7 @@ int pcr_get_tcg_log (struct pcr_bank *pcr, uint32_t pcr_num, uint8_t *buffer, si
 			num_bytes += status;
 		}
 		else {
-			offset -= entry.event_size;
+			offset -= event_size;
 		}
 
 		i_measurement++;

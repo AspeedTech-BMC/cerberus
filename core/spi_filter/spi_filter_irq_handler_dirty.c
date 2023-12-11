@@ -7,9 +7,10 @@
 #include "spi_filter_irq_handler_dirty.h"
 
 
-static void spi_filter_irq_handler_dirty_ro_flash_dirty (struct spi_filter_irq_handler *handler)
+void spi_filter_irq_handler_dirty_ro_flash_dirty (const struct spi_filter_irq_handler *handler)
 {
-	struct spi_filter_irq_handler_dirty *dirty = (struct spi_filter_irq_handler_dirty*) handler;
+	const struct spi_filter_irq_handler_dirty *dirty =
+		(const struct spi_filter_irq_handler_dirty*) handler;
 
 	if (dirty) {
 		dirty->control->hold_processor_in_reset (dirty->control, true);
@@ -29,7 +30,7 @@ static void spi_filter_irq_handler_dirty_ro_flash_dirty (struct spi_filter_irq_h
  * @return 0 if the handler was successfully initialized or an error code.
  */
 int spi_filter_irq_handler_dirty_init (struct spi_filter_irq_handler_dirty *handler,
-	struct host_state_manager *host_state, struct host_control *control)
+	struct host_state_manager *host_state, const struct host_control *control)
 {
 	int status;
 
@@ -56,7 +57,7 @@ int spi_filter_irq_handler_dirty_init (struct spi_filter_irq_handler_dirty *hand
  *
  * @param handler The handler to release.
  */
-void spi_filter_irq_handler_dirty_release (struct spi_filter_irq_handler_dirty *handler)
+void spi_filter_irq_handler_dirty_release (const struct spi_filter_irq_handler_dirty *handler)
 {
 	if (handler) {
 		spi_filter_irq_handler_release (&handler->base);

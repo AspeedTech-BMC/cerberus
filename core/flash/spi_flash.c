@@ -26,18 +26,24 @@
 #define	QSPI_ENABLE_BIT6			(1U << 6)
 #define	QSPI_ENABLE_BIT7			(1U << 7)
 
+/* Flag bits for controlling flash reset during initialization. */
+#define	SPI_FLASH_DO_RESET			(1U << 0)
+#define	SPI_FLASH_RESET_IS_REQUIRED	(1U << 1)
+
 
 /**
  * Check the requested operation to ensure it is valid for the device.
  */
 #define	SPI_FLASH_BOUNDS_CHECK(bytes, addr, len) \
-	if (addr >= bytes) { \
-		return SPI_FLASH_ADDRESS_OUT_OF_RANGE; \
-	} \
-	\
-	if ((addr + len) > bytes) { \
-		return SPI_FLASH_OPERATION_OUT_OF_RANGE; \
-	}
+	do { \
+		if (addr >= bytes) { \
+			return SPI_FLASH_ADDRESS_OUT_OF_RANGE; \
+		} \
+		\
+		if ((addr + len) > bytes) { \
+			return SPI_FLASH_OPERATION_OUT_OF_RANGE; \
+		} \
+	} while (0)
 
 
 /**
@@ -145,13 +151,13 @@ static void spi_flash_set_device_commands (const struct spi_flash *flash,
  *
  * @param flash The flash interface to configure.
  * @param wake_device Flag indicating if the device should be removed from deep power down.
- * @param reset_device Flag indicating if the device should be reset prior to initialization.
+ * @param reset_device Flags indicating if the device should be reset prior to initialization.
  * @param drive_strength Flag indicating if the device output drive strength should be configured.
  *
  * @return 0 if the device and interface were successfully configured or an error code.
  */
 static int spi_flash_configure_device (const struct spi_flash *flash, bool wake_device,
-	bool reset_device, bool drive_strength)
+	enum spi_flash_reset reset_device, bool drive_strength)
 {
 	struct spi_flash_sfdp sfdp;
 	int status;
@@ -190,9 +196,13 @@ static int spi_flash_configure_device (const struct spi_flash *flash, bool wake_
 		goto exit;
 	}
 
-	if (reset_device) {
+	if (reset_device & SPI_FLASH_DO_RESET) {
 		status = spi_flash_reset_device (flash);
-		if (status != 0) {
+		if ((status != 0) &&
+			((status != SPI_FLASH_RESET_NOT_SUPPORTED) ||
+				(reset_device & SPI_FLASH_RESET_IS_REQUIRED))) {
+			/* Only fail initialization if reset is supported and fails or if the device does not
+			 * support reset and the reset was marked as being a required step. */
 			goto exit;
 		}
 	}
@@ -240,14 +250,14 @@ exit:
  * @param spi The SPI master connected to the flash.
  * @param fast_read Flag indicating if the FAST_READ command should be used for SPI reads.
  * @param wake_device Flag indicating if the device should be removed from deep power down.
- * @param reset_device Flag indicating if the device should be reset prior to initialization.
+ * @param reset_device Option indicating if the device should be reset prior to initialization.
  * @param drive_strength Flag indicating if the device output drive strength should be configured.
  *
  * @return 0 if the SPI flash was successfully initialized or an error code.
  */
 int spi_flash_initialize_device (struct spi_flash *flash, struct spi_flash_state *state,
-	const struct flash_master *spi, bool fast_read, bool wake_device, bool reset_device,
-	bool drive_strength)
+	const struct flash_master *spi, bool fast_read, bool wake_device,
+	enum spi_flash_reset reset_device, bool drive_strength)
 {
 	int status;
 
@@ -279,13 +289,13 @@ int spi_flash_initialize_device (struct spi_flash *flash, struct spi_flash_state
  * @param flash The flash interface that contains the state to initialize.
  * @param fast_read Flag indicating if the FAST_READ command should be used for SPI reads.
  * @param wake_device Flag indicating if the device should be removed from deep power down.
- * @param reset_device Flag indicating if the device should be reset prior to initialization.
+ * @param reset_device Option indicating if the device should be reset prior to initialization.
  * @param drive_strength Flag indicating if the device output drive strength should be configured.
  *
  * @return 0 if the SPI flash was successfully initialized or an error code.
  */
 int spi_flash_initialize_device_state (const struct spi_flash *flash, bool fast_read,
-	bool wake_device, bool reset_device, bool drive_strength)
+	bool wake_device, enum spi_flash_reset reset_device, bool drive_strength)
 {
 	int status;
 
@@ -549,7 +559,7 @@ int spi_flash_init_state (const struct spi_flash *flash)
 	/* Make an assumption in the default case that the flash device supports the common 66/99
 	 * sequence for triggering a soft reset, and that the reset reverts the address mode to the
 	 * default state.  This allows some minimal scenarios where additional device discovery is not
-	 * necessary to still reset the device, but most scenarios will never see thees default
+	 * necessary to still reset the device, but most scenarios will never see these default
 	 * assumptions. */
 	flash->state->command.reset = FLASH_CMD_RST;
 	flash->state->reset_3byte = true;
@@ -1074,6 +1084,33 @@ int spi_flash_get_device_size (const struct spi_flash *flash, uint32_t *bytes)
 }
 
 /**
+ * Issue commands to trigger a soft reset of the SPI flash device.
+ *
+ * @param flash The flash to reset.
+ * @param wait_ms The amount of time to wait after issuing the reset commands.
+ *
+ * @return 0 if the device was successfully reset or an error code.
+ */
+static int spi_flash_execute_reset_device (const struct spi_flash *flash, uint32_t wait_ms)
+{
+	int status;
+
+	if (flash->state->command.reset == FLASH_CMD_RST) {
+		status = spi_flash_simple_command (flash, FLASH_CMD_RSTEN);
+		if (status != 0) {
+			return status;
+		}
+	}
+
+	status = spi_flash_simple_command (flash, flash->state->command.reset);
+	if (status == 0) {
+		platform_msleep (wait_ms);
+	}
+
+	return status;
+}
+
+/**
  * Soft reset the SPI flash device.
  *
  * @param flash The flash to reset.
@@ -1113,29 +1150,64 @@ int spi_flash_reset_device (const struct spi_flash *flash)
 
 	platform_mutex_lock (&flash->state->lock);
 
+	/* Block the reset if there is a write in progress.  Issuing a reset in this case can cause data
+	 * corruption and cause an indeterminate delay after the reset.  In some cases, the reset will
+	 * not get executed by the device. */
 	status = spi_flash_is_wip_set (flash);
 	if (status != 0) {
 		status = (status == 1) ? SPI_FLASH_WRITE_IN_PROGRESS : status;
 		goto exit;
 	}
 
-	if (flash->state->command.reset == FLASH_CMD_RST) {
-		status = spi_flash_simple_command (flash, FLASH_CMD_RSTEN);
-		if (status != 0) {
-			goto exit;
-		}
-	}
-
-	status = spi_flash_simple_command (flash, flash->state->command.reset);
+	/* We don't need to wait a long time, since we know the reset is not interrupting a write
+	 * operation. */
+	status = spi_flash_execute_reset_device (flash, 1);
 	if (status == 0) {
 		flash->state->addr_mode = rst_addr_mode;
-
-		/* We don't need to wait a long time, since we know the reset is not interrupting a write
-		 * operation. */
-		platform_msleep (1);
 	}
 
 exit:
+	platform_mutex_unlock (&flash->state->lock);
+	return status;
+}
+
+/**
+ * Force a software reset of a SPI flash device.  This is a simplified workflow that doesn't have
+ * any of the pre-checks and other flash state tracking present in the more advanced handling.
+ *
+ * Specifically this call will not:
+ *	- Update the address mode of the device after executing the reset command.  It is up to the
+ *		caller to ensure the address mode is known after the reset.
+ *		spi_flash_detect_4byte_address_mode can be used for this purpose.
+ *	- Check to see if there is any write in progress before issuing the reset command.  Issuing a
+ *		reset during a program or erase operation can corrupt data on flash.  Depending on the
+ *		device, it can also have an effect on how much time it takes the device to come out of
+ *		reset.
+ *
+ * @param flash The flash to reset.
+ * @param wait_ms The amount of time to wait after issuing the reset commands before returning.  If
+ * this is 0, it will return immediately after issuing the commands.
+ *
+ * @return 0 if the reset commands were issued successfully or an error code.
+ */
+int spi_flash_force_reset_device (const struct spi_flash *flash, uint32_t wait_ms)
+{
+	int status;
+
+	if (flash == NULL) {
+		return SPI_FLASH_INVALID_ARGUMENT;
+	}
+
+	if (!flash->state->command.reset) {
+		return SPI_FLASH_RESET_NOT_SUPPORTED;
+	}
+
+	platform_mutex_lock (&flash->state->lock);
+
+	/* No effort is being made to determine a reasonable wait time after issuing the device reset.
+	 * It will vary based on device and current state.  Leave it to the caller to decide. */
+	status = spi_flash_execute_reset_device (flash, wait_ms);
+
 	platform_mutex_unlock (&flash->state->lock);
 	return status;
 }
@@ -1349,6 +1421,7 @@ int spi_flash_is_4byte_address_mode_on_reset (const struct spi_flash *flash)
 			break;
 
 		case FLASH_ID_MICRON:
+		case FLASH_ID_MICRON_X:
 			cmd = FLASH_CMD_RD_NV_CFG;
 			mask = MICRON_4BYTE_DEFAULT;
 			break;
@@ -1369,7 +1442,8 @@ int spi_flash_is_4byte_address_mode_on_reset (const struct spi_flash *flash)
 		}
 	}
 
-	return (vendor == FLASH_ID_MICRON) ? !(reg & mask) : !!(reg & mask);
+	return ((vendor == FLASH_ID_MICRON) || (vendor == FLASH_ID_MICRON_X)) ?
+		!(reg & mask) : !!(reg & mask);
 }
 
 /**
@@ -1505,6 +1579,7 @@ int spi_flash_detect_4byte_address_mode (const struct spi_flash *flash)
 			break;
 
 		case FLASH_ID_MICRON:
+		case FLASH_ID_MICRON_X:
 			mask = MICRON_4BYTE_STATES;
 			cmd = FLASH_CMD_RDSR_FLAG;
 			break;
@@ -1853,7 +1928,7 @@ int spi_flash_read (const struct spi_flash *flash, uint32_t address, uint8_t *da
 		return SPI_FLASH_INVALID_ARGUMENT;
 	}
 
-	SPI_FLASH_BOUNDS_CHECK (flash->state->device_size, address, length)
+	SPI_FLASH_BOUNDS_CHECK (flash->state->device_size, address, length);
 
 	platform_mutex_lock (&flash->state->lock);
 

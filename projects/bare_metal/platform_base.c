@@ -2,20 +2,9 @@
 // Licensed under the MIT license.
 
 #include <stddef.h>
-#include "platform_base.h"
-#include "platform.h"
-#include "status/rot_status.h"
+#include "platform_api.h"
 
 
-#define	PLATFORM_SEMAPHORE_ERROR(code)		ROT_ERROR (ROT_MODULE_PLATFORM_SEMAPHORE, code)
-
-/**
- * Initialize a semaphore.
- *
- * @param sem The semaphore to initialize.
- *
- * @return 0 if the semaphore was initialized successfully or an error code.
- */
 int platform_semaphore_init (platform_semaphore *sem)
 {
 	if (sem == NULL) {
@@ -26,23 +15,11 @@ int platform_semaphore_init (platform_semaphore *sem)
 	return 0;
 }
 
-/**
- * Free a semaphore.
- *
- * @param sem The semaphore to free.
- */
 void platform_semaphore_free (platform_semaphore *sem)
 {
 	UNUSED (sem);
 }
 
-/**
- * Signal a semaphore.
- *
- * @param sem The semaphore to signal.
- *
- * @return 0 if the semaphore was signaled successfully or an error code.
- */
 int platform_semaphore_post (platform_semaphore *sem)
 {
 	if (sem == NULL) {
@@ -53,16 +30,6 @@ int platform_semaphore_post (platform_semaphore *sem)
 	return 0;
 }
 
-/**
- * Wait for a semaphore to be signaled.  This will block until either the semaphore is signaled or
- * the timeout expires.  If the semaphore is already signaled, it will return immediately.
- *
- * @param sem The semaphore to wait on.
- * @param ms_timeout The amount of time to wait for the semaphore to be signaled, in milliseconds.
- * Specifying at timeout of 0 will cause the call to block indefinitely.
- *
- * @return 0 if the semaphore was signaled, 1 if the timeout expired, or an error code.
- */
 int platform_semaphore_wait (platform_semaphore *sem, uint32_t ms_timeout)
 {
 	platform_clock timeout;
@@ -77,7 +44,7 @@ int platform_semaphore_wait (platform_semaphore *sem, uint32_t ms_timeout)
 		return status;
 	}
 
-	while ((*sem == 0) && !platform_has_timeout_expired (&timeout));
+	while ((*sem == 0) && ((ms_timeout == 0) || !platform_has_timeout_expired (&timeout)));
 
 	if (*sem != 0) {
 		*sem -= 1;
@@ -88,14 +55,6 @@ int platform_semaphore_wait (platform_semaphore *sem, uint32_t ms_timeout)
 	}
 }
 
-/**
- * Check the state of the semaphore and return immediately.  If the semaphore was signaled, checking
- * the state will consume the signal.
- *
- * @param sem The semaphore to check.
- *
- * @return 0 if the semaphore was signaled, 1 if it was not, or an error code.
- */
 int platform_semaphore_try_wait (platform_semaphore *sem)
 {
 	if (sem == NULL) {
@@ -105,13 +64,6 @@ int platform_semaphore_try_wait (platform_semaphore *sem)
 	return !(*sem);
 }
 
-/**
- * Reset a semaphore to the unsignaled state.
- *
- * @param sem The semaphore to reset.
- *
- * @return 0 if the semaphore was reset successfully or an error code.
- */
 int platform_semaphore_reset (platform_semaphore *sem)
 {
 	if (sem == NULL) {

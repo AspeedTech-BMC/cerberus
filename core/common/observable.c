@@ -57,6 +57,10 @@ void observable_release (struct observable *observable)
  * added.  The order in which observers are notified is not guaranteed to be the same as the order
  * in which they were added.
  *
+ * TODO:  Once all observers are built to support const instances, this should only deal is const
+ * pointers for the observer.  When that happens, existing void* casts for const observers should be
+ * removed.
+ *
  * @param observable The observable module to register with.
  * @param observer The observer to add.
  *
@@ -160,7 +164,7 @@ int observable_remove_observer (struct observable *observable, void *observer)
  * 'observer' to pass the observer instance.
  */
 #define	FOR_EACH_OBSERVER(observable, type, notify, ...) \
-	{ \
+	do { \
 		struct observable_observer *pos; \
 		\
 		if (observable == NULL) { \
@@ -181,7 +185,7 @@ int observable_remove_observer (struct observable *observable, void *observer)
 		platform_mutex_unlock (&observable->lock); \
 		\
 		return 0; \
-	}
+	} while (0)
 
 /**
  * Notify all observers of an event.

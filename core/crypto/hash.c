@@ -130,13 +130,13 @@ int hash_calculate (struct hash_engine *engine, enum hash_type type, const uint8
 }
 
 /**
- * Get hash length for indicated hash type.
+ * Get the length of the output digest for the indicated hash type.
  *
- * @param hash_type The type of hashing algorithm to use.
+ * @param hash_type The hashing algorithm to check.
  *
- * @return Hash length if hash type is supported or an error code.
+ * @return Digest length if the hash type is known or HASH_ENGINE_UNKNOWN_HASH.
  */
-int hash_get_hash_len (enum hash_type hash_type)
+int hash_get_hash_length (enum hash_type hash_type)
 {
 	switch (hash_type) {
 		case HASH_TYPE_SHA1:
@@ -153,6 +153,39 @@ int hash_get_hash_len (enum hash_type hash_type)
 
 		default:
 			return HASH_ENGINE_UNKNOWN_HASH;
+	}
+}
+
+/**
+ * Determine if hashing algorithm is supported by device.
+ *
+ * @param hash_type The type of hashing algorithm to test.
+ *
+ * @return True if algorithm is supported, False otherwise.
+ */
+bool hash_is_alg_supported (enum hash_type type)
+{
+	switch (type) {
+#ifdef HASH_ENABLE_SHA1
+		case HASH_TYPE_SHA1:
+			return true;
+#endif
+
+		case HASH_TYPE_SHA256:
+			return true;
+
+#ifdef HASH_ENABLE_SHA384
+		case HASH_TYPE_SHA384:
+			return true;
+#endif
+
+#ifdef HASH_ENABLE_SHA512
+		case HASH_TYPE_SHA512:
+			return true;
+#endif
+
+		default:
+			return false;
 	}
 }
 

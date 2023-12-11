@@ -4,16 +4,17 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "pcd_flash.h"
 #include "pcd_format.h"
 #include "flash/flash_util.h"
 #include "cmd_interface/device_manager.h"
+#include "common/unused.h"
 #include "manifest/manifest_flash.h"
 
 
 static int pcd_flash_verify (struct manifest *pcd, struct hash_engine *hash,
-	struct signature_verification *verification, uint8_t *hash_out, size_t hash_length)
+	const struct signature_verification *verification, uint8_t *hash_out, size_t hash_length)
 {
 	struct pcd_flash *pcd_flash = (struct pcd_flash*) pcd;
 
@@ -49,6 +50,9 @@ static int pcd_flash_get_platform_id (struct manifest *pcd, char **id, size_t le
 
 static void pcd_flash_free_platform_id (struct manifest *manifest, char *id)
 {
+	UNUSED (manifest);
+	UNUSED (id);
+
 	/* Don't need to do anything.  Manifest allocated buffers use the internal static buffer. */
 }
 
@@ -95,24 +99,27 @@ static int pcd_flash_is_empty (struct manifest *pcd)
  * Helper function that grabs RoT element information from PCD.
  *
  * @param pcd The PCD instance to utilize.
- * @param rot_element_ptr Pointer to an pcd_rot_element instance.
+ * @param rot_element_ptr Pointer to a pcd_rot_element instance.
  * @param found Optional buffer to contain index of RoT element if found, set to NULL if unused.
+ * @param format Output describing the format version of the RoT element.
  *
  * @return 0 if completed successfully or an error code.
  */
-static int pcd_flash_get_rot_element_ptr (struct pcd *pcd, uint8_t *rot_element_ptr, uint8_t *found)
+static int pcd_flash_get_rot_element_ptr (struct pcd *pcd, uint8_t *rot_element_ptr, uint8_t *found,
+	uint8_t *format)
 {
 	struct pcd_flash *pcd_flash = (struct pcd_flash*) pcd;
 	int status;
 
 	status = manifest_flash_read_element_data (&pcd_flash->base_flash, pcd_flash->base_flash.hash,
-		PCD_ROT, 0, MANIFEST_NO_PARENT, 0, found, NULL, NULL, &rot_element_ptr,
-		sizeof (struct pcd_rot_element));
+		PCD_ROT, 0, MANIFEST_NO_PARENT, 0, found, format, NULL, &rot_element_ptr,
+		sizeof (struct pcd_rot_element_v2));
 	if (ROT_IS_ERROR (status)) {
 		return status;
 	}
 
-	if (status < (int) (sizeof (struct pcd_rot_element))) {
+	if (((*format == 1) && (status < (int) (sizeof (struct pcd_rot_element_v1))))
+		|| ((*format >= 2) && (status < (int) (sizeof (struct pcd_rot_element_v2))))) {
 		return PCD_MALFORMED_ROT_ELEMENT;
 	}
 
@@ -122,7 +129,8 @@ static int pcd_flash_get_rot_element_ptr (struct pcd *pcd, uint8_t *rot_element_
 static int pcd_flash_get_rot_info (struct pcd *pcd, struct pcd_rot_info *info)
 {
 	struct pcd_flash *pcd_flash = (struct pcd_flash*) pcd;
-	struct pcd_rot_element rot_element;
+	struct pcd_rot_element_v2 rot_element;
+	uint8_t format;
 	int status;
 
 	if ((pcd_flash == NULL) || (info == NULL)) {
@@ -133,18 +141,42 @@ static int pcd_flash_get_rot_info (struct pcd *pcd, struct pcd_rot_info *info)
 		return MANIFEST_NO_MANIFEST;
 	}
 
-	status = pcd_flash_get_rot_element_ptr (pcd, (uint8_t*) &rot_element, NULL);
+	status = pcd_flash_get_rot_element_ptr (pcd, (uint8_t*) &rot_element, NULL, &format);
 	if (status != 0) {
 		return status;
 	}
 
-	info->is_pa_rot = (pcd_get_rot_type (&rot_element) == PCD_ROT_TYPE_PA_ROT);
-	info->port_count = rot_element.port_count;
-	info->components_count = rot_element.components_count;
-	info->i2c_slave_addr = rot_element.rot_address;
-	info->eid = rot_element.rot_eid;
-	info->bridge_i2c_addr = rot_element.bridge_address;
-	info->bridge_eid = rot_element.bridge_eid;
+	// Set default fields for unused fields in v1 format
+	if (format == 1) {
+		rot_element.attestation_success_retry = PCD_FLASH_ATTESTATION_SUCCESS_RETRY_DEFAULT;
+		rot_element.attestation_fail_retry = PCD_FLASH_ATTESTATION_FAIL_RETRY_DEFAULT;
+		rot_element.discovery_fail_retry = PCD_FLASH_DISCOVERY_FAIL_RETRY_DEFAULT;
+		rot_element.mctp_ctrl_timeout = PCD_FLASH_MCTP_CTRL_TIMEOUT_DEFAULT;
+		rot_element.mctp_bridge_get_table_wait = PCD_FLASH_MCTP_BRIDGE_GET_TABLE_WAIT_DEFAULT;
+		rot_element.mctp_bridge_additional_timeout =
+			PCD_FLASH_MCTP_BRIDGE_ADDITIONAL_TIMEOUT_DEFAULT;
+		rot_element.attestation_rsp_not_ready_max_duration =
+			PCD_FLASH_ATTESTATION_RSP_NOT_READY_MAX_DURATION_DEFAULT;
+		rot_element.attestation_rsp_not_ready_max_retry =
+			PCD_FLASH_ATTESTATION_RSP_NOT_READY_MAX_RETRY_DEFAULT;
+	}
+
+	info->is_pa_rot = (pcd_get_rot_type (&rot_element.v1) == PCD_ROT_TYPE_PA_ROT);
+	info->port_count = rot_element.v1.port_count;
+	info->components_count = rot_element.v1.components_count;
+	info->i2c_slave_addr = rot_element.v1.rot_address;
+	info->eid = rot_element.v1.rot_eid;
+	info->bridge_i2c_addr = rot_element.v1.bridge_address;
+	info->bridge_eid = rot_element.v1.bridge_eid;
+	info->attestation_success_retry = rot_element.attestation_success_retry;
+	info->attestation_fail_retry = rot_element.attestation_fail_retry;
+	info->discovery_fail_retry = rot_element.discovery_fail_retry;
+	info->mctp_ctrl_timeout = rot_element.mctp_ctrl_timeout;
+	info->mctp_bridge_get_table_wait = rot_element.mctp_bridge_get_table_wait;
+	info->mctp_bridge_additional_timeout = rot_element.mctp_bridge_additional_timeout;
+	info->attestation_rsp_not_ready_max_duration =
+		rot_element.attestation_rsp_not_ready_max_duration;
+	info->attestation_rsp_not_ready_max_retry = rot_element.attestation_rsp_not_ready_max_retry;
 
 	return 0;
 }
@@ -154,8 +186,9 @@ static int pcd_flash_get_port_info (struct pcd *pcd, uint8_t port_id, struct pcd
 	struct pcd_flash *pcd_flash = (struct pcd_flash*) pcd;
 	struct pcd_port_element port_element;
 	uint8_t *port_element_ptr = (uint8_t*) &port_element;
-	struct pcd_rot_element rot_element;
+	struct pcd_rot_element_v2 rot_element;
 	uint8_t found;
+	uint8_t rot_element_format;
 	int start = 0;
 	int i_port;
 	int status;
@@ -168,18 +201,19 @@ static int pcd_flash_get_port_info (struct pcd *pcd, uint8_t port_id, struct pcd
 		return MANIFEST_NO_MANIFEST;
 	}
 
-	status = pcd_flash_get_rot_element_ptr (pcd, (uint8_t*) &rot_element, &found);
+	status = pcd_flash_get_rot_element_ptr (pcd, (uint8_t*) &rot_element, &found,
+		&rot_element_format);
 	if (status != 0) {
 		return status;
 	}
 
-	if (rot_element.port_count == 0) {
+	if (rot_element.v1.port_count == 0) {
 		return PCD_INVALID_PORT;
 	}
 
 	start = found + 1;
 
-	for (i_port = 0; i_port < rot_element.port_count; ++i_port) {
+	for (i_port = 0; i_port < rot_element.v1.port_count; ++i_port) {
 		status = manifest_flash_read_element_data (&pcd_flash->base_flash,
 			pcd_flash->base_flash.hash, PCD_SPI_FLASH_PORT, start, PCD_ROT, 0, &found,
 			NULL, NULL, &port_element_ptr, sizeof (struct pcd_port_element));
@@ -202,6 +236,7 @@ static int pcd_flash_get_port_info (struct pcd *pcd, uint8_t port_id, struct pcd
 		info->reset_ctrl = pcd_get_port_reset_control (&port_element);
 		info->runtime_verification = pcd_get_port_runtime_verification (&port_element);
 		info->watchdog_monitoring = pcd_get_port_watchdog_monitoring (&port_element);
+		info->host_reset_action = pcd_get_port_host_reset_action (&port_element);
 		info->policy = port_element.policy;
 		info->pulse_interval = port_element.pulse_interval;
 
@@ -243,26 +278,17 @@ static int pcd_flash_get_power_controller_info (struct pcd *pcd,
 	return 0;
 }
 
-static int pcd_flash_get_devices_info (struct pcd *pcd, struct device_manager_info **devices,
-	size_t *num_devices)
+static int pcd_flash_get_next_mctp_bridge_component (struct pcd *pcd,
+	struct pcd_mctp_bridge_components_info *component, bool first)
 {
 	struct pcd_flash *pcd_flash = (struct pcd_flash*) pcd;
-	struct device_manager_info *device_ptr;
-	struct pcd_i2c_interface *interface;
+	struct pcd_mctp_bridge_component_element bridge_component;
 	struct pcd_mctp_bridge_component_connection *connection;
-	union {
-		struct pcd_rot_info rot_info;
-		struct pcd_direct_i2c_component_element direct_component;
-		struct pcd_mctp_bridge_component_element bridge_component;
-	} buffer;
-	uint8_t *element_ptr;
-	uint8_t i_component;
-	uint8_t found;
-	size_t type_len;
-	int start = 0;
+	uint8_t *element_ptr = (uint8_t*) &bridge_component;
+	uint8_t *start_ptr;
 	int status;
 
-	if ((pcd_flash == NULL) || (devices == NULL) || (num_devices == NULL)) {
+	if ((pcd_flash == NULL) || (component == NULL)) {
 		return PCD_INVALID_ARGUMENT;
 	}
 
@@ -270,83 +296,34 @@ static int pcd_flash_get_devices_info (struct pcd *pcd, struct device_manager_in
 		return MANIFEST_NO_MANIFEST;
 	}
 
-	status = pcd_flash_get_rot_info (pcd, &buffer.rot_info);
-	if (status != 0) {
+	start_ptr = (uint8_t*) &component->context;
+
+	if (first) {
+		*start_ptr = 0;
+	}
+
+	status = manifest_flash_read_element_data (&pcd_flash->base_flash,
+		pcd_flash->base_flash.hash, PCD_COMPONENT_MCTP_BRIDGE, *start_ptr, MANIFEST_NO_PARENT, 0,
+		start_ptr, NULL, NULL, &element_ptr, sizeof (struct pcd_mctp_bridge_component_element));
+	if (ROT_IS_ERROR (status)) {
 		return status;
 	}
-
-	if (buffer.rot_info.components_count == 0) {
-		*num_devices = 0;
-		return 0;
+	if ((size_t) status < (sizeof (struct pcd_mctp_bridge_component_element))) {
+		return PCD_MALFORMED_BRIDGE_COMPONENT_ELEMENT;
 	}
 
-	*num_devices = buffer.rot_info.components_count;
+	*start_ptr = *start_ptr + 1;
 
-	*devices = platform_calloc (*num_devices, sizeof (struct device_manager_info));
-	if (*devices == NULL) {
-		return PCD_NO_MEMORY;
-	}
+	connection = pcd_get_mctp_bridge_component_connection (element_ptr, status);
 
-	device_ptr = *devices;
-	element_ptr = (uint8_t*) &buffer.direct_component;
-
-	for (i_component = 0; i_component < *num_devices; ++i_component) {
-		status = manifest_flash_read_element_data (&pcd_flash->base_flash,
-			pcd_flash->base_flash.hash, PCD_COMPONENT_DIRECT, start, MANIFEST_NO_PARENT, 0, &found,
-			NULL, NULL, &element_ptr, sizeof (struct pcd_direct_i2c_component_element));
-		if (status == MANIFEST_ELEMENT_NOT_FOUND) {
-			break;
-		}
-		if (ROT_IS_ERROR (status)) {
-			goto fail;
-		}
-		if (((size_t) status) <
-			(sizeof (struct pcd_direct_i2c_component_element) - MANIFEST_MAX_STRING)) {
-			status = PCD_MALFORMED_DIRECT_I2C_COMPONENT_ELEMENT;
-			goto fail;
-		}
-
-		type_len = ((buffer.direct_component.component.type_len + 3) & ~((size_t) 3));
-		interface = (struct pcd_i2c_interface*) (element_ptr +
-			(sizeof (struct pcd_component_common) - MANIFEST_MAX_STRING + type_len));
-
-		device_ptr->eid = interface->eid;
-		device_ptr->smbus_addr = interface->address;
-
-		start = found + 1;
-		++device_ptr;
-	}
-
-	start = 0;
-	element_ptr = (uint8_t*) &buffer.bridge_component;
-
-	for (; i_component < *num_devices; ++i_component) {
-		status = manifest_flash_read_element_data (&pcd_flash->base_flash,
-			pcd_flash->base_flash.hash, PCD_COMPONENT_MCTP_BRIDGE, start, MANIFEST_NO_PARENT, 0,
-			&found, NULL, NULL, &element_ptr, sizeof (struct pcd_mctp_bridge_component_element));
-		if (ROT_IS_ERROR (status)) {
-			goto fail;
-		}
-		if ((size_t) status <
-			(sizeof (struct pcd_mctp_bridge_component_element) - MANIFEST_MAX_STRING)) {
-			status = PCD_MALFORMED_BRIDGE_COMPONENT_ELEMENT;
-			goto fail;
-		}
-
-		connection = pcd_get_mctp_bridge_component_connection (element_ptr, status);
-
-		device_ptr->eid = connection->eid;
-
-		start = found + 1;
-		++device_ptr;
-	}
+	component->component_id = bridge_component.component.component_id;
+	component->components_count = connection->components_count;
+	component->pci_device_id = connection->device_id;
+	component->pci_vid = connection->vendor_id;
+	component->pci_subsystem_id = connection->subsystem_device_id;
+	component->pci_subsystem_vid = connection->subsystem_vendor_id;
 
 	return 0;
-
-fail:
-	platform_free (*devices);
-
-	return status;
 }
 
 /**
@@ -365,7 +342,7 @@ fail:
  *
  * @return 0 if the PCD instance was initialized successfully or an error code.
  */
-int pcd_flash_init (struct pcd_flash *pcd, struct flash *flash, struct hash_engine *hash,
+int pcd_flash_init (struct pcd_flash *pcd, const struct flash *flash, struct hash_engine *hash,
 	uint32_t base_addr, uint8_t *signature_cache, size_t max_signature, uint8_t *platform_id_cache,
 	size_t max_platform_id)
 {
@@ -391,9 +368,9 @@ int pcd_flash_init (struct pcd_flash *pcd, struct flash *flash, struct hash_engi
 	pcd->base.base.get_signature = pcd_flash_get_signature;
 	pcd->base.base.is_empty = pcd_flash_is_empty;
 
+	pcd->base.get_next_mctp_bridge_component = pcd_flash_get_next_mctp_bridge_component;
 	pcd->base.get_port_info = pcd_flash_get_port_info;
 	pcd->base.get_rot_info = pcd_flash_get_rot_info;
-	pcd->base.get_devices_info = pcd_flash_get_devices_info;
 	pcd->base.get_power_controller_info = pcd_flash_get_power_controller_info;
 
 	return 0;

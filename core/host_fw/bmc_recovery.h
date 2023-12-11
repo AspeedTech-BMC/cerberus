@@ -10,7 +10,7 @@
 #include "host_processor.h"
 #include "crypto/hash.h"
 #include "crypto/rsa.h"
-#include "platform.h"
+#include "platform_api.h"
 #include "host_control.h"
 
 
@@ -60,14 +60,14 @@ struct bmc_recovery {
 	int (*on_host_cs1) (struct bmc_recovery *recovery, struct hash_engine *hash,
 		struct rsa_engine *rsa);
 
-	struct host_irq_control *irq;			/**< Control for enabling and disable host IRQs. */
+	const struct host_irq_control *irq;		/**< Control for enabling and disable host IRQs. */
 	struct host_processor *host;			/**< The BMC host for recovery operations. */
 	int state;								/**< The current state of the recovery manager. */
 	platform_clock timeout;					/**< The timeout clock to use to control recovery triggers. */
 	struct bmc_recovery_control rec_ctrl;	/**< Control settings for host recovery. */
 	int num_wdt;							/**< A counter for the number of watchdog events. */
 	bool skip_recovery;						/**< Don't execute recovery on future events. */
-	struct host_control *control;			/**< The interface for hardware control of the host. */
+	const struct host_control *control;		/**< The interface for hardware control of the host. */
 };
 
 
@@ -82,8 +82,8 @@ enum {
 };
 
 
-int bmc_recovery_init (struct bmc_recovery *recovery, struct host_irq_control *irq,
-	struct host_processor *host, struct host_control *control,
+int bmc_recovery_init (struct bmc_recovery *recovery, const struct host_irq_control *irq,
+	struct host_processor *host, const struct host_control *control,
 	struct bmc_recovery_control *rec_ctrl);
 void bmc_recovery_release (struct bmc_recovery *recovery);
 

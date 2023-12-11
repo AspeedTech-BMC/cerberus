@@ -17,6 +17,7 @@
 #endif
 #define CERBERUS_PROTOCOL_MSFT_PCI_VID						0x1414
 #define CERBERUS_PROTOCOL_PROTOCOL_VERSION					4
+#define CERBERUS_PROTOCOL_HEADER_SIZE_NO_ID					(sizeof (struct cerberus_protocol_header) - 1)
 
 /**
  * AES IV and GCM tag lengths defined by protocol.
@@ -28,6 +29,11 @@
  * The maximum length of the version string that can be reported by the protocol.
  */
 #define	CERBERUS_PROTOCOL_FW_VERSION_LEN					32
+
+/**
+ * The maximum sized certificate chain permitted by Cerberus protocol.
+ */
+#define CERBERUS_PROTOCOL_MAX_CERT_CHAIN_LEN				4096
 
 
 /**

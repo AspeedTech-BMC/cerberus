@@ -27,17 +27,23 @@ static void add_all_flash_tests (CuSuite *suite)
 	!defined TESTING_SKIP_FLASH_COMMON_SUITE
 	TESTING_RUN_SUITE (flash_common);
 #endif
-#if (defined TESTING_RUN_FLASH_STORE_SUITE || \
+#if (defined TESTING_RUN_FLASH_STORE_AGGREGATOR_SUITE || \
 		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
 		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \
-	!defined TESTING_SKIP_FLASH_STORE_SUITE
-	TESTING_RUN_SUITE (flash_store);
+	!defined TESTING_SKIP_FLASH_STORE_AGGREGATOR_SUITE
+	TESTING_RUN_SUITE (flash_store_aggregator);
 #endif
-#if (defined TESTING_RUN_FLASH_STORE_ENCRYPTED_SUITE || \
+#if (defined TESTING_RUN_FLASH_STORE_CONTIGUOUS_BLOCKS_SUITE || \
 		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
 		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \
-	!defined TESTING_SKIP_FLASH_STORE_ENCRYPTED_SUITE
-	TESTING_RUN_SUITE (flash_store_encrypted);
+	!defined TESTING_SKIP_FLASH_STORE_CONTIGUOUS_BLOCKS_SUITE
+	TESTING_RUN_SUITE (flash_store_contiguous_blocks);
+#endif
+#if (defined TESTING_RUN_FLASH_STORE_CONTIGUOUS_BLOCKS_ENCRYPTED_SUITE || \
+		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
+		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \
+	!defined TESTING_SKIP_FLASH_STORE_CONTIGUOUS_BLOCKS_ENCRYPTED_SUITE
+	TESTING_RUN_SUITE (flash_store_contiguous_blocks_encrypted);
 #endif
 #if (defined TESTING_RUN_FLASH_UPDATER_SUITE || \
 		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
@@ -50,6 +56,12 @@ static void add_all_flash_tests (CuSuite *suite)
 		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \
 	!defined TESTING_SKIP_FLASH_UTIL_SUITE
 	TESTING_RUN_SUITE (flash_util);
+#endif
+#if (defined TESTING_RUN_FLASH_VIRTUAL_RAM_SUITE || \
+		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
+		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \
+	!defined TESTING_SKIP_FLASH_VIRTUAL_RAM_SUITE
+	TESTING_RUN_SUITE (flash_virtual_ram);
 #endif
 #if (defined TESTING_RUN_SPI_FLASH_SUITE || \
 		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \

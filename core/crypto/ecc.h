@@ -41,6 +41,15 @@ struct ecc_public_key {
 
 #pragma pack(push,1)
 /**
+ * Defines a structure to hold the raw value (i.e. not ASN.1/DER encoded) for an ECC private key.
+ * No curve information is stored.  The curve is implied based on the key length.
+ */
+struct ecc_raw_private_key {
+	uint8_t d[ECC_MAX_KEY_LENGTH];			/**< The integer used as the private key. */
+	size_t key_length;						/**< Length of the private key. */
+};
+
+/**
  * Defines a structure to hold the X and Y values for a point on a curve that represents an ECC
  * public key.  No curve information is stored.  The curve is implied based on the key length.
  */
@@ -72,7 +81,9 @@ struct ecc_engine {
 	 *
 	 * @param engine The ECC engine to use for key initialization.
 	 * @param key The private key to use for key initialization.  This must be a DER encoded private
-	 * key.
+	 * key.  It can contain more bytes that specified in the DER encoding, which will be ignored.
+	 * Some implementations only provide oracle access to private keys.  In these cases, the DER
+	 * encoded data would be some identifier for the private key.
 	 * @param key_length The length of the private key data.
 	 * @param priv_key Output for the initialized private key.  This can be null to skip private key
 	 * initialization.
@@ -89,7 +100,7 @@ struct ecc_engine {
 	 *
 	 * @param engine The ECC engine to use for key initialization.
 	 * @param key The public key to use for key initialization.  This must be a DER encoded public
-	 * key.
+	 * key.  It can contain more bytes that specified in the DER encoding, which will be ignored.
 	 * @param key_length The length of the public key data.
 	 * @param pub_key Output for the initialized public key.
 	 *
@@ -168,7 +179,10 @@ struct ecc_engine {
 	 * @param key The private key to encode to DER.
 	 * @param der Output buffer for the DER encoded private key.  This is a dynamically allocated
 	 * buffer, and it is the responsibility of the caller to free it.  This will return null in the
-	 * case of an error.
+	 * case of an error.  Some implementations only provide oracle access to private keys.  In these
+	 * cases, the DER encoded data will not be an ECC private key, but rather an encoded identifier
+	 * for the private key.  This type of encoded data is not portable across implementations, but
+	 * can be used to load keys in different instances of the same type.
 	 * @param length Output for the length of the DER key.
 	 *
 	 * @return 0 if the key was successfully encoded or an error code.
@@ -215,7 +229,9 @@ struct ecc_engine {
 	 * @param key The public key to verify the signature with.
 	 * @param digest The digest to use for signature verification.
 	 * @param length The length of the digest.
-	 * @param signature The ECDSA signature to verify.  The signature must be DER encoded.
+	 * @param signature The ECDSA signature to verify.  The signature must be DER encoded.  As long
+	 * as the encoded length is correct, the buffer can be padded with extra data and not cause a
+	 * verification failure.
 	 * @param sig_length The length of the signature.
 	 *
 	 * @return 0 if the signature matches the digest or an error code.
@@ -283,6 +299,8 @@ enum {
 	ECC_ENGINE_UNSUPPORTED_KEY_LENGTH = ECC_ENGINE_ERROR (0x14),	/**< The ECC key length is not supported by the implementation. */
 	ECC_ENGINE_UNSUPPORTED_HASH_TYPE = ECC_ENGINE_ERROR (0x15),		/**< The hash algorithm for a signature digest is not supported by the implementation. */
 	ECC_ENGINE_SELF_TEST_FAILED = ECC_ENGINE_ERROR (0x16),			/**< An internal self-test of the ECC engine failed. */
+	ECC_ENGINE_UNSUPPORTED_OPERATION = ECC_ENGINE_ERROR (0x17),		/**< The requested operation is not supported by the implementation. */
+	ECC_ENGINE_INCOMPATIBLE_DIGEST = ECC_ENGINE_ERROR (0x18),		/**< The specified digest cannot be used for a signing operation. */
 };
 
 

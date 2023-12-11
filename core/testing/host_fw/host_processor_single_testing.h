@@ -12,6 +12,7 @@
 #include "testing/mock/host_fw/host_control_mock.h"
 #include "testing/mock/host_fw/host_flash_manager_single_mock.h"
 #include "testing/mock/host_fw/host_processor_observer_mock.h"
+#include "testing/mock/logging/logging_mock.h"
 #include "testing/mock/manifest/pfm_manager_mock.h"
 #include "testing/mock/manifest/pfm_mock.h"
 #include "testing/mock/recovery/recovery_image_manager_mock.h"
@@ -41,12 +42,19 @@ struct host_processor_single_testing {
 	struct recovery_image_mock image;						/**< Mock for a valid recovery image. */
 	struct host_processor_observer_mock observer;			/**< Mock for host notifications. */
 	struct host_processor_filtered test;					/**< Host instance being tested. */
+	struct logging_mock logger;								/**< Mock for debug logging. */
 };
 
 
+void host_processor_single_testing_init_dependencies (CuTest *test,
+	struct host_processor_single_testing *host);
 void host_processor_single_testing_init (CuTest *test,
 	struct host_processor_single_testing *host);
 void host_processor_single_testing_init_pulse_reset (CuTest *test,
+	struct host_processor_single_testing *host);
+void host_processor_single_testing_init_reset_flash (CuTest *test,
+	struct host_processor_single_testing *host);
+void host_processor_single_testing_init_reset_flash_pulse_reset (CuTest *test,
 	struct host_processor_single_testing *host);
 void host_processor_single_testing_init_no_recovery (CuTest *test,
 	struct host_processor_single_testing *host);

@@ -14,12 +14,12 @@
  */
 struct keystore_flash {
 	struct keystore base;					/**< Base keystore instance. */
-	struct flash_store *store;				/**< Flash storage for keys. */
+	const struct flash_store *store;		/**< Flash storage for keys. */
 };
 
 
-int keystore_flash_init (struct keystore_flash *store, struct flash_store *flash);
-void keystore_flash_release (struct keystore_flash *store);
+int keystore_flash_init (struct keystore_flash *store, const struct flash_store *flash);
+void keystore_flash_release (const struct keystore_flash *store);
 
 
 #endif /* KEYSTORE_FLASH_H_ */

@@ -13,7 +13,9 @@
 #include "cerberus_protocol_master_commands.h"
 #include "cerberus_protocol_optional_commands.h"
 #include "cerberus_protocol_debug_commands.h"
+#include "cerberus_protocol_diagnostic_commands.h"
 #include "cmd_interface_system.h"
+#include "common/unused.h"
 
 #if defined(CONFIG_INTEL_PFR)
 enum {
@@ -195,16 +197,16 @@ int cmd_interface_system_process_request (struct cmd_interface *intf,
 			break;
 
 		case CERBERUS_PROTOCOL_GET_DIGEST:
-			status = cerberus_protocol_get_certificate_digest (interface->slave_attestation,
+			status = cerberus_protocol_get_certificate_digest (interface->attestation,
 				interface->base.session, request);
 			break;
 
 		case CERBERUS_PROTOCOL_GET_CERTIFICATE:
-			status = cerberus_protocol_get_certificate (interface->slave_attestation, request);
+			status = cerberus_protocol_get_certificate (interface->attestation, request);
 			break;
 
 		case CERBERUS_PROTOCOL_ATTESTATION_CHALLENGE:
-			status = cerberus_protocol_get_challenge_response (interface->slave_attestation,
+			status = cerberus_protocol_get_challenge_response (interface->attestation,
 				interface->base.session, request);
 			break;
 
@@ -221,31 +223,40 @@ int cmd_interface_system_process_request (struct cmd_interface *intf,
 			break;
 
 		case CERBERUS_PROTOCOL_GET_PFM_ID:{
-			struct pfm_manager* pfm_mgr[2] = {interface->pfm_manager_0, interface->pfm_manager_1};
+			const struct pfm_manager* pfm_mgr[2] = {
+				interface->pfm_manager_0, interface->pfm_manager_1
+			};
+
 			status = cerberus_protocol_get_pfm_id (pfm_mgr, 2, request);
 			break;
 		}
 
 		case CERBERUS_PROTOCOL_GET_PFM_SUPPORTED_FW: {
-			struct pfm_manager* pfm_mgr[2] = {interface->pfm_manager_0, interface->pfm_manager_1};
+			const struct pfm_manager* pfm_mgr[2] = {
+				interface->pfm_manager_0, interface->pfm_manager_1
+			};
+
 			status = cerberus_protocol_get_pfm_fw (pfm_mgr, 2, request);
 			break;
 		}
 
 		case CERBERUS_PROTOCOL_INIT_PFM_UPDATE: {
-			struct manifest_cmd_interface* pfm_cmd[2] = {interface->pfm_0, interface->pfm_1};
+			const struct manifest_cmd_interface* pfm_cmd[2] = {interface->pfm_0, interface->pfm_1};
+
 			status = cerberus_protocol_pfm_update_init (pfm_cmd, 2, request);
 			break;
 		}
 
 		case CERBERUS_PROTOCOL_PFM_UPDATE: {
-			struct manifest_cmd_interface* pfm_cmd[2] = {interface->pfm_0, interface->pfm_1};
+			const struct manifest_cmd_interface* pfm_cmd[2] = {interface->pfm_0, interface->pfm_1};
+
 			status = cerberus_protocol_pfm_update (pfm_cmd, 2, request);
 			break;
 		}
 
 		case CERBERUS_PROTOCOL_COMPLETE_PFM_UPDATE: {
-			struct manifest_cmd_interface* pfm_cmd[2] = {interface->pfm_0, interface->pfm_1};
+			const struct manifest_cmd_interface* pfm_cmd[2] = {interface->pfm_0, interface->pfm_1};
+
 			status = cerberus_protocol_pfm_update_complete (pfm_cmd, 2,	request);
 			break;
 		}
@@ -299,8 +310,9 @@ int cmd_interface_system_process_request (struct cmd_interface *intf,
 			break;
 
 		case CERBERUS_PROTOCOL_GET_UPDATE_STATUS: {
-			struct manifest_cmd_interface* pfm_cmd[2] = {interface->pfm_0, interface->pfm_1};
+			const struct manifest_cmd_interface* pfm_cmd[2] = {interface->pfm_0, interface->pfm_1};
 			struct host_processor* host[2] = {interface->host_0, interface->host_1};
+
 			status = cerberus_protocol_get_update_status (interface->control, 2, pfm_cmd,
 				interface->cfm, interface->pcd, host, interface->recovery_cmd_0,
 				interface->recovery_cmd_1, interface->background, request);
@@ -385,6 +397,11 @@ int cmd_interface_system_process_request (struct cmd_interface *intf,
 			status = cerberus_protocol_get_attestation_data (interface->pcr_store, request);
 			break;
 
+#ifdef CMD_ENABLE_HEAP_STATS
+		case CERBERUS_PROTOCOL_DIAG_HEAP_USAGE:
+			return cerberus_protocol_heap_stats (interface->cmd_device, request);
+#endif
+
 #ifdef CMD_SUPPORT_ENCRYPTED_SESSIONS
 		case CERBERUS_PROTOCOL_EXCHANGE_KEYS:
 			status = cerberus_protocol_key_exchange (interface->base.session, request,
@@ -433,6 +450,7 @@ int cmd_interface_system_process_response (struct cmd_interface *intf,
 	}
 
 	switch (command_id) {
+#ifdef ATTESTATION_SUPPORT_CERBERUS_CHALLENGE
 		case CERBERUS_PROTOCOL_GET_DIGEST:
 			status = cerberus_protocol_process_certificate_digest_response (response);
 			if (status != 0) {
@@ -466,6 +484,19 @@ int cmd_interface_system_process_response (struct cmd_interface *intf,
 					response);
 			}
 
+		case CERBERUS_PROTOCOL_GET_DEVICE_CAPABILITIES:
+			status = cerberus_protocol_process_device_capabilities_response (
+				interface->device_manager, response);
+			if (status != 0) {
+				return status;
+			}
+			else {
+				return observable_notify_observers_with_ptr (&interface->observable,
+					offsetof (struct cerberus_protocol_observer, on_device_capabilities),
+					response);
+			}
+#endif
+
 		case CERBERUS_PROTOCOL_ERROR:
 			return cerberus_protocol_process_error_response (response);
 
@@ -488,8 +519,7 @@ int cmd_interface_system_process_response (struct cmd_interface *intf,
  * @param pfm_manager_1 PFM manager for port 1
  * @param cfm_manager CFM manager
  * @param pcd_manager PCD manager
- * @param master_attestation Master attestation manager
- * @param slave_attestation Slave attestation manager
+ * @param attestation Attestation responder instance to utilize
  * @param device_manager Device manager
  * @param store PCR storage
  * @param hash Hash engine to to use for PCR operations
@@ -515,29 +545,28 @@ int cmd_interface_system_process_response (struct cmd_interface *intf,
  * @return Initialization status, 0 if success or an error code.
  */
 int cmd_interface_system_init (struct cmd_interface_system *intf,
-	struct firmware_update_control *control, struct manifest_cmd_interface *pfm_0,
-	struct manifest_cmd_interface *pfm_1, struct manifest_cmd_interface *cfm,
-	struct manifest_cmd_interface *pcd, struct pfm_manager *pfm_manager_0,
-	struct pfm_manager *pfm_manager_1, struct cfm_manager *cfm_manager,
-	struct pcd_manager *pcd_manager, struct attestation_master *master_attestation,
-	struct attestation_slave *slave_attestation, struct device_manager *device_manager,
-	struct pcr_store *store, struct hash_engine *hash, struct cmd_background *background,
-	struct host_processor *host_0, struct host_processor *host_1,
-	struct cmd_interface_fw_version *fw_version, struct riot_key_manager *riot,
-	struct cmd_authorization *auth, struct host_control *host_ctrl_0,
-	struct host_control *host_ctrl_1, struct recovery_image_cmd_interface *recovery_cmd_0,
-	struct recovery_image_cmd_interface *recovery_cmd_1,
+	const struct firmware_update_control *control, const struct manifest_cmd_interface *pfm_0,
+	const struct manifest_cmd_interface *pfm_1, const struct manifest_cmd_interface *cfm,
+	const struct manifest_cmd_interface *pcd, const struct pfm_manager *pfm_manager_0,
+	const struct pfm_manager *pfm_manager_1, const struct cfm_manager *cfm_manager,
+	const struct pcd_manager *pcd_manager,  struct attestation_responder *attestation,
+	struct device_manager *device_manager, struct pcr_store *store, struct hash_engine *hash,
+	const struct cmd_background *background, struct host_processor *host_0,
+	struct host_processor *host_1, const struct cmd_interface_fw_version *fw_version,
+	struct riot_key_manager *riot, struct cmd_authorization *auth,
+	const struct host_control *host_ctrl_0, const struct host_control *host_ctrl_1,
+	const struct recovery_image_cmd_interface *recovery_cmd_0,
+	const struct recovery_image_cmd_interface *recovery_cmd_1,
 	struct recovery_image_manager *recovery_manager_0,
-	struct recovery_image_manager *recovery_manager_1, struct cmd_device *cmd_device,
+	struct recovery_image_manager *recovery_manager_1, const struct cmd_device *cmd_device,
 	uint16_t vendor_id, uint16_t device_id, uint16_t subsystem_vid, uint16_t subsystem_id,
 	struct session_manager *session)
 {
 	int status;
 
 	if ((intf == NULL) || (control == NULL) || (store == NULL) || (background == NULL) ||
-		(riot == NULL) || (auth == NULL) || (master_attestation == NULL) ||
-		(slave_attestation == NULL) || (hash == NULL) || (device_manager == NULL) ||
-		(fw_version == NULL) || (cmd_device == NULL)) {
+		(riot == NULL) || (auth == NULL) || (attestation == NULL) || (hash == NULL) ||
+		(device_manager == NULL) ||	(fw_version == NULL) || (cmd_device == NULL)) {
 		return CMD_HANDLER_INVALID_ARGUMENT;
 	}
 
@@ -563,8 +592,7 @@ int cmd_interface_system_init (struct cmd_interface_system *intf,
 	intf->riot = riot;
 	intf->background = background;
 	intf->auth = auth;
-	intf->master_attestation = master_attestation;
-	intf->slave_attestation = slave_attestation;
+	intf->attestation = attestation;
 	intf->hash = hash;
 	intf->host_0_ctrl = host_ctrl_0;
 	intf->host_1_ctrl = host_ctrl_1;
@@ -589,6 +617,8 @@ int cmd_interface_system_init (struct cmd_interface_system *intf,
 
 #if CMD_SUPPORT_ENCRYPTED_SESSIONS
 	intf->base.session = session;
+#else
+	UNUSED (session);
 #endif
 
 	return 0;
@@ -603,7 +633,6 @@ void cmd_interface_system_deinit (struct cmd_interface_system *intf)
 {
 	if (intf != NULL) {
 		observable_release (&intf->observable);
-		memset (intf, 0, sizeof (struct cmd_interface_system));
 	}
 }
 
@@ -616,13 +645,13 @@ void cmd_interface_system_deinit (struct cmd_interface_system *intf)
  * @return 0 if the observer was successfully added or an error code.
  */
 int cmd_interface_system_add_cerberus_protocol_observer (struct cmd_interface_system *intf,
-	struct cerberus_protocol_observer *observer)
+	const struct cerberus_protocol_observer *observer)
 {
 	if (intf == NULL) {
 		return CMD_HANDLER_INVALID_ARGUMENT;
 	}
 
-	return observable_add_observer (&intf->observable, observer);
+	return observable_add_observer (&intf->observable, (void*) observer);
 }
 
 /**
@@ -634,11 +663,11 @@ int cmd_interface_system_add_cerberus_protocol_observer (struct cmd_interface_sy
  * @return 0 if the observer was successfully removed or an error code.
  */
 int cmd_interface_system_remove_cerberus_protocol_observer (struct cmd_interface_system *intf,
-	struct cerberus_protocol_observer *observer)
+	const struct cerberus_protocol_observer *observer)
 {
 	if (intf == NULL) {
 		return CMD_HANDLER_INVALID_ARGUMENT;
 	}
 
-	return observable_remove_observer (&intf->observable, observer);
+	return observable_remove_observer (&intf->observable, (void*) observer);
 }

@@ -10,6 +10,7 @@
 #include "cmd_interface/cmd_interface.h"
 #include "cmd_interface/cmd_channel.h"
 #include "mctp_control_protocol.h"
+#include "mctp_control_protocol_commands.h"
 #include "mctp_logging.h"
 #include "mctp_base_protocol.h"
 #include "mctp_interface.h"
@@ -22,12 +23,15 @@
  * @param cmd_cerberus The command interface to use for processing and generating Cerberus protocol
  * 	messages.
  * @param cmd_mctp The command interface to use for processing and generating MCTP protocol message.
+ * @param cmd_spdm The command interface to use for processing and generating SPDM protocol
+ * 	messages. Optional parameter which can be set to NULL if not utilized.
  * @param device_mgr The device manager linked to command interface.
  *
  * @return Initialization status, 0 if success or an error code.
  */
 int mctp_interface_init (struct mctp_interface *mctp, struct cmd_interface *cmd_cerberus,
-	struct cmd_interface *cmd_mctp, struct device_manager *device_mgr)
+	struct cmd_interface *cmd_mctp, struct cmd_interface *cmd_spdm,
+	struct device_manager *device_mgr)
 {
 #ifdef CMD_ENABLE_ISSUE_REQUEST
 	int status;
@@ -55,6 +59,7 @@ int mctp_interface_init (struct mctp_interface *mctp, struct cmd_interface *cmd_
 	mctp->device_manager = device_mgr;
 	mctp->cmd_cerberus = cmd_cerberus;
 	mctp->cmd_mctp = cmd_mctp;
+	mctp->cmd_spdm = cmd_spdm;
 
 	mctp->req_buffer.data =
 		&mctp->msg_buffer[sizeof (mctp->msg_buffer) - MCTP_BASE_PROTOCOL_MAX_MESSAGE_BODY];
@@ -122,22 +127,24 @@ static int mctp_interface_generate_packets_from_payload (struct mctp_interface *
 {
 	uint8_t packet_seq = 0;
 	size_t max_packet_payload;
-	size_t num_packets;
 	size_t packet_payload_len;
 	size_t i_payload = 0;
 	size_t i_buf = 0;
-	size_t i_packet;
 	bool som = true;
-	bool eom;
+	bool eom = false;
 	int status;
 
-	max_packet_payload = device_manager_get_max_transmission_unit_by_eid (mctp->device_manager,
-			dest_eid);
-	num_packets = MCTP_BASE_PROTOCOL_PACKETS_IN_MESSAGE (payload_len, max_packet_payload);
+	max_packet_payload = device_manager_get_max_transmission_unit_by_eid (mctp->device_manager, dest_eid);
 
-	for (i_packet = 0; i_packet < num_packets; ++i_packet) {
-		eom = (i_packet == (num_packets - 1));
-		packet_payload_len = (payload_len > max_packet_payload) ? max_packet_payload : payload_len;
+	while (payload_len > 0) {
+		if (payload_len > max_packet_payload) {
+			packet_payload_len = max_packet_payload;
+		}
+		else {
+			eom = true;
+			packet_payload_len = payload_len;
+		}
+		
 		if (mctp->channel_id & CMD_CHANNEL_I3C_BASE) {
 			status = mctp_base_protocol_construct_i3c (&payload[i_payload],
 					packet_payload_len, &buf[i_buf], max_buf_len - i_buf,
@@ -340,8 +347,8 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 	}
 
 	if (tag_owner == MCTP_BASE_PROTOCOL_TO_RESPONSE) {
-		if (!mctp->response_expected || ((src_eid != mctp->response_eid) && (mctp->response_eid != MCTP_BASE_PROTOCOL_NULL_EID)) ||
-			(msg_tag != mctp->response_msg_tag)) {
+		if ((mctp->rsp_state != MCTP_INTERFACE_RESPONSE_WAITING) ||
+			((src_eid != mctp->response_eid) && (mctp->response_eid != MCTP_BASE_PROTOCOL_NULL_EID)) || (msg_tag != mctp->response_msg_tag)) {
 			return MCTP_BASE_PROTOCOL_UNEXPECTED_PKT;
 		}
 	}
@@ -399,12 +406,11 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 	if (eom) {
 		if (tag_owner == MCTP_BASE_PROTOCOL_TO_RESPONSE) {
 #ifdef CMD_ENABLE_ISSUE_REQUEST
-			/* If flag is not defined, we will never issue requests, so response_expected will
-			 * always be false and any response packets will be rejected in the earlier check.
-			 * Therefore, we dont need to do anything here in that case. */
+			/* We know the message is one of the three supported types by this point.  If it wasn't,
+			 * it would have failed earlier in packet processing. */
 			if (MCTP_BASE_PROTOCOL_IS_CONTROL_MSG (mctp->msg_type)) {
 				status = mctp->cmd_mctp->process_response (mctp->cmd_mctp, &mctp->req_buffer);
-				if (status != 0) {
+				if (status == CMD_HANDLER_ERROR_MESSAGE) {
 					debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
 						MCTP_LOGGING_MCTP_CONTROL_RSP_FAIL, status, mctp->channel_id);
 				}
@@ -416,6 +422,12 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 				}
 			}
 			else if (MCTP_BASE_PROTOCOL_IS_SPDM_MSG (mctp->msg_type)) {
+				if (mctp->cmd_spdm) {
+					status = mctp->cmd_spdm->process_response (mctp->cmd_spdm, &mctp->req_buffer);
+				}
+				else {
+					//return MCTP_BASE_PROTOCOL_UNSUPPORTED_OPERATION;
+				}
 			}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
 			else if (MCTP_BASE_PROTOCOL_IS_ECHO_TEST_MSG (mctp->msg_type)) {
@@ -424,27 +436,37 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 			else
 				return MCTP_BASE_PROTOCOL_UNSUPPORTED_MSG;
 
-			mctp->response_expected = false;
+			if (status == CMD_HANDLER_ERROR_MESSAGE) {
+				mctp->rsp_state = MCTP_INTERFACE_RESPONSE_ERROR;
+				status = 0;
+			}
+			else if (status != 0) {
+				mctp->rsp_state = MCTP_INTERFACE_RESPONSE_FAIL;
+			}
+			else {
+				mctp->rsp_state = MCTP_INTERFACE_RESPONSE_SUCCESS;
+			}
+
 			mctp->response_msg_tag = (mctp->response_msg_tag + 1) % 8;
 
 			platform_semaphore_post (&mctp->wait_for_response);
 
 			return status;
+#else
+		/* If flag is not defined, we will never issue requests, so rsp_state will always be
+		 * MCTP_INTERFACE_RESPONSE_IDLE and any response packets will be rejected in the earlier
+		 * check. Therefore, we dont need to do anything here in that case. */
 #endif
 		}
-		/* We know the message is one of the two supported types by this point.  If it wasn't, it
-		 * would have failed earlier in packet processing. */
 		else if (MCTP_BASE_PROTOCOL_IS_CONTROL_MSG (mctp->msg_type)) {
-			if (tag_owner == MCTP_BASE_PROTOCOL_TO_REQUEST) {
-				mctp->req_buffer.max_response = MCTP_BASE_PROTOCOL_MIN_TRANSMISSION_UNIT;
+			mctp->req_buffer.max_response = MCTP_BASE_PROTOCOL_MIN_TRANSMISSION_UNIT;
 
-				status = mctp->cmd_mctp->process_request (mctp->cmd_mctp, &mctp->req_buffer);
-				if (status != 0) {
-					debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
-						MCTP_LOGGING_MCTP_CONTROL_REQ_FAIL, status, mctp->channel_id);
+			status = mctp->cmd_mctp->process_request (mctp->cmd_mctp, &mctp->req_buffer);
+			if (status != 0) {
+				debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
+					MCTP_LOGGING_MCTP_CONTROL_REQ_FAIL, status, mctp->channel_id);
 
-					return status;
-				}
+				return status;
 			}
 		}
 		else if (MCTP_BASE_PROTOCOL_IS_VENDOR_MSG (mctp->msg_type)) {
@@ -519,7 +541,8 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 		}
 #endif
 		else {
-			/* Handle other messages types, such as SPDM. */
+			/* Handle other messages types */
+			return MCTP_BASE_PROTOCOL_UNSUPPORTED_OPERATION;
 		}
 
 		if (mctp->req_buffer.length > 0) {
@@ -568,7 +591,8 @@ void mctp_interface_reset_message_processing (struct mctp_interface *mctp)
 #ifdef CMD_ENABLE_ISSUE_REQUEST
 /**
  * Packetize a request message and send it over a command channel.  This call will block until the
- * full message has been transmitted and a response has been received or the operation times out.
+ * full message has been transmitted and a response has been received or the operation times out,
+ * unless a timeout_ms of 0 is set at which point request is sent and function returns immediately.
  *
  * @param mctp MCTP instance that will be processing the request message.
  * @param channel Command channel to use for transmitting the packets.
@@ -581,7 +605,8 @@ void mctp_interface_reset_message_processing (struct mctp_interface *mctp)
  * upon return.
  * @param max_length Maximum length of the message buffer.  This buffer should be
  * MCTP_BASE_PROTOCOL_MAX_MESSAGE_LEN bytes to ensure any message packetized in any way can fit.
- * @param timeout_ms Timeout period in milliseconds to wait for response to be received.
+ * @param timeout_ms Timeout period in milliseconds to wait for response to be received.  If
+ * wait for response not needed, set to 0.
  *
  * @return 0 if the request was transmitted successfully or an error code.
  */
@@ -645,7 +670,7 @@ int mctp_interface_issue_request (struct mctp_interface *mctp, struct cmd_channe
 
 	platform_mutex_lock (&mctp->lock);
 
-	mctp->response_expected = true;
+	mctp->rsp_state = MCTP_INTERFACE_RESPONSE_WAITING;
 	mctp->response_eid = dest_eid;
 
 	status = platform_semaphore_reset (&mctp->wait_for_response);
@@ -658,16 +683,75 @@ int mctp_interface_issue_request (struct mctp_interface *mctp, struct cmd_channe
 		goto exit;
 	}
 
+	if (timeout_ms == 0) {
+		goto unlock;
+	}
+
 	status = platform_semaphore_wait (&mctp->wait_for_response, timeout_ms);
 	if (status == 1) {
+		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MCTP,
+			MCTP_LOGGING_RSP_TIMEOUT, (mctp->response_eid << 8) | mctp->response_msg_tag,
+			timeout_ms);
+
+		mctp->response_msg_tag = (mctp->response_msg_tag + 1) % 8;
+
 		status = MCTP_BASE_PROTOCOL_RESPONSE_TIMEOUT;
+	}
+	else if (mctp->rsp_state == MCTP_INTERFACE_RESPONSE_ERROR) {
+		status = MCTP_BASE_PROTOCOL_ERROR_RESPONSE;
+	}
+	else if (mctp->rsp_state == MCTP_INTERFACE_RESPONSE_FAIL) {
+		status = MCTP_BASE_PROTOCOL_FAIL_RESPONSE;
 	}
 
 exit:
-	mctp->response_msg_tag = (mctp->response_msg_tag + 1) % 8;
-	mctp->response_expected = false;
+	mctp->rsp_state = MCTP_INTERFACE_RESPONSE_IDLE;
+
+unlock:
 	platform_mutex_unlock (&mctp->lock);
 
 	return status;
 }
+
+/**
+ * Generate and send a MCTP control protocol Discovery Notify request to MCTP bridge, then return
+ * immediately without waiting for response.
+ *
+ * @param mctp MCTP instance that will be processing the request message.
+ * @param channel Command channel to use for transmitting the packets.
+ *
+ * @return 0 if the request was transmitted successfully or an error code.
+ */
+int mctp_interface_send_discovery_notify (struct mctp_interface *mctp, struct cmd_channel *channel)
+{
+	uint8_t request[MCTP_BASE_PROTOCOL_MIN_MESSAGE_LEN];
+	int bridge_eid;
+	int bridge_addr;
+	int status;
+
+	if ((mctp == NULL) || (channel == NULL)) {
+		return MCTP_BASE_PROTOCOL_INVALID_ARGUMENT;
+	}
+
+	bridge_eid = device_manager_get_device_eid (mctp->device_manager,
+		DEVICE_MANAGER_MCTP_BRIDGE_DEVICE_NUM);
+	if (ROT_IS_ERROR (bridge_eid)) {
+		return bridge_eid;
+	}
+
+	bridge_addr = device_manager_get_device_addr (mctp->device_manager,
+		DEVICE_MANAGER_MCTP_BRIDGE_DEVICE_NUM);
+	if (ROT_IS_ERROR (bridge_addr)) {
+		return bridge_addr;
+	}
+
+	status = mctp_control_protocol_generate_discovery_notify_request (request, sizeof (request));
+	if (ROT_IS_ERROR (status)) {
+		return status;
+	}
+
+	return mctp_interface_issue_request (mctp, channel, bridge_addr, bridge_eid, request, status,
+		request, sizeof (request), 0);
+}
+
 #endif

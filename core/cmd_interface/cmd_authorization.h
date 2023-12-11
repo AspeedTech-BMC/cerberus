@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-#ifndef CMD_CMD_AUTHORIZATION_H_
-#define CMD_CMD_AUTHORIZATION_H_
+#ifndef CMD_AUTHORIZATION_H_
+#define CMD_AUTHORIZATION_H_
 
 #include <stdint.h>
 #include <stddef.h>
@@ -46,7 +46,7 @@ struct cmd_authorization {
 		size_t *length);
 
 	/**
-	 * Check for authorization to clear the platform-specific configuratation for the device.
+	 * Check for authorization to clear the platform-specific configuration for the device.
 	 *
 	 * @param auth Authorization handler to query.
 	 * @param token Input or output authorization token, depending on the initial value.  See
@@ -58,6 +58,21 @@ struct cmd_authorization {
 	 * CMD_AUTHORIZATION_CHALLENGE will be returned.
 	 */
 	int (*authorize_clear_platform_config) (struct cmd_authorization *auth, uint8_t **token,
+		size_t *length);
+
+	/**
+	 * Check for authorization to clear component manifests on the device.
+	 *
+	 * @param auth Authorization handler to query.
+	 * @param token Input or output authorization token, depending on the initial value.  See
+	 * {@link struct authorization.authorize}.
+	 * @param length Input or output length of the authorization token, depending on the initial
+	 * value of the authorization token.  See {@link struct authorization.authorize}.
+	 *
+	 * @return 0 if the operation is authorized or an error code.  If a token was generated,
+	 * CMD_AUTHORIZATION_CHALLENGE will be returned.
+	 */
+	int (*authorize_clear_component_manifests) (struct cmd_authorization *auth, uint8_t **token,
 		size_t *length);
 
 	/**
@@ -78,13 +93,14 @@ struct cmd_authorization {
 	struct authorization *bypass;		/**< Authorization context for reverting to bypass. */
 	struct authorization *defaults;		/**< Authorization context for resetting to defaults. */
 	struct authorization *platform;		/**< Authorization context for clearing platform config. */
+	struct authorization *components;	/**< Authorization context for clearing component manifests. */
 	struct authorization *intrusion;	/**< Authorization context for resetting intrusion. */
 };
 
 
 int cmd_authorization_init (struct cmd_authorization *auth, struct authorization *bypass,
-	struct authorization *defaults, struct authorization *platform, 
-	struct authorization *intrusion);
+	struct authorization *defaults, struct authorization *platform,
+	struct authorization *components, struct authorization *intrusion);
 void cmd_authorization_release (struct cmd_authorization *auth);
 
 
@@ -98,7 +114,10 @@ enum {
 	CMD_AUTHORIZATION_NO_MEMORY = CMD_AUTHORIZATION_ERROR (0x01),			/**< Memory allocation failed. */
 	CMD_AUTHORIZATION_BYPASS_FAILED = CMD_AUTHORIZATION_ERROR (0x02),		/**< Failed authorization to revert to bypass mode. */
 	CMD_AUTHORIZATION_DEFAULTS_FAILED = CMD_AUTHORIZATION_ERROR (0x03),		/**< Failed authorization to restore defaults. */
+	CMD_AUTHORIZATION_CONFIG_FAILED = CMD_AUTHORIZATION_ERROR (0x04),		/**< Failed authorization to clear platform config. */
+	CMD_AUTHORIZATION_COMPONENTS_FAILED = CMD_AUTHORIZATION_ERROR (0x05),	/**< Failed authorization to clear component manifests. */
+	CMD_AUTHORIZATION_INTRUSION_FAILED = CMD_AUTHORIZATION_ERROR (0x06),	/**< Failed authorization to reset intrusion state. */
 };
 
 
-#endif /* CMD_CMD_AUTHORIZATION_H_ */
+#endif /* CMD_AUTHORIZATION_H_ */

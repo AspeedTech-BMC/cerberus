@@ -6,19 +6,29 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include "status/rot_status.h"
 
 
 /* Hash lengths */
-#define	SHA1_HASH_LENGTH	(160 / 8)
-#define SHA256_HASH_LENGTH	(256 / 8)
-#define	SHA384_HASH_LENGTH	(384 / 8)
-#define	SHA512_HASH_LENGTH	(512 / 8)
+#define	SHA1_HASH_LENGTH				(160 / 8)
+#define SHA256_HASH_LENGTH				(256 / 8)
+#define	SHA384_HASH_LENGTH				(384 / 8)
+#define	SHA512_HASH_LENGTH				(512 / 8)
 
-#define	SHA1_BLOCK_SIZE		(512 / 8)
-#define	SHA256_BLOCK_SIZE	(512 / 8)
-#define	SHA384_BLOCK_SIZE	(1024 / 8)
-#define	SHA512_BLOCK_SIZE	(1024 / 8)
+/* Maximum hash length */
+#ifdef HASH_ENABLE_SHA512
+#define HASH_MAX_HASH_LEN				SHA512_HASH_LENGTH
+#elif defined HASH_ENABLE_SHA384
+#define HASH_MAX_HASH_LEN				SHA384_HASH_LENGTH
+#else
+#define HASH_MAX_HASH_LEN				SHA256_HASH_LENGTH
+#endif
+
+#define	SHA1_BLOCK_SIZE					(512 / 8)
+#define	SHA256_BLOCK_SIZE				(512 / 8)
+#define	SHA384_BLOCK_SIZE				(1024 / 8)
+#define	SHA512_BLOCK_SIZE				(1024 / 8)
 
 
 /**
@@ -197,10 +207,13 @@ struct hash_engine {
 
 
 int hash_start_new_hash (struct hash_engine *engine, enum hash_type type);
+
 int hash_calculate (struct hash_engine *engine, enum hash_type type, const uint8_t *data,
 	size_t length, uint8_t *hash, size_t hash_length);
 
-int hash_get_hash_len (enum hash_type hash_type);
+int hash_get_hash_length (enum hash_type hash_type);
+
+bool hash_is_alg_supported (enum hash_type type);
 
 
 
@@ -236,6 +249,15 @@ int hash_hmac_init (struct hmac_engine *engine, struct hash_engine *hash, enum h
 int hash_hmac_update (struct hmac_engine *engine, const uint8_t *data, size_t length);
 int hash_hmac_finish (struct hmac_engine *engine, uint8_t *hmac, size_t hmac_length);
 void hash_hmac_cancel (struct hmac_engine *engine);
+
+/**
+ * Determine the output length for an HMAC.
+ *
+ * @param type The type of hash used to generate the hmac.  This should be an enum hmac_hash value.
+ *
+ * @return HMAC length if the hash algorithm or HASH_ENGINE_UNKNOWN_HASH.
+ */
+#define	hash_hmac_get_hmac_length(type)	hash_get_hash_length ((enum hash_type) (type))
 
 
 #define	HASH_ENGINE_ERROR(code)		ROT_ERROR (ROT_MODULE_HASH_ENGINE, code)

@@ -18,13 +18,13 @@
  *
  * @return 0 if the observer was added for notifications or an error code.
  */
-int pfm_manager_add_observer (struct pfm_manager *manager, struct pfm_observer *observer)
+int pfm_manager_add_observer (struct pfm_manager *manager, const struct pfm_observer *observer)
 {
 	if (manager == NULL) {
 		return MANIFEST_MANAGER_INVALID_ARGUMENT;
 	}
 
-	return observable_add_observer (&manager->observable, observer);
+	return observable_add_observer (&manager->observable, (void*) observer);
 }
 
 /**
@@ -35,13 +35,13 @@ int pfm_manager_add_observer (struct pfm_manager *manager, struct pfm_observer *
  *
  * @return 0 if the observer was removed from future notifications or an error code.
  */
-int pfm_manager_remove_observer (struct pfm_manager *manager, struct pfm_observer *observer)
+int pfm_manager_remove_observer (struct pfm_manager *manager, const struct pfm_observer *observer)
 {
 	if (manager == NULL) {
 		return MANIFEST_MANAGER_INVALID_ARGUMENT;
 	}
 
-	return observable_remove_observer (&manager->observable, observer);
+	return observable_remove_observer (&manager->observable, (void*) observer);
 }
 
 /**
@@ -153,6 +153,23 @@ void pfm_manager_on_clear_active (struct pfm_manager *manager)
 
 	observable_notify_observers (&manager->observable,
 		offsetof (struct pfm_observer, on_clear_active));
+}
+
+/**
+ * Notify observers that a PFM activation request has been received.
+ *
+ * @param manager The manager generating the event.
+ */
+void pfm_manager_on_pfm_activation_request (struct pfm_manager *manager)
+{
+	if (manager == NULL) {
+		debug_log_create_entry (DEBUG_LOG_SEVERITY_ERROR, DEBUG_LOG_COMPONENT_MANIFEST,
+			MANIFEST_LOGGING_PFM_ACTIVATION_REQUEST_FAIL, MANIFEST_MANAGER_INVALID_ARGUMENT, 0);
+		return;
+	}
+
+	observable_notify_observers (&manager->observable,
+		offsetof (struct pfm_observer, on_pfm_activation_request));
 }
 
 /**

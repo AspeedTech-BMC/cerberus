@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-#include "platform.h"
+#include "platform_api.h"
 #include "manifest_flash.h"
 #include "manifest.h"
 #include "flash/flash_util.h"
@@ -25,8 +25,8 @@
  *
  * @return 0 if the manifest was initialized successfully or an error code.
  */
-int manifest_flash_init (struct manifest_flash *manifest, struct flash *flash, uint32_t base_addr,
-	uint16_t magic_num)
+int manifest_flash_init (struct manifest_flash *manifest, const struct flash *flash,
+	uint32_t base_addr, uint16_t magic_num)
 {
 	return manifest_flash_v2_init (manifest, flash, NULL, base_addr, magic_num,
 		MANIFEST_NOT_SUPPORTED, NULL, 0, NULL, 0);
@@ -49,7 +49,7 @@ int manifest_flash_init (struct manifest_flash *manifest, struct flash *flash, u
  *
  * @return 0 if the manifest was initialized successfully or an error code.
  */
-int manifest_flash_v2_init (struct manifest_flash *manifest, struct flash *flash,
+int manifest_flash_v2_init (struct manifest_flash *manifest, const struct flash *flash,
 	struct hash_engine *hash, uint32_t base_addr, uint16_t magic_num_v1, uint16_t magic_num_v2,
 	uint8_t *signature_cache, size_t max_signature, uint8_t *platform_id_cache,
 	size_t max_platform_id)
@@ -164,7 +164,7 @@ int manifest_flash_read_header (struct manifest_flash *manifest, struct manifest
  * @return 0 if the manifest is valid or an error code.
  */
 static int manifest_flash_verify_v1 (struct manifest_flash *manifest, struct hash_engine *hash,
-	struct signature_verification *verification, enum hash_type sig_hash, uint8_t *hash_out)
+	const struct signature_verification *verification, enum hash_type sig_hash, uint8_t *hash_out)
 {
 	int status;
 
@@ -173,8 +173,7 @@ static int manifest_flash_verify_v1 (struct manifest_flash *manifest, struct has
 		manifest->signature, manifest->header.sig_length, manifest->hash_cache,
 		sizeof (manifest->hash_cache));
 
-	if ((status == 0) || (status == RSA_ENGINE_BAD_SIGNATURE) ||
-		(status == ECC_ENGINE_BAD_SIGNATURE)) {
+	if ((status == 0) || (status == SIG_VERIFICATION_BAD_SIGNATURE)) {
 		manifest->cache_valid = true;
 		if (hash_out) {
 			memcpy (hash_out, manifest->hash_cache, manifest->hash_length);
@@ -196,7 +195,7 @@ static int manifest_flash_verify_v1 (struct manifest_flash *manifest, struct has
  * @return 0 if the manifest is valid or an error code.
  */
 static int manifest_flash_verify_v2 (struct manifest_flash *manifest, struct hash_engine *hash,
-	struct signature_verification *verification, enum hash_type sig_hash, uint8_t *hash_out)
+	const struct signature_verification *verification, enum hash_type sig_hash, uint8_t *hash_out)
 {
 	struct manifest_toc_entry entry;
 	struct manifest_platform_id plat_id_header;
@@ -377,7 +376,7 @@ error:
  * @return 0 if the manifest is valid or an error code.
  */
 int manifest_flash_verify (struct manifest_flash *manifest, struct hash_engine *hash,
-	struct signature_verification *verification, uint8_t *hash_out, size_t hash_length)
+	const struct signature_verification *verification, uint8_t *hash_out, size_t hash_length)
 {
 	enum hash_type sig_hash;
 	int status;
@@ -469,7 +468,8 @@ int manifest_flash_get_id (struct manifest_flash *manifest, uint32_t *id)
 	}
 
 	if (manifest->manifest_valid) {
-		*id = manifest->header.id;
+		/* Use memcpy to account for architectures that don't allow unaligned memory accesses. */
+		memcpy (id, &manifest->header.id, sizeof (manifest->header.id));
 	}
 	else {
 		status = MANIFEST_NO_MANIFEST;
@@ -648,7 +648,7 @@ int manifest_flash_get_signature (struct manifest_flash *manifest, uint8_t *sign
  * @param parent_type Identifier for the type of the parent element.  If the element has no parent,
  * MANIFEST_NO_PARENT must be provided.
  * @param read_offset Offset into the element data to start reading.  The entire element is still
- * validated, but the buffer will only contain element data starting starting at the offset.
+ * validated, but the buffer will only contain element data starting at the offset.
  * @param found Optional output indicating which TOC entry was used for the element.
  * @param format Optional output for the format version of the element data.
  * @param total_len Optional output for the total length of the element data.
@@ -879,8 +879,16 @@ error:
 }
 
 /**
- * Find the number of direct child elements of specified type of requested element.  If element has
- * nested children, they are not counted.
+ * Get requested information of child elements or requested entry.
+ *
+ * Get Number of Child Elements: Use child_count to find the number of direct child elements of
+ * 	specified type of requested element.  If element has nested children, they are not counted.
+ *
+ * Get Total Length of Child Elements: Use child_len to find the total length of direct child
+ *  elements of	specified type of requested element.  If element has nested children, they are not
+ *  counted.
+ *
+ * Get Entry ID of First Child: Use first_entry to get first child entry of requested type.
  *
  * @param manifest The manifest to read.
  * @param hash The hash engine to use for element validation.
@@ -889,22 +897,23 @@ error:
  * @param parent_type Type of parent to requested parent element.
  * @param child_type Type of child element to get count of.
  * @param child_len Optional output buffer with total length of child elements.
+ * @param child_count Optional output buffer with number of child elements found.
+ * @param first_entry Optional output buffer with entry of first child.
  *
- * @return The number of child elements found or an error code.  Use ROT_IS_ERROR to check the
- * return value.
+ * @return 0 if request completed successfully or an error code.
  */
-int manifest_flash_get_num_child_elements (struct manifest_flash *manifest,
+int manifest_flash_get_child_elements_info (struct manifest_flash *manifest,
 	struct hash_engine *hash, int entry, uint8_t type, uint8_t parent_type, uint8_t child_type,
-	size_t *child_len)
+	size_t *child_len, int *child_count, int *first_entry)
 {
 	uint8_t validate_hash[SHA512_HASH_LENGTH];
 	struct manifest_toc_entry toc_entry;
 	uint32_t entry_addr;
 	uint32_t hash_addr;
-	int child_count = 0;
+	bool only_entry = ((child_len == NULL) && (child_count == NULL));
 	int status;
 
-	if ((manifest == NULL) || (hash == NULL)) {
+	if ((manifest == NULL) || (hash == NULL) || (only_entry && (first_entry == NULL))) {
 		return MANIFEST_INVALID_ARGUMENT;
 	}
 
@@ -914,6 +923,14 @@ int manifest_flash_get_num_child_elements (struct manifest_flash *manifest,
 
 	if (child_len != NULL) {
 		*child_len = 0;
+	}
+
+	if (child_count != NULL) {
+		*child_count = 0;
+	}
+
+	if (first_entry != NULL) {
+		*first_entry = 0;
 	}
 
 	if (entry >= manifest->toc_header.entry_count) {
@@ -960,16 +977,37 @@ int manifest_flash_get_num_child_elements (struct manifest_flash *manifest,
 		}
 
 		if ((toc_entry.parent == parent_type) || (toc_entry.type_id == parent_type)) {
+			if (only_entry) {
+				status = MANIFEST_CHILD_NOT_FOUND;
+				goto error;
+			}
+
 			entry_addr += sizeof (struct manifest_toc_entry);
 			break;
 		}
 		if ((toc_entry.parent == type) && (toc_entry.type_id == child_type)) {
-			++child_count;
+			if ((first_entry != NULL) && (*first_entry == 0)) {
+				*first_entry = entry;
+
+				if (only_entry) {
+					entry_addr += sizeof (struct manifest_toc_entry);
+					break;
+				}
+			}
+
+			if (child_count != NULL) {
+				*child_count = *child_count + 1;
+			}
 
 			if (child_len != NULL) {
 				*child_len = *child_len + toc_entry.length;
 			}
 		}
+	}
+
+	if (only_entry && (*first_entry == 0)) {
+		status = MANIFEST_CHILD_NOT_FOUND;
+		goto error;
 	}
 
 	/* Hash the unneeded TOC data until the entry hash. */
@@ -988,7 +1026,7 @@ int manifest_flash_get_num_child_elements (struct manifest_flash *manifest,
 		return MANIFEST_TOC_INVALID;
 	}
 
-	return child_count;
+	return 0;
 
 error:
 	hash->cancel (hash);
@@ -1020,7 +1058,7 @@ uint32_t manifest_flash_get_addr (struct manifest_flash *manifest)
  *
  * @return The flash device for the manifest.
  */
-struct flash* manifest_flash_get_flash (struct manifest_flash *manifest)
+const struct flash* manifest_flash_get_flash (struct manifest_flash *manifest)
 {
 	if (manifest) {
 		return manifest->flash;
@@ -1081,9 +1119,9 @@ int manifest_flash_compare_platform_id (struct manifest_flash *manifest1,
 	if (!manifest1->manifest_valid || !manifest2->manifest_valid) {
 		return MANIFEST_NO_MANIFEST;
 	}
-	
+
 	if (sku_upgrade_permitted) {
-		return (strncmp (manifest1->platform_id, manifest2->platform_id, 
+		return (strncmp (manifest1->platform_id, manifest2->platform_id,
 			strlen (manifest1->platform_id)) != 0);
 	}
 	else {

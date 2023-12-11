@@ -7,8 +7,8 @@
 #include "firmware_update_mock.h"
 
 
-int firmware_update_mock_finalize_image (struct firmware_update *updater, struct flash *flash,
-	uint32_t address)
+int firmware_update_mock_finalize_image (const struct firmware_update *updater,
+	const struct flash *flash, uint32_t address)
 {
 	struct firmware_update_mock *mock = (struct firmware_update_mock*) updater;
 
@@ -16,12 +16,12 @@ int firmware_update_mock_finalize_image (struct firmware_update *updater, struct
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, firmware_update_mock_finalize_image, updater, MOCK_ARG_CALL (flash),
-		MOCK_ARG_CALL (address));
+	MOCK_RETURN (&mock->mock, firmware_update_mock_finalize_image, updater,
+		MOCK_ARG_PTR_CALL (flash), MOCK_ARG_CALL (address));
 }
 
-int firmware_update_mock_verify_boot_image (struct firmware_update *updater, struct flash *flash,
-	uint32_t address)
+int firmware_update_mock_verify_boot_image (const struct firmware_update *updater,
+	const struct flash *flash, uint32_t address)
 {
 	struct firmware_update_mock *mock = (struct firmware_update_mock*) updater;
 
@@ -30,7 +30,7 @@ int firmware_update_mock_verify_boot_image (struct firmware_update *updater, str
 	}
 
 	MOCK_RETURN (&mock->mock, firmware_update_mock_verify_boot_image, updater,
-		MOCK_ARG_CALL (flash), MOCK_ARG_CALL (address));
+		MOCK_ARG_PTR_CALL (flash), MOCK_ARG_CALL (address));
 }
 
 static int firmware_update_mock_func_arg_count (void *func)
@@ -89,14 +89,14 @@ static const char* firmware_update_mock_arg_name_map (void *func, int arg)
  * @param context The application context API.
  * @param fw The platform handler for firmware images.
  * @param hash The hash engine to use during updates.
- * @param rsa The RSA engine to use for signature verification.
  * @param allowed_revision The lowest image ID that will be allowed for firmware updates.
  *
  * @return 0 if the mock was initialized successfully or an error code.
  */
 int firmware_update_mock_init (struct firmware_update_mock *mock,
-	const struct firmware_flash_map *flash, struct app_context *context, struct firmware_image *fw,
-	struct hash_engine *hash, struct rsa_engine *rsa, int allowed_revision)
+	struct firmware_update_state *state, const struct firmware_flash_map *flash,
+	struct app_context *context, struct firmware_image *fw, struct hash_engine *hash,
+	int allowed_revision)
 {
 	int status;
 
@@ -106,7 +106,7 @@ int firmware_update_mock_init (struct firmware_update_mock *mock,
 
 	memset (mock, 0, sizeof (struct firmware_update_mock));
 
-	status = firmware_update_init (&mock->base, flash, context, fw, hash, rsa, allowed_revision);
+	status = firmware_update_init (&mock->base, state, flash, context, fw, hash, allowed_revision);
 	if (status != 0) {
 		return status;
 	}

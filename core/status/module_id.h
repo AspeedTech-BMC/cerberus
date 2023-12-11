@@ -102,12 +102,28 @@ enum {
 	ROT_MODULE_INTRUSION_STATE_OBSERVER = 0x005a,		/**< Observers for intrusion state changes. */
 	ROT_MODULE_INTRUSION_MANAGER = 0x005b,				/**< Manager for intrusion detection. */
 	ROT_MODULE_CMD_HANDLER_MCTP_CTRL = 0x005c,			/**< Handler for received MCTP control protocol messages. */
-	ROT_MODULE_CERBERUS_PROTOCOL_OBSERVER = 0x005d,		/**< System command interface observer. */
+	ROT_MODULE_CERBERUS_PROTOCOL_OBSERVER = 0x005d,		/**< Cerberus protocol observer. */
 	ROT_MODULE_ECC_DER_UTIL = 0x005e,					/**< Utilities for handling DER encoded ECC information. */
 	ROT_MODULE_BUFFER_UTIL = 0x005f,					/**< General buffer handling utilities. */
 	ROT_MODULE_OCP_RECOVERY_DEVICE = 0x0060,			/**< Device handler for the OCP Recovery protocol. */
 	ROT_MODULE_OCP_RECOVERY_SMBUS = 0x0061,				/**< SMBus layer for the OCP Recovery protocol. */
 	ROT_MODULE_MCTP_CONTROL_PROTOCOL_OBSERVER = 0x0062,	/**< MCTP control command interface observer. */
+	ROT_MODULE_CMD_HANDLER_SPDM = 0x0063,				/**< Handler for received SPDM protocol commands. */
+	ROT_MODULE_SPDM_PROTOCOL_OBSERVER = 0x0064,			/**< SPDM protocol observer. */
+	ROT_MODULE_ASN1_UTIL = 0x0065,						/**< ASN.1 operations. */
+	ROT_MODULE_EVENT_TASK = 0x0066,						/**< Task for event handling. */
+	ROT_MODULE_PERIODIC_TASK = 0x0067,					/**< Task for periodic execution. */
+	ROT_MODULE_FIRMWARE_LOADER = 0x0068,				/**< Handler to load firmware images into memory. */
+	ROT_MODULE_DEVICE_MANAGER_OBSERVER = 0x0069,		/**< Observers for device manager events. */
+	ROT_MODULE_ECC_HW = 0x006a,							/**< Driver interface for ECC accelerator hardware. */
+	ROT_MODULE_COMMON_MATH = 0x006b,					/**< Common math operations. */
+	ROT_MODULE_HEAP_WITH_DEFRAG = 0x006c,				/**< Heap allocator with defragmentation.*/
+	ROT_MODULE_PLATFORM_OS = 0x006d,					/**< Platform abstraction for OS and task control. */
+	ROT_MODULE_X509_EXTENSION = 0x006e,					/**< Extension handler for X.509 certificates. */
+	ROT_MODULE_DICE_TCBINFO_EXTENSION = 0x006f,			/**< Extension handler for TCG DICE TcbInfo extensions. */
+	ROT_MODULE_DICE_UEID_EXTENSION = 0x0070,			/**< Extension handler for TCG DICE Ueid extensions. */
+	ROT_MODULE_DME_EXTENSION = 0x0071,					/**< Extension handler for DME extensions. */
+	ROT_MODULE_DME_STRUCTURE = 0x0072,					/**< Parsing and management of the DME structure. */
 	ROT_MODULE_I2C_FILTER = 0x0010,
 };
 

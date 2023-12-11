@@ -9,6 +9,8 @@ projects/*
 !projects/linux
 !projects/zephyr
 build*
+!build*.h
+!build*.c
 .vscode
 *~
 *.bin

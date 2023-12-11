@@ -16,8 +16,8 @@ static int hash_mock_calculate_sha1 (struct hash_engine *engine, const uint8_t *
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, hash_mock_calculate_sha1, engine, MOCK_ARG_CALL (data),
-		MOCK_ARG_CALL (length), MOCK_ARG_CALL (hash), MOCK_ARG_CALL (hash_length));
+	MOCK_RETURN (&mock->mock, hash_mock_calculate_sha1, engine, MOCK_ARG_PTR_CALL (data),
+		MOCK_ARG_CALL (length), MOCK_ARG_PTR_CALL (hash), MOCK_ARG_CALL (hash_length));
 }
 
 static int hash_mock_start_sha1 (struct hash_engine *engine)
@@ -40,8 +40,8 @@ static int hash_mock_calculate_sha256 (struct hash_engine *engine, const uint8_t
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, hash_mock_calculate_sha256, engine, MOCK_ARG_CALL (data),
-		MOCK_ARG_CALL (length), MOCK_ARG_CALL (hash), MOCK_ARG_CALL (hash_length));
+	MOCK_RETURN (&mock->mock, hash_mock_calculate_sha256, engine, MOCK_ARG_PTR_CALL (data),
+		MOCK_ARG_CALL (length), MOCK_ARG_PTR_CALL (hash), MOCK_ARG_CALL (hash_length));
 }
 
 static int hash_mock_start_sha256 (struct hash_engine *engine)
@@ -64,8 +64,8 @@ static int hash_mock_calculate_sha384 (struct hash_engine *engine, const uint8_t
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, hash_mock_calculate_sha384, engine, MOCK_ARG_CALL (data),
-		MOCK_ARG_CALL (length), MOCK_ARG_CALL (hash), MOCK_ARG_CALL (hash_length));
+	MOCK_RETURN (&mock->mock, hash_mock_calculate_sha384, engine, MOCK_ARG_PTR_CALL (data),
+		MOCK_ARG_CALL (length), MOCK_ARG_PTR_CALL (hash), MOCK_ARG_CALL (hash_length));
 }
 
 static int hash_mock_start_sha384 (struct hash_engine *engine)
@@ -88,8 +88,8 @@ static int hash_mock_calculate_sha512 (struct hash_engine *engine, const uint8_t
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, hash_mock_calculate_sha512, engine, MOCK_ARG_CALL (data),
-		MOCK_ARG_CALL (length), MOCK_ARG_CALL (hash), MOCK_ARG_CALL (hash_length));
+	MOCK_RETURN (&mock->mock, hash_mock_calculate_sha512, engine, MOCK_ARG_PTR_CALL (data),
+		MOCK_ARG_CALL (length), MOCK_ARG_PTR_CALL (hash), MOCK_ARG_CALL (hash_length));
 }
 
 static int hash_mock_start_sha512 (struct hash_engine *engine)
@@ -111,7 +111,7 @@ static int hash_mock_update (struct hash_engine *engine, const uint8_t *data, si
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, hash_mock_update, engine, MOCK_ARG_CALL (data),
+	MOCK_RETURN (&mock->mock, hash_mock_update, engine, MOCK_ARG_PTR_CALL (data),
 		MOCK_ARG_CALL (length));
 }
 
@@ -123,7 +123,7 @@ static int hash_mock_finish (struct hash_engine *engine, uint8_t *hash, size_t h
 		return MOCK_INVALID_ARGUMENT;
 	}
 
-	MOCK_RETURN (&mock->mock, hash_mock_finish, engine, MOCK_ARG_CALL (hash),
+	MOCK_RETURN (&mock->mock, hash_mock_finish, engine, MOCK_ARG_PTR_CALL (hash),
 		MOCK_ARG_CALL (hash_length));
 }
 
@@ -300,14 +300,20 @@ int hash_mock_init (struct hash_engine_mock *mock)
 
 	mock_set_name (&mock->mock, "hash");
 
+#ifdef HASH_ENABLE_SHA1
 	mock->base.calculate_sha1 = hash_mock_calculate_sha1;
 	mock->base.start_sha1 = hash_mock_start_sha1;
+#endif
 	mock->base.calculate_sha256 = hash_mock_calculate_sha256;
 	mock->base.start_sha256 = hash_mock_start_sha256;
+#ifdef HASH_ENABLE_SHA384
 	mock->base.calculate_sha384 = hash_mock_calculate_sha384;
 	mock->base.start_sha384 = hash_mock_start_sha384;
+#endif
+#ifdef HASH_ENABLE_SHA512
 	mock->base.calculate_sha512 = hash_mock_calculate_sha512;
 	mock->base.start_sha512 = hash_mock_start_sha512;
+#endif
 	mock->base.update = hash_mock_update;
 	mock->base.finish = hash_mock_finish;
 	mock->base.cancel = hash_mock_cancel;
@@ -356,17 +362,39 @@ int hash_mock_validate_and_release (struct hash_engine_mock *mock)
  * @param mock The mock to use for the HMAC.
  * @param key The HMAC key.
  * @param key_length he length of the HMAC key.
+ * @param hmac_algo The hash algorithm to use for the HMAC.
  *
  * @return 0 if the expectations were added successfully or an error code.
  */
 int hash_mock_expect_hmac_init (struct hash_engine_mock *mock, const uint8_t *key,
-	size_t key_length)
+	size_t key_length, enum hash_type hmac_algo)
 {
 	int status;
-	uint8_t hmac_key[SHA256_BLOCK_SIZE];
+	uint8_t hmac_key[SHA512_BLOCK_SIZE];
+	size_t hmac_key_length = sizeof (hmac_key);
 	size_t i;
 
-	status = mock_expect (&mock->mock, mock->base.start_sha256, mock, 0);
+	switch (hmac_algo) {
+		case HASH_TYPE_SHA256:
+			status = mock_expect (&mock->mock, mock->base.start_sha256, mock, 0);
+			hmac_key_length = SHA256_BLOCK_SIZE;
+			break;
+
+#ifdef HASH_ENABLE_SHA384
+		case HASH_TYPE_SHA384:
+			status = mock_expect (&mock->mock, mock->base.start_sha384, mock, 0);
+			break;
+#endif
+
+#ifdef HASH_ENABLE_SHA512
+		case HASH_TYPE_SHA512:
+			status = mock_expect (&mock->mock, mock->base.start_sha512, mock, 0);
+			break;
+#endif
+
+		default:
+			return HASH_ENGINE_UNKNOWN_HASH;
+	}
 
 	memset (hmac_key, 0x36, sizeof (hmac_key));
 	for (i = 0; i < key_length; i++) {
@@ -374,7 +402,7 @@ int hash_mock_expect_hmac_init (struct hash_engine_mock *mock, const uint8_t *ke
 	}
 
 	status |= mock_expect (&mock->mock, mock->base.update, mock, 0,
-		MOCK_ARG_PTR_CONTAINS_TMP (hmac_key, sizeof (hmac_key)), MOCK_ARG (sizeof (hmac_key)));
+		MOCK_ARG_PTR_CONTAINS_TMP (hmac_key, hmac_key_length), MOCK_ARG (hmac_key_length));
 
 	return status;
 }
@@ -387,43 +415,66 @@ int hash_mock_expect_hmac_init (struct hash_engine_mock *mock, const uint8_t *ke
  * @param key_length The length of the HMAC key.
  * @param hmac The expected HMAC output buffer.  Set to null if the output buffer pointer is unknown.
  * @param hmac_length The expected length of the output buffer.
+ * @param hmac_algo The hash algorithm to use for the HMAC.
  * @param expected The expected HMAC output to generate.
  * @param exp_length The length of the HMAC output.
  *
  * @return 0 if the expectations were added successfully or an error code.
  */
 int hash_mock_expect_hmac_finish (struct hash_engine_mock *mock, const uint8_t *key,
-	size_t key_length, uint8_t *hmac, size_t hmac_length, const uint8_t *expected,
-	size_t exp_length)
+	size_t key_length, uint8_t *hmac, size_t hmac_length, enum hash_type hmac_algo,
+	const uint8_t *expected, size_t exp_length)
 {
 	int status;
-	uint8_t hmac_key[SHA256_BLOCK_SIZE];
+	uint8_t hmac_key[SHA512_BLOCK_SIZE];
+	size_t hmac_key_length = sizeof (hmac_key);
 	size_t i;
 	int inner = mock_expect_next_save_id (&mock->mock);
+	int inner_length = hash_get_hash_length (hmac_algo);
 
 	status = mock_expect (&mock->mock, mock->base.finish, mock, 0, MOCK_ARG_NOT_NULL,
-		MOCK_ARG (SHA512_HASH_LENGTH));
+		MOCK_ARG_AT_LEAST (inner_length));
 	status |= mock_expect_save_arg (&mock->mock, 0, inner);
 
-	status |= mock_expect (&mock->mock, mock->base.start_sha256, mock, 0);
+	switch (hmac_algo) {
+		case HASH_TYPE_SHA256:
+			status |= mock_expect (&mock->mock, mock->base.start_sha256, mock, 0);
+			hmac_key_length = SHA256_BLOCK_SIZE;
+			break;
+
+#ifdef HASH_ENABLE_SHA384
+		case HASH_TYPE_SHA384:
+			status |= mock_expect (&mock->mock, mock->base.start_sha384, mock, 0);
+			break;
+#endif
+
+#ifdef HASH_ENABLE_SHA512
+		case HASH_TYPE_SHA512:
+			status |= mock_expect (&mock->mock, mock->base.start_sha512, mock, 0);
+			break;
+#endif
+
+		default:
+			return HASH_ENGINE_UNKNOWN_HASH;
+	}
 
 	memset (hmac_key, 0x5c, sizeof (hmac_key));
 	for (i = 0; i < key_length; i++) {
 		hmac_key[i] ^= key[i];
 	}
 	status |= mock_expect (&mock->mock, mock->base.update, mock, 0,
-		MOCK_ARG_PTR_CONTAINS_TMP (hmac_key, sizeof (hmac_key)), MOCK_ARG (sizeof (hmac_key)));
+		MOCK_ARG_PTR_CONTAINS_TMP (hmac_key, hmac_key_length), MOCK_ARG (hmac_key_length));
 
 	status |= mock_expect (&mock->mock, mock->base.update, mock, 0, MOCK_ARG_SAVED_ARG (inner),
-		MOCK_ARG (SHA256_HASH_LENGTH));
+		MOCK_ARG (inner_length));
 
 	if (hmac != NULL) {
-		status |= mock_expect (&mock->mock, mock->base.finish, mock, 0, MOCK_ARG (hmac),
+		status |= mock_expect (&mock->mock, mock->base.finish, mock, 0, MOCK_ARG_PTR (hmac),
 			MOCK_ARG (hmac_length));
 	}
 	else {
 		status |= mock_expect (&mock->mock, mock->base.finish, mock, 0, MOCK_ARG_NOT_NULL,
-			MOCK_ARG (hmac_length));
+			MOCK_ARG_AT_LEAST (hmac_length));
 	}
 	status |= mock_expect_output (&mock->mock, 0, expected, exp_length, 1);
 
@@ -440,24 +491,25 @@ int hash_mock_expect_hmac_finish (struct hash_engine_mock *mock, const uint8_t *
  * @param length The length of the data.
  * @param hmac The expected HMAC output buffer.  Set to null if the output buffer pointer is unknown.
  * @param hmac_length The expected length of the output buffer.
+ * @param hmac_algo The hash algorithm to use for the HMAC.
  * @param expected The expected HMAC output to generate.
  * @param exp_length The length of the HMAC output.
  *
  * @return 0 if the expectations were added successfully or an error code.
  */
 int hash_mock_expect_hmac (struct hash_engine_mock *mock, const uint8_t *key, size_t key_length,
-	const uint8_t *data, size_t length, uint8_t *hmac, size_t hmac_length, const uint8_t *expected,
-	size_t exp_length)
+	const uint8_t *data, size_t length, uint8_t *hmac, size_t hmac_length, enum hash_type hmac_algo,
+	const uint8_t *expected, size_t exp_length)
 {
 	int status;
 
-	status = hash_mock_expect_hmac_init (mock, key, key_length);
+	status = hash_mock_expect_hmac_init (mock, key, key_length, hmac_algo);
 
 	status |= mock_expect (&mock->mock, mock->base.update, mock, 0,
 		MOCK_ARG_PTR_CONTAINS (data, length), MOCK_ARG (length));
 
-	status |= hash_mock_expect_hmac_finish (mock, key, key_length, hmac, hmac_length, expected,
-		exp_length);
+	status |= hash_mock_expect_hmac_finish (mock, key, key_length, hmac, hmac_length, hmac_algo,
+		expected, exp_length);
 
 	return status;
 }

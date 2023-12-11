@@ -4,7 +4,7 @@
 #ifndef HOST_PROCESSOR_FILTERED_H_
 #define HOST_PROCESSOR_FILTERED_H_
 
-#include "platform.h"
+#include "platform_api.h"
 #include "host_processor.h"
 #include "host_control.h"
 #include "host_flash_manager.h"
@@ -23,13 +23,14 @@
  */
 struct host_processor_filtered {
 	struct host_processor base;					/**< Base host processor interface. */
-	struct host_control *control;				/**< The interface for hardware control of the host. */
+	const struct host_control *control;			/**< The interface for hardware control of the host. */
 	struct host_flash_manager *flash;			/**< The manager for host processor flash devices. */
 	struct host_state_manager *state;			/**< State information for the host processor. */
-	struct spi_filter_interface *filter;		/**< The SPI filter connected to host flash devices. */
+	const struct spi_filter_interface *filter;	/**< The SPI filter connected to host flash devices. */
 	struct pfm_manager *pfm;					/**< The manager for host processor PFMs. */
 	struct recovery_image_manager *recovery;	/**< The manager for recovery of the host processor. */
 	int reset_pulse;							/**< The length of the reset pulse for the host. */
+	bool reset_flash;							/**< The flag to indicate that the host flash should bereset based on every host processor reset. */
 	platform_mutex lock;						/**< Synchronization for verification routines. */
 
 	/**
@@ -50,9 +51,10 @@ struct host_processor_filtered {
 
 /* Internal functions for use by derived types. */
 int host_processor_filtered_init (struct host_processor_filtered *host,
-	struct host_control *control, struct host_flash_manager *flash,
-	struct host_state_manager *state, struct spi_filter_interface *filter, struct pfm_manager *pfm,
-	struct recovery_image_manager *recovery, int reset_pulse);
+	const struct host_control *control, struct host_flash_manager *flash,
+	struct host_state_manager *state, const struct spi_filter_interface *filter,
+	struct pfm_manager *pfm, struct recovery_image_manager *recovery, int reset_pulse,
+	bool reset_flash);
 void host_processor_filtered_release (struct host_processor_filtered *host);
 
 void host_processor_filtered_set_host_flash_access (struct host_processor_filtered *host);

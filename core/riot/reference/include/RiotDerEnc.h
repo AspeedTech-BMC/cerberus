@@ -5,7 +5,7 @@
 
 #include <string.h>
 #include <stdbool.h>
-#include "crypto/base64.h"
+#include "asn1/base64.h"
 #pragma once
 
 #ifdef __cplusplus
@@ -65,7 +65,8 @@ DERAddOID(
 int
 DERAddEncodedOID(
     DERBuilderContext   *Context,
-    const char          *Oid
+    const uint8_t       *Oid,
+    size_t               OidLength
 );
 
 int
@@ -223,6 +224,13 @@ DERAddPublicKey(
 	DERBuilderContext	*Context,
 	const uint8_t		*key,
 	size_t				key_len
+);
+
+int
+DERAddDER(
+    DERBuilderContext   *Context,
+    const uint8_t       *der,
+    size_t              length
 );
 
 #ifdef __cplusplus
