@@ -6,13 +6,13 @@
 
 #include <stdint.h>
 #include "mctp/mctp_base_protocol.h"
-
+#include "zephyr/net/net_ip.h"
 
 #define CERBERUS_PROTOCOL_MIN_MSG_LEN						(sizeof (struct cerberus_protocol_header))
 #define CERBERUS_PROTOCOL_MAX_PAYLOAD_PER_MSG				(MCTP_BASE_PROTOCOL_MAX_MESSAGE_BODY - CERBERUS_PROTOCOL_MIN_MSG_LEN)
 
 #if defined(CONFIG_INTEL_PFR)
-#define CERBERUS_PROTOCOL_INTEL_PFR_PCI_VID					0x8680
+#define CERBERUS_PROTOCOL_INTEL_PFR_PCI_VID					htons(0x8086)
 #define CERBERUS_PROTOCOL_INTEL_PFR_MIN_DOE_MSG_LEN                      (sizeof(struct intel_pfr_doe_header))
 #endif
 #define CERBERUS_PROTOCOL_MSFT_PCI_VID						0x1414

@@ -102,7 +102,8 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_add
 #endif
 	}
 	else if (MCTP_BASE_PROTOCOL_IS_VENDOR_MSG (*msg_type) ||
-		MCTP_BASE_PROTOCOL_IS_SPDM_MSG (*msg_type)) {
+		MCTP_BASE_PROTOCOL_IS_SPDM_MSG (*msg_type)||
+		MCTP_BASE_PROTOCOL_IS_SECURE_MSG(*msg_type) ) {
 		if ((header->byte_count + MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD) <=
 				(uint8_t) MCTP_BASE_PROTOCOL_PACKET_OVERHEAD) {
 			return MCTP_BASE_PROTOCOL_MSG_TOO_SHORT;
@@ -200,6 +201,7 @@ int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t dest
 	*payload_len = packet_len - sizeof(struct mctp_base_protocol_transport_i3c_header);
 	if (!MCTP_BASE_PROTOCOL_IS_CONTROL_MSG(*msg_type) &&
 			!MCTP_BASE_PROTOCOL_IS_SPDM_MSG(*msg_type) &&
+			!MCTP_BASE_PROTOCOL_IS_SECURE_MSG(*msg_type) &&
 			!MCTP_BASE_PROTOCOL_IS_VENDOR_MSG(*msg_type)) {
 		return MCTP_BASE_PROTOCOL_UNSUPPORTED_MSG;
 	}

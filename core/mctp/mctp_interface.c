@@ -318,7 +318,6 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 	}
 
 	response_addr = source_addr;
-
 	if (status != 0) {
 		msg2 = rx_packet->pkt_size << 24;
 		for (i_byte = 0; i_byte < 7; ++i_byte) {
@@ -439,6 +438,10 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 					//return MCTP_BASE_PROTOCOL_UNSUPPORTED_OPERATION;
 				}
 			}
+			else if (MCTP_BASE_PROTOCOL_IS_SECURE_MSG(mctp->msg_type)) {
+				// Pass to later function for descrypt the data
+				status = 0;
+			}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
 			else if (MCTP_BASE_PROTOCOL_IS_ECHO_TEST_MSG (mctp->msg_type)) {
 			}
@@ -514,6 +517,13 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 		}
 		else if (MCTP_BASE_PROTOCOL_IS_SPDM_MSG (mctp->msg_type)) {
 			if (tag_owner == MCTP_BASE_PROTOCOL_TO_REQUEST) {
+				struct spdm_context *context;
+
+				context = find_spdm_context(0, src_eid);
+				if (context == NULL) {
+					printk("can't find spdm context\n");
+					return -1;
+				}
 #if 0
 				printk("RECV SPDM[%d,%02x] REQUEST:", 0, src_eid);
 				for (uint16_t i=0; i<mctp->req_buffer.length; ++i) {
@@ -522,7 +532,8 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 				printk("\n");
 #endif
 				// Blocking call to SPDM Request Handler
-				handle_spdm_mctp_message(0, src_eid, mctp->req_buffer.data, &mctp->req_buffer.length);
+				handle_spdm_mctp_message(context, mctp->req_buffer.data,
+						&mctp->req_buffer.length, NULL);
 #if 0
 				printk("SEND SPDM[%d,%02x] RESPONSE:", 0, src_eid);
 				for (uint16_t i=0; i<mctp->req_buffer.length; ++i) {
@@ -531,6 +542,65 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 				printk("\n");
 #endif
 			}
+		}
+		else if (MCTP_BASE_PROTOCOL_IS_SECURE_MSG (mctp->msg_type)) {
+#if 0
+			printk("RECV Secure SPDM[%d,%02x] REQUEST:", 0, src_eid);
+			for (uint16_t i=0; i<mctp->req_buffer.length; ++i) {
+				printk("%c%02x", i%16?' ':'\n', mctp->req_buffer.data[i]);
+			}
+			printk("\n");
+#endif
+			if (tag_owner == MCTP_BASE_PROTOCOL_TO_REQUEST) {
+				uint32_t session_id = 0;
+				struct spdm_context *context;
+
+				context = find_spdm_context(0, src_eid);
+				if (context == NULL) {
+					printk("can't find spdm context\n");
+					return -1;
+				}
+				status = decrypt_secure_content(context, mctp->req_buffer.data,
+						&mctp->req_buffer.length, &session_id);
+				// handle plain-text data
+				if (mctp->req_buffer.data[0] == MCTP_BASE_PROTOCOL_MSG_TYPE_SPDM) {
+					handle_spdm_mctp_message(context, mctp->req_buffer.data,
+						&mctp->req_buffer.length, &session_id);
+				}
+				else if ((mctp->req_buffer.data[0] & 0x7f) ==
+						MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF) {
+					status = mctp->cmd_cerberus->process_request (
+							mctp->cmd_cerberus,
+							&mctp->req_buffer);
+					if (status == 0){
+#if 0
+						printk("TX Secure SPDM[%d,%02x] REQUEST:",
+							0, src_eid);
+						for (uint16_t i=0; i<mctp->req_buffer.length; ++i) {
+							printk("%c%02x", i%16?' ':'\n',
+								mctp->req_buffer.data[i]);
+						}
+						printk("\n");
+#endif
+						status = encrypt_secure_content(context, NULL,
+								mctp->req_buffer.data,
+								mctp->req_buffer.length,
+								mctp->req_buffer.data,
+								&mctp->req_buffer.length,
+								&session_id);
+					}
+				}
+				else
+					return MCTP_BASE_PROTOCOL_UNSUPPORTED_OPERATION;
+			}
+#if 0
+			printk("TX Secure SPDM[%d,%02x] REQUEST:", 0, src_eid);
+			for (uint16_t i=0; i<mctp->req_buffer.length; ++i) {
+				printk("%c%02x", i%16?' ':'\n', mctp->req_buffer.data[i]);
+			}
+			printk("\n");
+#endif
+
 		}
 #ifdef CONFIG_CERBERUS_MCTP_TEST_ECHO
 		else if (MCTP_BASE_PROTOCOL_IS_ECHO_TEST_MSG (mctp->msg_type)) {

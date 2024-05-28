@@ -17,7 +17,7 @@
 #include "cmd_interface_system.h"
 #include "common/unused.h"
 
-extern int swmbx_mctp_i3c_doe_msg_write_handler(uint8_t addr, uint8_t data_len, uint8_t *swmbx_data);
+extern int swmbx_mctp_i3c_doe_msg_write_handler(uint8_t addr, uint8_t data_len, uint8_t *swmbx_data, int channel_id, uint8_t s_eid);
 extern int swmbx_mctp_i3c_doe_msg_read_handler(uint8_t addr, uint8_t data_len, uint8_t *swmbx_data);
 
 #if defined(CONFIG_INTEL_PFR)
@@ -41,7 +41,8 @@ int intel_pfr_handle_write_req(struct cmd_interface_msg *request)
 	uint8_t *swmbx_data = (uint8_t *)(doe_header + 1);
 	int status;
 
-	status = swmbx_mctp_i3c_doe_msg_write_handler(swmbx_addr, swmbx_data_len, swmbx_data);
+	status = swmbx_mctp_i3c_doe_msg_write_handler(swmbx_addr, swmbx_data_len,
+			swmbx_data, request->channel_id, request->source_eid);
 
 	return status;
 }
@@ -62,20 +63,26 @@ int intel_pfr_handle_read_req(struct cmd_interface_msg *request)
 			goto done;
 		}
 	} else {
-		if (doe_header->length != 1) {
+		if (doe_header->length > 32) {
 			resp->length = 0;
 			goto done;
 		}
 	}
 
 	swmbx_data = (uint8_t *)malloc(doe_header->length);
+	if (swmbx_data == NULL) {
+		resp->length = 0;
+		printk("can't allocate memory for rsp data (%x)\n", doe_header->length);
+		goto done;
+	}
+	memset(res_data_ptr, 0, doe_header->length);
 	status = swmbx_mctp_i3c_doe_msg_read_handler(swmbx_addr, doe_header->length, swmbx_data);
 	if (status) {
 		resp->length = 0;
 		goto done;
 	}
 
-	request->length += doe_header->length;
+	request->length = sizeof(struct intel_pfr_doe_header) + doe_header->length;
 	memcpy(&res_data_ptr[0], &swmbx_data[0], doe_header->length);
 
 done:
