@@ -303,7 +303,7 @@ int mctp_base_protocol_construct_i3c (uint8_t *buf, size_t buf_len, uint8_t *out
 		return MCTP_BASE_PROTOCOL_BAD_BUFFER_LENGTH;
 	}
 
-	out_len = sizeof(struct mctp_base_protocol_transport_i3c_header) + buf_len;
+	out_len = sizeof(struct mctp_base_protocol_transport_i3c_header) + buf_len + 1;
 
 	if (out_buf_len < out_len) {
 		return MCTP_BASE_PROTOCOL_BUF_TOO_SMALL;
@@ -321,7 +321,8 @@ int mctp_base_protocol_construct_i3c (uint8_t *buf, size_t buf_len, uint8_t *out
 	header->msg_tag = msg_tag;
 	header->tag_owner = tag_owner;
 
-	// Skip pec calculation, i3c pec calculation is handled in driver layer.
+	out_buf[msg_offset + buf_len] = checksum_crc8 ((dest_addr << 1), out_buf,
+		out_len - MCTP_BASE_PROTOCOL_PEC_SIZE);
 
 	return out_len;
 }
