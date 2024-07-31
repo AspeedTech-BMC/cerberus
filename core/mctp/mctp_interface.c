@@ -268,7 +268,7 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 	uint32_t msg2 = 0;
 	uint8_t i_byte;
 	uint8_t *payload;
-	uint8_t source_addr;
+	uint8_t source_addr = 0;
 	uint8_t src_eid;
 	uint8_t dest_eid;
 	uint8_t msg_tag;
