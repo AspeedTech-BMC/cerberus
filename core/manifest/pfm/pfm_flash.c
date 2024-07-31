@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 #include "platform_api.h"
@@ -1422,6 +1423,11 @@ static int pfm_flash_get_firmware_images_v2 (struct pfm_flash *pfm, const char *
 		}
 
 		buf_offset += sizeof (struct pfm_fw_version_element_image);
+		if (buf_offset >= sizeof(buffer.ver_element.version)) {
+			printf("Error (%d): buffer offset exceeds buffer size\n", __LINE__);
+			status = PFM_MALFORMED_FLASH_DEV_ELEMENT;
+			goto error;
+		}
 
 		images = (struct pfm_image_hash*) img_list->images_hash;
 		images[i].count = img->region_count;
@@ -1457,6 +1463,11 @@ static int pfm_flash_get_firmware_images_v2 (struct pfm_flash *pfm, const char *
 		memcpy (images[i].hash, &buffer.ver_element.version[buf_offset], images[i].hash_length);
 		images[i].always_validate = img->flags & PFM_IMAGE_MUST_VALIDATE;
 		buf_offset += images[i].hash_length;
+		if (buf_offset >= sizeof(buffer.ver_element.version)) {
+			printf("Error (%d): buffer offset exceeds buffer size\n", __LINE__);
+			status = PFM_MALFORMED_FLASH_DEV_ELEMENT;
+			goto error;
+		}
 
 		img_regions = (struct pfm_flash_region*) &buffer.ver_element.version[buf_offset];
 
