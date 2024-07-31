@@ -52,7 +52,7 @@ int intel_pfr_handle_read_req(struct cmd_interface_msg *request)
 	struct intel_pfr_doe_header *doe_header = (struct intel_pfr_doe_header *)request->data;
 	struct intel_pfr_doe_header *resp = (struct intel_pfr_doe_header *)request->data;
 	uint8_t swmbx_addr = doe_header->address;
-	uint8_t *swmbx_data;
+	uint8_t *swmbx_data = NULL;
 	uint8_t *res_data_ptr = (uint8_t *)(resp + 1);
 	int status = -1;
 
@@ -71,7 +71,6 @@ int intel_pfr_handle_read_req(struct cmd_interface_msg *request)
 	swmbx_data = (uint8_t *)malloc(doe_header->length);
 	status = swmbx_mctp_i3c_doe_msg_read_handler(swmbx_addr, doe_header->length, swmbx_data);
 	if (status) {
-		free(swmbx_data);
 		resp->length = 0;
 		goto done;
 	}
@@ -80,6 +79,8 @@ int intel_pfr_handle_read_req(struct cmd_interface_msg *request)
 	memcpy(&res_data_ptr[0], &swmbx_data[0], doe_header->length);
 
 done:
+	if (swmbx_data)
+		free(swmbx_data);
 	resp->status = (status) ? -1 : 0;
 
 	return status;
