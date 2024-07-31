@@ -183,6 +183,7 @@ int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t dest
 		return MCTP_BASE_PROTOCOL_MSG_TOO_SHORT;
 	}
 
+	*source_addr = dest_addr;
 	*dest_eid = header->destination_eid;
 	*src_eid = header->source_eid;
 	*som = header->som;
