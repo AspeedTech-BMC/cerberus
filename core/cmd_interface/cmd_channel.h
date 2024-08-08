@@ -18,6 +18,7 @@
 #define	CMD_MAX_PACKET_SIZE				MCTP_BASE_PROTOCOL_MAX_PACKET_LEN
 
 #define CMD_CHANNEL_I3C_BASE				0x80
+#define CMD_CHANNEL_I3C_TARGET				0x40
 /**
  * Valid states for a packet.
  */

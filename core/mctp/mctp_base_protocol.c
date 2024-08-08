@@ -165,12 +165,11 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_add
 int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t dest_addr,
 	uint8_t *source_addr, bool *som, bool *eom, uint8_t *src_eid, uint8_t *dest_eid,
 	uint8_t **payload, size_t *payload_len, uint8_t *msg_tag, uint8_t *packet_seq,
-	uint8_t *crc, uint8_t *msg_type, uint8_t *tag_owner)
+	uint8_t *crc, uint8_t *msg_type, uint8_t *tag_owner, bool is_target)
 {
 	struct mctp_base_protocol_transport_i3c_header *header =
 		(struct mctp_base_protocol_transport_i3c_header*) buf;
 	size_t packet_len;
-	bool add_crc = true;
 
 	if ((buf == NULL) || (source_addr == NULL) || (som == NULL) || (eom == NULL) ||
 		(src_eid == NULL) || (dest_eid == NULL) || (payload == NULL) || (payload_len == NULL) ||
@@ -199,7 +198,6 @@ int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t dest
 
 	packet_len = buf_len - 1;
 	*payload_len = packet_len - sizeof(struct mctp_base_protocol_transport_i3c_header);
-	add_crc = true;
 	if (!MCTP_BASE_PROTOCOL_IS_CONTROL_MSG(*msg_type) &&
 			!MCTP_BASE_PROTOCOL_IS_SPDM_MSG(*msg_type) &&
 			!MCTP_BASE_PROTOCOL_IS_VENDOR_MSG(*msg_type)) {
@@ -214,11 +212,13 @@ int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t dest
 		return MCTP_BASE_PROTOCOL_UNSUPPORTED_MSG;
 	}
 
-	if (add_crc) {
+	if (is_target) {
+		*crc = checksum_crc8 ((dest_addr << 1), buf, packet_len);
+	} else {
 		*crc = checksum_crc8 (((dest_addr << 1) | 0x01), buf, packet_len);
-		if (*crc != buf[packet_len]) {
-			return MCTP_BASE_PROTOCOL_BAD_CHECKSUM;
-		}
+	}
+	if (*crc != buf[packet_len]) {
+		return MCTP_BASE_PROTOCOL_BAD_CHECKSUM;
 	}
 
 	return 0;
@@ -289,7 +289,7 @@ int mctp_base_protocol_construct (uint8_t *buf, size_t buf_len, uint8_t *out_buf
 
 int mctp_base_protocol_construct_i3c (uint8_t *buf, size_t buf_len, uint8_t *out_buf,
 	size_t out_buf_len, uint8_t source_addr, uint8_t dest_eid, uint8_t source_eid, bool som,
-	bool eom, uint8_t packet_seq, uint8_t msg_tag, uint8_t tag_owner, uint8_t dest_addr)
+	bool eom, uint8_t packet_seq, uint8_t msg_tag, uint8_t tag_owner, uint8_t dest_addr, bool is_target)
 {
 	struct mctp_base_protocol_transport_i3c_header *header =
 		(struct mctp_base_protocol_transport_i3c_header*) out_buf;
@@ -322,8 +322,13 @@ int mctp_base_protocol_construct_i3c (uint8_t *buf, size_t buf_len, uint8_t *out
 	header->msg_tag = msg_tag;
 	header->tag_owner = tag_owner;
 
-	out_buf[msg_offset + buf_len] = checksum_crc8 ((dest_addr << 1), out_buf,
-		out_len - MCTP_BASE_PROTOCOL_PEC_SIZE);
+	if (is_target) {
+		out_buf[msg_offset + buf_len] = checksum_crc8 ((dest_addr << 1 | 1), out_buf,
+				out_len - MCTP_BASE_PROTOCOL_PEC_SIZE);
+	} else {
+		out_buf[msg_offset + buf_len] = checksum_crc8 ((dest_addr << 1), out_buf,
+				out_len - MCTP_BASE_PROTOCOL_PEC_SIZE);
+	}
 
 	return out_len;
 }

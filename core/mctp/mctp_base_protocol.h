@@ -214,7 +214,7 @@ int mctp_base_protocol_interpret (uint8_t *buf, size_t buf_len, uint8_t smbus_ad
 int mctp_base_protocol_i3c_interpret (uint8_t *buf, size_t buf_len, uint8_t smbus_addr,
 	uint8_t *source_addr, bool *som, bool *eom, uint8_t *src_eid, uint8_t *dest_eid,
 	uint8_t** payload, size_t* payload_len, uint8_t *msg_tag, uint8_t *packet_seq, uint8_t *crc,
-	uint8_t* msg_type, uint8_t *tag_owner);
+	uint8_t* msg_type, uint8_t *tag_owner, bool is_target);
 
 int mctp_base_protocol_construct (uint8_t *buf, size_t buf_len, uint8_t *out_buf,
 	size_t out_buf_len, uint8_t source_addr, uint8_t dest_eid, uint8_t source_eid, bool som,
@@ -222,7 +222,7 @@ int mctp_base_protocol_construct (uint8_t *buf, size_t buf_len, uint8_t *out_buf
 
 int mctp_base_protocol_construct_i3c (uint8_t *buf, size_t buf_len, uint8_t *out_buf,
 	size_t out_buf_len, uint8_t source_addr, uint8_t dest_eid, uint8_t source_eid, bool som,
-	bool eom, uint8_t packet_seq, uint8_t msg_tag, uint8_t tag_owner, uint8_t dest_addr);
+	bool eom, uint8_t packet_seq, uint8_t msg_tag, uint8_t tag_owner, uint8_t dest_addr, bool is_target);
 
 #define	MCTP_BASE_PROTOCOL_ERROR(code)						ROT_ERROR (ROT_MODULE_MCTP_BASE_PROTOCOL, code)
 

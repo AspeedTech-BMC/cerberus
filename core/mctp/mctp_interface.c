@@ -132,6 +132,7 @@ static int mctp_interface_generate_packets_from_payload (struct mctp_interface *
 	size_t i_buf = 0;
 	bool som = true;
 	bool eom = false;
+	bool is_target = false;
 	int status;
 
 	max_packet_payload = device_manager_get_max_transmission_unit_by_eid (mctp->device_manager, dest_eid);
@@ -144,12 +145,14 @@ static int mctp_interface_generate_packets_from_payload (struct mctp_interface *
 			eom = true;
 			packet_payload_len = payload_len;
 		}
-		
+
 		if (mctp->channel_id & CMD_CHANNEL_I3C_BASE) {
+			if (mctp->channel_id & CMD_CHANNEL_I3C_TARGET)
+				is_target = true;
 			status = mctp_base_protocol_construct_i3c (&payload[i_payload],
 					packet_payload_len, &buf[i_buf], max_buf_len - i_buf,
 					src_addr, dest_eid, src_eid, som, eom, packet_seq, msg_tag,
-					tag_owner, dest_addr);
+					tag_owner, dest_addr, is_target);
 		} else {
 			status = mctp_base_protocol_construct (&payload[i_payload],
 					packet_payload_len, &buf[i_buf], max_buf_len - i_buf,
@@ -200,6 +203,7 @@ static int mctp_interface_generate_error_packet (struct mctp_interface *mctp, in
 	uint8_t tag_owner)
 {
 	int status;
+	bool is_target = false;
 
 	if (error_code != CERBERUS_PROTOCOL_NO_ERROR) {
 		debug_log_create_entry (DEBUG_LOG_SEVERITY_INFO, DEBUG_LOG_COMPONENT_MCTP,
@@ -227,10 +231,13 @@ static int mctp_interface_generate_error_packet (struct mctp_interface *mctp, in
 	}
 
 	if (mctp->channel_id & CMD_CHANNEL_I3C_BASE) {
+		if (mctp->channel_id & CMD_CHANNEL_I3C_TARGET)
+			is_target = true;
 		status = mctp_base_protocol_construct_i3c (mctp->req_buffer.data,
 				mctp->req_buffer.length, mctp->resp_buffer.data,
 				sizeof (mctp->msg_buffer), source_addr, src_eid, dest_eid, true,
-				true, 0, msg_tag, MCTP_BASE_PROTOCOL_TO_RESPONSE, response_addr);
+				true, 0, msg_tag, MCTP_BASE_PROTOCOL_TO_RESPONSE, response_addr,
+				is_target);
 	} else {
 		status = mctp_base_protocol_construct (mctp->req_buffer.data,
 				mctp->req_buffer.length, mctp->resp_buffer.data,
@@ -280,6 +287,7 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 	size_t payload_len;
 	bool som;
 	bool eom;
+	bool is_target = false;
 	int cerberus_eid;
 	int status;
 
@@ -296,10 +304,12 @@ int mctp_interface_process_packet (struct mctp_interface *mctp, struct cmd_packe
 	*tx_message = NULL;
 
 	if (mctp->channel_id & CMD_CHANNEL_I3C_BASE) {
+		if (mctp->channel_id & CMD_CHANNEL_I3C_TARGET)
+			is_target = true;
 		status = mctp_base_protocol_i3c_interpret (rx_packet->data, rx_packet->pkt_size,
 				rx_packet->dest_addr, &source_addr, &som, &eom, &src_eid, &dest_eid,
 				&payload, &payload_len, &msg_tag, &packet_seq, &crc,
-				&mctp->msg_type, &tag_owner);
+				&mctp->msg_type, &tag_owner, is_target);
 	} else {
 		status = mctp_base_protocol_interpret (rx_packet->data, rx_packet->pkt_size,
 				rx_packet->dest_addr, &source_addr, &som, &eom, &src_eid, &dest_eid,
