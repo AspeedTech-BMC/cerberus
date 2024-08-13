@@ -88,7 +88,7 @@ done:
 
 int intel_pfr_handle_register_res(struct cmd_interface_msg *request)
 {
-	printk("PFR EID is registered\n");
+	printk("PFR EID %02x is registered by bus owner\n", request->target_eid);
 	return 0;
 }
 

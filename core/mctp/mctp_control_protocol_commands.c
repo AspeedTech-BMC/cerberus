@@ -104,13 +104,12 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 	}
 
 #if defined(CONFIG_PFR_MCTP_I3C)
-#if !defined(CONFIG_I3C_SLAVE)
 	int bus_role = device_mgr->entries[0].capabilities.request.bus_role;
 
 	if (bus_role == DEVICE_MANAGER_I3C_SLAVE_BUS_ROLE) {
 		mctp_i3c_stop_discovery_notify(device_mgr);
+		printk("PFR EID %02x is assigned by bus owner\n", eid_assigned);
 	}
-#endif
 #endif
 
 	return 0;
