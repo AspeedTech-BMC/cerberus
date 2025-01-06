@@ -44,6 +44,8 @@ int intel_pfr_handle_write_req(struct cmd_interface_msg *request)
 	status = swmbx_mctp_i3c_doe_msg_write_handler(swmbx_addr, swmbx_data_len,
 			swmbx_data, request->channel_id, request->source_eid);
 
+	doe_header->status = (status) ? -1 : 0;
+
 	return status;
 }
 
