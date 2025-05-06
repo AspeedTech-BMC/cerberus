@@ -13,10 +13,6 @@
 #include "mctp_control_protocol.h"
 #include "mctp_control_protocol_commands.h"
 
-// aspped-pfr
-#include "src/mctp/mctp.h"
-
-
 /**
  * Populate the protocol header segment of a MCTP control request
  *
