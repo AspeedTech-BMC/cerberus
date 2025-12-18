@@ -133,13 +133,18 @@ struct cerberus_protocol_header {
 	uint8_t command;										/**< Command ID */
 };
 
-struct intel_pfr_doe_header {
-	struct cerberus_protocol_header header;
+struct intel_pfr_doe_payload_header {
 	uint32_t seq_num;
 	uint8_t command;
 	uint8_t status;
 	uint8_t address;
 	uint8_t length;
+	//... followed by data
+};
+
+struct intel_pfr_doe_header {
+	struct cerberus_protocol_header header;
+	struct intel_pfr_doe_payload_header payload_header;
 };
 
 #else

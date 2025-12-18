@@ -36,15 +36,15 @@ enum {
 int intel_pfr_handle_write_req(struct cmd_interface_msg *request)
 {
 	struct intel_pfr_doe_header *doe_header = (struct intel_pfr_doe_header *)request->data;
-	uint8_t swmbx_addr = doe_header->address;
-	uint8_t swmbx_data_len = doe_header->length;
+	uint8_t swmbx_addr = doe_header->payload_header.address;
+	uint8_t swmbx_data_len = doe_header->payload_header.length;
 	uint8_t *swmbx_data = (uint8_t *)(doe_header + 1);
 	int status;
 
 	status = swmbx_mctp_i3c_doe_msg_write_handler(swmbx_addr, swmbx_data_len,
 			swmbx_data, request->channel_id, request->source_eid);
 
-	doe_header->status = (status) ? -1 : 0;
+	doe_header->payload_header.status = (status) ? -1 : 0;
 
 	return status;
 }
@@ -54,43 +54,43 @@ int intel_pfr_handle_read_req(struct cmd_interface_msg *request)
 #define MBX_CMD_READ_FIFO 0x0e
 	struct intel_pfr_doe_header *doe_header = (struct intel_pfr_doe_header *)request->data;
 	struct intel_pfr_doe_header *resp = (struct intel_pfr_doe_header *)request->data;
-	uint8_t swmbx_addr = doe_header->address;
+	uint8_t swmbx_addr = doe_header->payload_header.address;
 	uint8_t *swmbx_data = NULL;
 	uint8_t *res_data_ptr = (uint8_t *)(resp + 1);
 	int status = -1;
 
 	if (swmbx_addr == MBX_CMD_READ_FIFO) {
-		if (doe_header->length > 64) {
-			resp->length = 0;
+		if (doe_header->payload_header.length > 64) {
+			resp->payload_header.length = 0;
 			goto done;
 		}
 	} else {
-		if (doe_header->length > 32) {
-			resp->length = 0;
+		if (doe_header->payload_header.length > 32) {
+			resp->payload_header.length = 0;
 			goto done;
 		}
 	}
 
-	swmbx_data = (uint8_t *)malloc(doe_header->length);
+	swmbx_data = (uint8_t *)malloc(doe_header->payload_header.length);
 	if (swmbx_data == NULL) {
-		resp->length = 0;
-		printk("can't allocate memory for rsp data (%x)\n", doe_header->length);
+		resp->payload_header.length = 0;
+		printk("can't allocate memory for rsp data (%x)\n", doe_header->payload_header.length);
 		goto done;
 	}
-	memset(res_data_ptr, 0, doe_header->length);
-	status = swmbx_mctp_i3c_doe_msg_read_handler(swmbx_addr, doe_header->length, swmbx_data);
+	memset(res_data_ptr, 0, doe_header->payload_header.length);
+	status = swmbx_mctp_i3c_doe_msg_read_handler(swmbx_addr, doe_header->payload_header.length, swmbx_data);
 	if (status) {
-		resp->length = 0;
+		resp->payload_header.length = 0;
 		goto done;
 	}
 
-	request->length = sizeof(struct intel_pfr_doe_header) + doe_header->length;
-	memcpy(&res_data_ptr[0], &swmbx_data[0], doe_header->length);
+	request->length = sizeof(struct intel_pfr_doe_header) + doe_header->payload_header.length;
+	memcpy(&res_data_ptr[0], &swmbx_data[0], doe_header->payload_header.length);
 
 done:
 	if (swmbx_data)
 		free(swmbx_data);
-	resp->status = (status) ? -1 : 0;
+	resp->payload_header.status = (status) ? -1 : 0;
 
 	return status;
 }
@@ -101,10 +101,27 @@ int intel_pfr_handle_register_res(struct cmd_interface_msg *request)
 	return 0;
 }
 
+int intel_pfr_doe_padding_zero(struct cmd_interface_msg *response)
+{
+	struct intel_pfr_doe_header *doe_header = (struct intel_pfr_doe_header *)response->data;
+	size_t doe_payload_len = sizeof(struct intel_pfr_doe_payload_header) + doe_header->payload_header.length; // 4 is min data len
+
+	// doe payload len should be multiple of 8 bytes, pad with zero if not
+	if (doe_payload_len % 8) {
+		size_t pad_len = 8 - (doe_payload_len % 8);
+		memset((uint8_t *)response->data + sizeof(struct intel_pfr_doe_header) + doe_header->payload_header.length,
+			0, pad_len);
+		response->length += pad_len;
+	}
+
+	return 0;
+}
+
 int intel_pfr_handle_vendor_req(struct cmd_interface_msg *request)
 {
 	struct intel_pfr_doe_header *doe_header = (struct intel_pfr_doe_header *)request->data;
-	uint8_t command = doe_header->command;
+	struct cmd_interface_msg *response = request;
+	uint8_t command = doe_header->payload_header.command;
 	switch (command) {
 		case INTEL_PFR_CMD_DATA_WRITE:
 			intel_pfr_handle_write_req(request);
@@ -116,13 +133,15 @@ int intel_pfr_handle_vendor_req(struct cmd_interface_msg *request)
 			return CMD_HANDLER_UNKNOWN_REQUEST;
 	}
 
+	intel_pfr_doe_padding_zero(response);
+
 	return 0;
 }
 
 int intel_pfr_handle_vendor_res(struct cmd_interface_msg *response)
 {
 	struct intel_pfr_doe_header *doe_header = (struct intel_pfr_doe_header *)response->data;
-	uint8_t command = doe_header->command;
+	uint8_t command = doe_header->payload_header.command;
 	int status;
 
 	switch (command) {

@@ -76,7 +76,7 @@ int cmd_interface_process_intel_pfr_protocol_message (struct cmd_interface *intf
 	intf->curr_txn_encrypted = false;
 
 	doe_header = (struct intel_pfr_doe_header *)message->data;
-	data_size = doe_header->length;
+	data_size = doe_header->payload_header.length;
 	if ((data_size == 0) || (data_size > SHA384_HASH_LENGTH)) {
 		return CMD_HANDLER_UNSUPPORTED_LEN;
 	}
