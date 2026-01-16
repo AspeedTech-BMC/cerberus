@@ -88,7 +88,8 @@ int cmd_interface_process_intel_pfr_protocol_message (struct cmd_interface *intf
 	}
 
 	if ((header->msg_type != (MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF)) ||
-		(header->pci_vendor_id != CERBERUS_PROTOCOL_INTEL_PFR_PCI_VID)) {
+		(header->pci_vendor_id !=
+		platform_htons (CERBERUS_PROTOCOL_INTEL_PFR_PCI_VID))) {
 		return CMD_HANDLER_UNSUPPORTED_MSG;
 	}
 
