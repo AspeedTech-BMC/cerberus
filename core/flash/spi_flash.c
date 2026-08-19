@@ -457,7 +457,9 @@ static int spi_flash_init_api (struct spi_flash *flash, struct spi_flash_state *
 	flash->base.chip_erase = (int (*) (const struct flash*)) spi_flash_chip_erase;
 
 	flash->state = state;
-	flash->spi = spi;
+	/* flash->spi is intentionally non-const: some platform wrappers populate the
+	 * flash_master vtable in place through this pointer after storing it here. */
+	flash->spi = (struct flash_master*) spi;
 
 	return 0;
 }
