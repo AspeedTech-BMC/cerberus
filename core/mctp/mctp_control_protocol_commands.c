@@ -13,6 +13,10 @@
 #include "mctp_control_protocol.h"
 #include "mctp_control_protocol_commands.h"
 
+#if defined(CONFIG_PFR_MCTP_I3C)
+void mctp_i3c_stop_discovery_notify (struct device_manager *mgr);
+#endif
+
 /**
  * Populate the protocol header segment of a MCTP control request
  *
@@ -97,16 +101,16 @@ int mctp_control_protocol_set_eid (struct device_manager *device_mgr,
 		response->reserved2 = 0;
 		response->eid_allocation_status = MCTP_CONTROL_SET_EID_ALLOCATION_STATUS_NO_EID_POOL;
 		response->eid_pool_size = 0;
-	}
 
 #if defined(CONFIG_PFR_MCTP_I3C)
-	int bus_role = device_mgr->entries[0].capabilities.request.bus_role;
+		int bus_role = device_mgr->entries[0].capabilities.request.bus_role;
 
-	if (bus_role == DEVICE_MANAGER_I3C_SLAVE_BUS_ROLE) {
-		mctp_i3c_stop_discovery_notify(device_mgr);
-		printk("PFR EID %02x is assigned by bus owner\n", eid_assigned);
-	}
+		if (bus_role == DEVICE_MANAGER_I3C_SLAVE_BUS_ROLE) {
+			mctp_i3c_stop_discovery_notify(device_mgr);
+			printk("PFR EID %02x is assigned by bus owner\n", eid_assigned);
+		}
 #endif
+	}
 
 	return 0;
 
